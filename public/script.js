@@ -7,6 +7,11 @@ class WebChessClient {
     this.selectedSquare = null;
     this.validMoves = [];
     this.isPracticeMode = false;
+    this.practiceMode = 'self'; // 'self', 'ai-white', 'ai-black', 'ai-vs-ai'
+    this.aiDifficulty = 'medium';
+    this.aiEngine = null;
+    this.aiPaused = false;
+    this.aiMoveDelay = 1000; // 1 second delay for AI moves
     
     this.initializeEventListeners();
     this.setupSocketListeners();
@@ -17,7 +22,7 @@ class WebChessClient {
     // Main menu buttons
     document.getElementById('host-btn').addEventListener('click', () => this.hostGame());
     document.getElementById('join-btn').addEventListener('click', () => this.showJoinScreen());
-    document.getElementById('practice-btn').addEventListener('click', () => this.startPracticeMode());
+    document.getElementById('practice-btn').addEventListener('click', () => this.showPracticeScreen());
     
     // Host screen
     document.getElementById('cancel-host-btn').addEventListener('click', () => this.showMainMenu());
@@ -29,9 +34,20 @@ class WebChessClient {
       if (e.key === 'Enter') this.joinGame();
     });
     
+    // Practice screen
+    document.getElementById('practice-self-btn').addEventListener('click', () => this.startPracticeMode('self'));
+    document.getElementById('practice-ai-white-btn').addEventListener('click', () => this.startPracticeMode('ai-white'));
+    document.getElementById('practice-ai-black-btn').addEventListener('click', () => this.startPracticeMode('ai-black'));
+    document.getElementById('practice-ai-vs-ai-btn').addEventListener('click', () => this.startPracticeMode('ai-vs-ai'));
+    document.getElementById('cancel-practice-btn').addEventListener('click', () => this.showMainMenu());
+    
     // Game screen
     document.getElementById('resign-btn').addEventListener('click', () => this.resignGame());
     document.getElementById('leave-game-btn').addEventListener('click', () => this.leaveGame());
+    
+    // AI controls
+    document.getElementById('pause-ai-btn').addEventListener('click', () => this.toggleAIPause());
+    document.getElementById('step-ai-btn').addEventListener('click', () => this.stepAI());
     
     // Game end screen
     document.getElementById('new-game-btn').addEventListener('click', () => this.showMainMenu());
@@ -144,6 +160,10 @@ class WebChessClient {
     this.showScreen('join-screen');
     document.getElementById('game-id-input').focus();
   }
+  
+  showPracticeScreen() {
+    this.showScreen('practice-screen');
+  }
 
   joinGame() {
     const gameId = document.getElementById('game-id-input').value.trim().toUpperCase();
@@ -154,14 +174,38 @@ class WebChessClient {
     }
   }
 
-  startPracticeMode() {
+  startPracticeMode(mode = 'self') {
     this.isPracticeMode = true;
-    this.playerColor = 'white';
+    this.practiceMode = mode;
+    this.aiDifficulty = document.getElementById('difficulty-select').value;
+    this.aiEngine = new ChessAI(this.aiDifficulty);
+    this.aiPaused = false;
+    
+    switch (mode) {
+      case 'self':
+        this.playerColor = 'both';
+        break;
+      case 'ai-white':
+        this.playerColor = 'white';
+        break;
+      case 'ai-black':
+        this.playerColor = 'black';
+        break;
+      case 'ai-vs-ai':
+        this.playerColor = 'spectator';
+        break;
+    }
+    
     this.currentGameId = 'practice';
     this.gameState = this.createInitialGameState();
     this.saveSessionToStorage();
     this.showGameScreen();
     this.updateGameBoard();
+    
+    // Start AI if needed
+    if (this.shouldAIMove()) {
+      setTimeout(() => this.makeAIMove(), this.aiMoveDelay);
+    }
   }
 
   createInitialGameState() {
@@ -273,10 +317,35 @@ class WebChessClient {
     if (this.currentGameId && this.currentGameId !== 'practice') {
       document.getElementById('game-id-small').textContent = `Game ID: ${this.currentGameId}`;
     } else {
-      document.getElementById('game-id-small').textContent = 'Practice Mode';
+      const modeText = this.getModeDisplayText();
+      document.getElementById('game-id-small').textContent = `Practice Mode: ${modeText}`;
     }
     
-    document.getElementById('player-color').textContent = `You are: ${this.playerColor}`;
+    if (this.playerColor === 'spectator') {
+      document.getElementById('player-color').textContent = 'Spectating AI vs AI';
+    } else if (this.playerColor === 'both') {
+      document.getElementById('player-color').textContent = 'Playing both sides';
+    } else {
+      document.getElementById('player-color').textContent = `You are: ${this.playerColor}`;
+    }
+    
+    // Show/hide AI controls
+    const aiControls = document.getElementById('ai-controls');
+    if (this.practiceMode === 'ai-vs-ai') {
+      aiControls.classList.remove('hidden');
+    } else {
+      aiControls.classList.add('hidden');
+    }
+  }
+  
+  getModeDisplayText() {
+    switch (this.practiceMode) {
+      case 'self': return 'Play Both Sides';
+      case 'ai-white': return 'You vs AI (You: White)';
+      case 'ai-black': return 'You vs AI (You: Black)';
+      case 'ai-vs-ai': return 'AI vs AI';
+      default: return 'Unknown';
+    }
   }
 
   createChessBoard() {
@@ -340,6 +409,11 @@ class WebChessClient {
     const row = parseInt(square.dataset.row);
     const col = parseInt(square.dataset.col);
     
+    // Don't allow clicks in AI vs AI mode or when it's AI's turn
+    if (this.practiceMode === 'ai-vs-ai' || !this.canPlayerMove()) {
+      return;
+    }
+    
     if (this.selectedSquare) {
       if (this.selectedSquare.row === row && this.selectedSquare.col === col) {
         this.clearSelection();
@@ -355,10 +429,26 @@ class WebChessClient {
     
     const piece = this.gameState.board[row][col];
     if (piece && piece.color === this.gameState.currentTurn) {
-      if (this.isPracticeMode || piece.color === this.playerColor) {
+      if (this.canPlayerMovePiece(piece)) {
         this.selectSquare(row, col);
       }
     }
+  }
+  
+  canPlayerMove() {
+    if (this.practiceMode === 'self') return true;
+    if (this.practiceMode === 'ai-vs-ai') return false;
+    if (this.practiceMode === 'ai-white') return this.gameState.currentTurn === 'white';
+    if (this.practiceMode === 'ai-black') return this.gameState.currentTurn === 'black';
+    return false;
+  }
+  
+  canPlayerMovePiece(piece) {
+    if (this.practiceMode === 'self') return true;
+    if (this.practiceMode === 'ai-vs-ai') return false;
+    if (this.practiceMode === 'ai-white') return piece.color === 'white';
+    if (this.practiceMode === 'ai-black') return piece.color === 'black';
+    return false;
   }
 
   selectSquare(row, col) {
@@ -515,16 +605,102 @@ class WebChessClient {
   }
 
   makePracticeMove(move) {
-    const piece = this.gameState.board[move.from.row][move.from.col];
+    // Use the chess game engine for proper move validation and execution
+    const chessGame = this.createChessGameFromState();
+    const result = chessGame.makeMove(move);
     
-    this.gameState.board[move.to.row][move.to.col] = piece;
-    this.gameState.board[move.from.row][move.from.col] = null;
+    if (result.success) {
+      this.gameState = chessGame.getGameState();
+      this.updateGameBoard();
+      this.addMoveToHistory(move);
+      
+      // Check if AI should make next move
+      if (this.shouldAIMove() && this.gameState.status === 'active') {
+        setTimeout(() => this.makeAIMove(), this.aiMoveDelay);
+      }
+    }
+  }
+  
+  createChessGameFromState() {
+    // For client-side, we'll work directly with the game state
+    // since we can't instantiate the full ChessGame class
+    return {
+      board: this.gameState.board.map(row => 
+        row.map(piece => piece ? {...piece} : null)
+      ),
+      currentTurn: this.gameState.currentTurn,
+      status: this.gameState.status,
+      winner: this.gameState.winner,
+      moveHistory: [...this.gameState.moveHistory],
+      makeMove: (move) => {
+        // Simple move execution for AI
+        const piece = this.gameState.board[move.from.row][move.from.col];
+        if (!piece) return { success: false };
+        
+        this.gameState.board[move.to.row][move.to.col] = piece;
+        this.gameState.board[move.from.row][move.from.col] = null;
+        this.gameState.currentTurn = this.gameState.currentTurn === 'white' ? 'black' : 'white';
+        this.gameState.moveHistory.push(move);
+        
+        return { success: true };
+      }
+    };
+  }
+  
+  shouldAIMove() {
+    if (!this.aiEngine || this.aiPaused) return false;
     
-    this.gameState.currentTurn = this.gameState.currentTurn === 'white' ? 'black' : 'white';
-    this.gameState.moveHistory.push(move);
+    switch (this.practiceMode) {
+      case 'ai-vs-ai':
+        return true;
+      case 'ai-white':
+        return this.gameState.currentTurn === 'black';
+      case 'ai-black':
+        return this.gameState.currentTurn === 'white';
+      default:
+        return false;
+    }
+  }
+  
+  makeAIMove() {
+    if (!this.shouldAIMove() || this.gameState.status !== 'active') return;
     
-    this.updateGameBoard();
-    this.addMoveToHistory(move);
+    const aiMove = this.aiEngine.getBestMove(this.gameState);
+    
+    if (aiMove) {
+      // Simple move execution for practice mode
+      const piece = this.gameState.board[aiMove.from.row][aiMove.from.col];
+      if (piece && piece.color === this.gameState.currentTurn) {
+        this.gameState.board[aiMove.to.row][aiMove.to.col] = piece;
+        this.gameState.board[aiMove.from.row][aiMove.from.col] = null;
+        this.gameState.currentTurn = this.gameState.currentTurn === 'white' ? 'black' : 'white';
+        this.gameState.moveHistory.push(aiMove);
+        
+        this.updateGameBoard();
+        this.addMoveToHistory(aiMove);
+        
+        // Check if AI should make next move (for AI vs AI)
+        if (this.shouldAIMove() && this.gameState.status === 'active') {
+          setTimeout(() => this.makeAIMove(), this.aiMoveDelay);
+        }
+      }
+    }
+  }
+  
+  toggleAIPause() {
+    this.aiPaused = !this.aiPaused;
+    const btn = document.getElementById('pause-ai-btn');
+    btn.textContent = this.aiPaused ? 'Resume' : 'Pause';
+    
+    if (!this.aiPaused && this.shouldAIMove()) {
+      setTimeout(() => this.makeAIMove(), this.aiMoveDelay);
+    }
+  }
+  
+  stepAI() {
+    if (this.practiceMode === 'ai-vs-ai' && this.gameState.status === 'active') {
+      this.makeAIMove();
+    }
   }
 
   addMoveToHistory(move) {
@@ -584,6 +760,179 @@ class WebChessClient {
   selectPromotion(pieceType) {
     document.getElementById('promotion-modal').classList.add('hidden');
     // Handle promotion logic here
+  }
+}
+
+// Simple ChessAI implementation for client-side use
+class ChessAI {
+  constructor(difficulty = 'medium') {
+    this.difficulty = difficulty;
+    this.maxDepth = this.getMaxDepth(difficulty);
+    this.pieceValues = {
+      pawn: 100,
+      knight: 300,
+      bishop: 300,
+      rook: 500,
+      queen: 900,
+      king: 10000
+    };
+  }
+  
+  getMaxDepth(difficulty) {
+    switch (difficulty) {
+      case 'easy': return 1;
+      case 'medium': return 2;
+      case 'hard': return 3;
+      default: return 2;
+    }
+  }
+  
+  getBestMove(gameState) {
+    const moves = this.getAllValidMoves(gameState);
+    if (moves.length === 0) return null;
+    
+    // Easy mode: random moves occasionally
+    if (this.difficulty === 'easy' && Math.random() < 0.4) {
+      return moves[Math.floor(Math.random() * moves.length)];
+    }
+    
+    let bestMove = null;
+    let bestScore = gameState.currentTurn === 'white' ? -Infinity : Infinity;
+    
+    for (const move of moves) {
+      const score = this.evaluateMove(gameState, move);
+      
+      if (gameState.currentTurn === 'white' && score > bestScore) {
+        bestScore = score;
+        bestMove = move;
+      } else if (gameState.currentTurn === 'black' && score < bestScore) {
+        bestScore = score;
+        bestMove = move;
+      }
+    }
+    
+    return bestMove;
+  }
+  
+  getAllValidMoves(gameState) {
+    const moves = [];
+    
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = gameState.board[row][col];
+        if (piece && piece.color === gameState.currentTurn) {
+          const pieceMoves = this.getValidMovesForPiece(gameState, row, col);
+          moves.push(...pieceMoves);
+        }
+      }
+    }
+    
+    return moves;
+  }
+  
+  getValidMovesForPiece(gameState, row, col) {
+    const moves = [];
+    
+    for (let toRow = 0; toRow < 8; toRow++) {
+      for (let toCol = 0; toCol < 8; toCol++) {
+        const move = {
+          from: { row, col },
+          to: { row: toRow, col: toCol }
+        };
+        
+        if (this.isValidMove(gameState, move)) {
+          moves.push(move);
+        }
+      }
+    }
+    
+    return moves;
+  }
+  
+  isValidMove(gameState, move) {
+    const piece = gameState.board[move.from.row][move.from.col];
+    if (!piece) return false;
+    
+    // Basic validation - piece can move to target square
+    const target = gameState.board[move.to.row][move.to.col];
+    if (target && target.color === piece.color) return false;
+    
+    // Use simplified move validation
+    return this.isValidMoveForPiece(piece, move.from.row, move.from.col, move.to.row, move.to.col, gameState);
+  }
+  
+  isValidMoveForPiece(piece, fromRow, fromCol, toRow, toCol, gameState) {
+    const rowDiff = Math.abs(toRow - fromRow);
+    const colDiff = Math.abs(toCol - fromCol);
+    
+    switch (piece.type) {
+      case 'pawn':
+        const direction = piece.color === 'white' ? -1 : 1;
+        const startRow = piece.color === 'white' ? 6 : 1;
+        const rowMove = toRow - fromRow;
+        
+        if (colDiff === 0) {
+          return (rowMove === direction && !gameState.board[toRow][toCol]) ||
+                 (fromRow === startRow && rowMove === 2 * direction && !gameState.board[toRow][toCol]);
+        } else if (colDiff === 1 && rowMove === direction) {
+          return gameState.board[toRow][toCol] !== null;
+        }
+        return false;
+        
+      case 'rook':
+        return (fromRow === toRow || fromCol === toCol) && this.isPathClear(gameState, fromRow, fromCol, toRow, toCol);
+        
+      case 'knight':
+        return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
+        
+      case 'bishop':
+        return rowDiff === colDiff && this.isPathClear(gameState, fromRow, fromCol, toRow, toCol);
+        
+      case 'queen':
+        return ((fromRow === toRow || fromCol === toCol) || (rowDiff === colDiff)) &&
+               this.isPathClear(gameState, fromRow, fromCol, toRow, toCol);
+        
+      case 'king':
+        return rowDiff <= 1 && colDiff <= 1;
+        
+      default:
+        return false;
+    }
+  }
+  
+  isPathClear(gameState, fromRow, fromCol, toRow, toCol) {
+    const rowStep = toRow === fromRow ? 0 : (toRow - fromRow) / Math.abs(toRow - fromRow);
+    const colStep = toCol === fromCol ? 0 : (toCol - fromCol) / Math.abs(toCol - fromCol);
+    
+    let row = fromRow + rowStep;
+    let col = fromCol + colStep;
+    
+    while (row !== toRow || col !== toCol) {
+      if (gameState.board[row][col]) return false;
+      row += rowStep;
+      col += colStep;
+    }
+    
+    return true;
+  }
+  
+  evaluateMove(gameState, move) {
+    let score = 0;
+    
+    // Capture value
+    const target = gameState.board[move.to.row][move.to.col];
+    if (target) {
+      score += this.pieceValues[target.type];
+    }
+    
+    // Center control
+    const centerDistance = Math.abs(move.to.row - 3.5) + Math.abs(move.to.col - 3.5);
+    score += (7 - centerDistance) * 5;
+    
+    // Random factor for variety
+    score += Math.random() * 10;
+    
+    return score;
   }
 }
 

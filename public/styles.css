@@ -455,6 +455,61 @@ main {
     transform: scale(1.05);
 }
 
+/* Practice mode styles */
+.practice-options {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.practice-option {
+    text-align: center;
+}
+
+.practice-option button {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.practice-option p {
+    font-size: 0.9rem;
+    color: #666;
+    margin: 0;
+}
+
+.ai-difficulty {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.ai-difficulty label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: bold;
+    color: #333;
+}
+
+.ai-difficulty select {
+    padding: 8px 15px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-size: 1rem;
+    background: white;
+}
+
+/* AI controls */
+.ai-controls {
+    display: flex;
+    gap: 10px;
+    margin-left: 15px;
+}
+
+.ai-controls .btn {
+    padding: 8px 15px;
+    font-size: 0.9rem;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .container {
