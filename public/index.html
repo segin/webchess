@@ -197,16 +197,19 @@
         scriptElement.src = 'script.js?v=' + Date.now();
         scriptElement.onload = () => {
             console.log('script.js loaded successfully');
-            // Initialize WebChessClient after script loads and DOM is ready
-            if (document.readyState === 'complete' || document.readyState === 'interactive') {
-                console.log('DOM ready, initializing WebChessClient...');
-                new WebChessClient();
-            } else {
-                document.addEventListener('DOMContentLoaded', () => {
-                    console.log('DOM loaded after script, initializing WebChessClient...');
+            // Wait a bit to ensure all classes are defined
+            setTimeout(() => {
+                console.log('Checking classes after script load...');
+                console.log('WebChessClient:', typeof WebChessClient);
+                console.log('ChessAI:', typeof ChessAI);
+                
+                if (typeof WebChessClient === 'function') {
+                    console.log('Initializing WebChessClient...');
                     new WebChessClient();
-                });
-            }
+                } else {
+                    console.error('WebChessClient class not found after script load');
+                }
+            }, 100);
         };
         scriptElement.onerror = (e) => console.error('Failed to load script.js:', e);
         document.head.appendChild(scriptElement);
@@ -218,24 +221,27 @@
         
         // Debug: Check WebChessClient loading
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('DOM loaded - checking WebChessClient...');
+            console.log('DOM loaded - checking classes...');
             
             // Check if classes are available
             console.log('WebChessClient class:', typeof WebChessClient);
             console.log('ChessAI class:', typeof ChessAI);
             console.log('io function:', typeof io);
             
-            // Check what's actually defined on window
-            console.log('All window properties:', Object.getOwnPropertyNames(window).filter(prop => 
-                prop.includes('Chess') || prop.includes('chess') || prop.includes('Client') || prop.includes('AI')
-            ));
-            
-            // Monitor WebChessClient instantiation
+            // Check test runner classes
             setTimeout(() => {
-                console.log('Delayed check for WebChessClient...');
-                console.log('WebChessClient:', typeof WebChessClient);
-                console.log('ChessAI:', typeof ChessAI);
-            }, 2000);
+                console.log('Checking test classes...');
+                console.log('DynamicTestRunner:', typeof DynamicTestRunner);
+                console.log('WebChessTestSuite:', typeof WebChessTestSuite);
+                console.log('ComprehensiveUnitTests:', typeof ComprehensiveUnitTests);
+                
+                // Check if test button has event listener
+                const testBtn = document.getElementById('run-tests-btn');
+                console.log('Test button found:', !!testBtn);
+                if (testBtn) {
+                    console.log('Test button click listeners:', getEventListeners ? getEventListeners(testBtn) : 'getEventListeners not available');
+                }
+            }, 1000);
         });
         
         // Load test suite files
