@@ -60,10 +60,71 @@ webchess/
 │   ├── client/          # Frontend code
 │   └── shared/          # Shared game logic
 ├── tests/               # Unit tests
-└── public/              # Static assets
+├── public/              # Static assets
+└── deployment/          # System deployment files
 ```
+
+## Deployment
+
+### Quick System Installation
+
+For Unix/Linux systems with systemd:
+
+```bash
+# Clone and install as system service
+git clone https://github.com/segin/webchess.git
+cd webchess
+sudo ./deployment/install.sh
+```
+
+This will:
+- Create a `webchess` system user
+- Install the app to `/opt/webchess`
+- Set up a systemd service
+- Start the service automatically
+
+### Configuration
+
+The server listens on configurable host/port:
+
+```bash
+# Environment variables
+export PORT=3000          # Default: 3000
+export HOST=localhost      # Default: localhost
+export NODE_ENV=production
+
+# Start server
+npm start
+```
+
+### Nginx Integration
+
+Copy the provided nginx configuration:
+
+```bash
+sudo cp deployment/nginx.conf /etc/nginx/sites-available/webchess
+sudo ln -s /etc/nginx/sites-available/webchess /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl restart nginx
+```
+
+### Service Management
+
+```bash
+# Service commands
+sudo systemctl start webchess
+sudo systemctl stop webchess
+sudo systemctl restart webchess
+sudo systemctl status webchess
+
+# View logs
+sudo journalctl -u webchess -f
+```
+
+For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Requirements
 
 - Node.js 16 or higher
 - Modern web browser with WebSocket support
+- systemd (for daemon installation)
+- nginx (optional, for reverse proxy)

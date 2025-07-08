@@ -1,0 +1,35 @@
+[Unit]
+Description=WebChess - Two-Player Online Chess System
+Documentation=https://github.com/segin/webchess
+After=network.target
+
+[Service]
+Type=simple
+User=webchess
+Group=webchess
+WorkingDirectory=/opt/webchess
+ExecStart=/usr/bin/node src/server/index.js
+Restart=always
+RestartSec=10
+KillMode=mixed
+KillSignal=SIGINT
+TimeoutStopSec=30
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=webchess
+
+# Environment variables
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOST=127.0.0.1
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/webchess
+ProtectHome=true
+RemoveIPC=true
+
+[Install]
+WantedBy=multi-user.target

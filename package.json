@@ -7,7 +7,15 @@
     "start": "node src/server/index.js",
     "dev": "nodemon src/server/index.js",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "install:production": "npm install --production",
+    "daemon:install": "sudo cp deployment/webchess.service /etc/systemd/system/ && sudo systemctl daemon-reload",
+    "daemon:enable": "sudo systemctl enable webchess",
+    "daemon:start": "sudo systemctl start webchess",
+    "daemon:stop": "sudo systemctl stop webchess",
+    "daemon:restart": "sudo systemctl restart webchess",
+    "daemon:status": "sudo systemctl status webchess",
+    "daemon:logs": "sudo journalctl -u webchess -f"
   },
   "keywords": ["chess", "multiplayer", "nodejs", "websocket"],
   "author": "",
