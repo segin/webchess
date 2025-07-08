@@ -197,19 +197,26 @@
         scriptElement.src = 'script.js?v=' + Date.now();
         document.head.appendChild(scriptElement);
         
-        // Debug: Add test for button clicks
+        // Debug: Check WebChessClient loading
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('DOM loaded - checking buttons...');
-            const buttons = ['host-btn', 'join-btn', 'practice-btn', 'run-tests-btn'];
-            buttons.forEach(id => {
-                const btn = document.getElementById(id);
-                console.log(`Button ${id}:`, btn ? 'found' : 'NOT FOUND');
-                if (btn) {
-                    btn.addEventListener('click', (e) => {
-                        console.log(`Button ${id} clicked!`, e);
-                    });
-                }
+            console.log('DOM loaded - checking WebChessClient...');
+            
+            // Check if classes are available
+            console.log('WebChessClient class:', typeof WebChessClient);
+            console.log('ChessAI class:', typeof ChessAI);
+            console.log('io function:', typeof io);
+            
+            // Check if there are any errors in console
+            window.addEventListener('error', (e) => {
+                console.error('JavaScript Error:', e.error);
             });
+            
+            // Monitor WebChessClient instantiation
+            setTimeout(() => {
+                console.log('Checking if WebChessClient was instantiated...');
+                // Look for any global WebChess instance
+                console.log('Window properties containing "chess":', Object.keys(window).filter(key => key.toLowerCase().includes('chess')));
+            }, 1000);
         });
         
         // Load test suite files
