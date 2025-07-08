@@ -1,0 +1,31 @@
+{
+  "name": "webchess",
+  "version": "1.0.0",
+  "description": "A two-player online chess system with real-time gameplay and practice mode",
+  "main": "src/server/index.js",
+  "scripts": {
+    "start": "node src/server/index.js",
+    "dev": "nodemon src/server/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "keywords": ["chess", "multiplayer", "nodejs", "websocket"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.6.1",
+    "nodemon": "^3.0.1"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/client/**"
+    ]
+  }
+}

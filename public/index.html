@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebChess - Online Chess Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>WebChess</h1>
+            <p>Two-Player Online Chess</p>
+        </header>
+
+        <main>
+            <!-- Main Menu -->
+            <div id="main-menu" class="screen">
+                <div class="menu-buttons">
+                    <button id="host-btn" class="btn btn-primary">Host Game</button>
+                    <button id="join-btn" class="btn btn-primary">Join Game</button>
+                    <button id="practice-btn" class="btn btn-secondary">Practice</button>
+                </div>
+            </div>
+
+            <!-- Host Game Screen -->
+            <div id="host-screen" class="screen hidden">
+                <h2>Host Game</h2>
+                <div class="game-info">
+                    <p>Share this Game ID with your opponent:</p>
+                    <div id="game-id-display" class="game-id-large"></div>
+                    <p class="status">Waiting for opponent to join...</p>
+                </div>
+                <button id="cancel-host-btn" class="btn btn-secondary">Cancel</button>
+            </div>
+
+            <!-- Join Game Screen -->
+            <div id="join-screen" class="screen hidden">
+                <h2>Join Game</h2>
+                <div class="join-form">
+                    <label for="game-id-input">Enter Game ID:</label>
+                    <input type="text" id="game-id-input" placeholder="Enter 6-character game ID" maxlength="6">
+                    <button id="join-game-btn" class="btn btn-primary">Join Game</button>
+                </div>
+                <button id="cancel-join-btn" class="btn btn-secondary">Back to Menu</button>
+                <div id="join-error" class="error-message hidden"></div>
+            </div>
+
+            <!-- Game Board Screen -->
+            <div id="game-screen" class="screen hidden">
+                <div class="game-header">
+                    <div class="game-info">
+                        <span id="game-id-small"></span>
+                        <span id="player-color"></span>
+                    </div>
+                    <div class="game-status">
+                        <span id="turn-indicator"></span>
+                        <span id="check-indicator" class="hidden">CHECK!</span>
+                    </div>
+                    <div class="game-actions">
+                        <button id="resign-btn" class="btn btn-danger">Resign</button>
+                        <button id="leave-game-btn" class="btn btn-secondary">Leave Game</button>
+                    </div>
+                </div>
+
+                <div class="game-content">
+                    <div class="chess-board-container">
+                        <div id="chess-board" class="chess-board"></div>
+                    </div>
+                    
+                    <div class="game-sidebar">
+                        <div class="move-history">
+                            <h3>Move History</h3>
+                            <div id="move-list" class="move-list"></div>
+                        </div>
+                        
+                        <div class="connection-status">
+                            <div id="connection-indicator" class="connection-indicator connected">
+                                <span class="indicator-dot"></span>
+                                <span class="indicator-text">Connected</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game End Screen -->
+            <div id="game-end-screen" class="screen hidden">
+                <div class="game-end-content">
+                    <h2 id="game-end-title">Game Over</h2>
+                    <p id="game-end-message"></p>
+                    <div class="game-end-actions">
+                        <button id="new-game-btn" class="btn btn-primary">New Game</button>
+                        <button id="back-to-menu-btn" class="btn btn-secondary">Back to Menu</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Pawn Promotion Modal -->
+        <div id="promotion-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3>Pawn Promotion</h3>
+                <p>Choose a piece to promote your pawn:</p>
+                <div class="promotion-pieces">
+                    <button class="promotion-piece" data-piece="queen">♕</button>
+                    <button class="promotion-piece" data-piece="rook">♖</button>
+                    <button class="promotion-piece" data-piece="bishop">♗</button>
+                    <button class="promotion-piece" data-piece="knight">♘</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
