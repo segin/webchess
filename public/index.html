@@ -199,6 +199,11 @@
         scriptElement.onerror = (e) => console.error('Failed to load script.js:', e);
         document.head.appendChild(scriptElement);
         
+        // Global error handling
+        window.addEventListener('error', (e) => {
+            console.error('JavaScript Error:', e.filename, e.lineno, e.error);
+        });
+        
         // Debug: Check WebChessClient loading
         document.addEventListener('DOMContentLoaded', () => {
             console.log('DOM loaded - checking WebChessClient...');
@@ -208,17 +213,17 @@
             console.log('ChessAI class:', typeof ChessAI);
             console.log('io function:', typeof io);
             
-            // Check if there are any errors in console
-            window.addEventListener('error', (e) => {
-                console.error('JavaScript Error:', e.error);
-            });
+            // Check what's actually defined on window
+            console.log('All window properties:', Object.getOwnPropertyNames(window).filter(prop => 
+                prop.includes('Chess') || prop.includes('chess') || prop.includes('Client') || prop.includes('AI')
+            ));
             
             // Monitor WebChessClient instantiation
             setTimeout(() => {
-                console.log('Checking if WebChessClient was instantiated...');
-                // Look for any global WebChess instance
-                console.log('Window properties containing "chess":', Object.keys(window).filter(key => key.toLowerCase().includes('chess')));
-            }, 1000);
+                console.log('Delayed check for WebChessClient...');
+                console.log('WebChessClient:', typeof WebChessClient);
+                console.log('ChessAI:', typeof ChessAI);
+            }, 2000);
         });
         
         // Load test suite files
