@@ -10,9 +10,27 @@ const io = socketIo(server);
 
 const gameManager = new GameManager();
 
-app.use(express.static(path.join(__dirname, '../../public')));
+// Serve static files with cache headers
+app.use(express.static(path.join(__dirname, '../../public'), {
+  setHeaders: (res, path) => {
+    // Set cache headers for different file types
+    if (path.endsWith('.html')) {
+      // Don't cache HTML files
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    } else if (path.endsWith('.css') || path.endsWith('.js')) {
+      // Cache CSS and JS files but allow revalidation
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    }
+  }
+}));
 
 app.get('/', (req, res) => {
+  // Set cache headers for the main HTML file
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   res.sendFile(path.join(__dirname, '../../public/index.html'));
 });
 

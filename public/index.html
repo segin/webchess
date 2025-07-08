@@ -2,9 +2,20 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#667eea">
     <title>WebChess - Online Chess Game</title>
     <link rel="stylesheet" href="styles.css">
+    <script>
+        // Cache busting for CSS
+        const cssLink = document.querySelector('link[href="styles.css"]');
+        if (cssLink) {
+            cssLink.href = 'styles.css?v=' + Date.now();
+        }
+    </script>
 </head>
 <body>
     <div class="container">
@@ -162,6 +173,11 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="script.js"></script>
+    <script>
+        // Cache busting for main script
+        const scriptElement = document.createElement('script');
+        scriptElement.src = 'script.js?v=' + Date.now();
+        document.head.appendChild(scriptElement);
+    </script>
 </body>
 </html>
