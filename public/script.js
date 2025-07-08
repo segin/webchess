@@ -20,6 +20,7 @@ class WebChessClient {
 
   initializeEventListeners() {
     // Main menu buttons
+    document.getElementById('resume-btn').addEventListener('click', () => this.resumeGame());
     document.getElementById('host-btn').addEventListener('click', () => this.hostGame());
     document.getElementById('join-btn').addEventListener('click', () => this.showJoinScreen());
     document.getElementById('practice-btn').addEventListener('click', () => this.showPracticeScreen());
@@ -108,6 +109,8 @@ class WebChessClient {
 
     this.socket.on('game-end', (data) => {
       this.showGameEndScreen(data.status, data.winner);
+      // Clear session since game has ended
+      this.clearGameSession();
     });
 
     this.socket.on('join-error', (data) => {
@@ -145,6 +148,16 @@ class WebChessClient {
         });
       }
     });
+
+    this.socket.on('session-validation', (data) => {
+      if (!data.valid) {
+        // Session is invalid, clear it
+        this.clearGameSession();
+      } else {
+        // Session is valid, show resume button
+        this.updateResumeButton();
+      }
+    });
   }
 
   loadSessionFromStorage() {
@@ -155,9 +168,16 @@ class WebChessClient {
       this.playerColor = data.color;
       this.isPracticeMode = data.isPracticeMode || false;
       
+      // Only validate multiplayer sessions
       if (this.currentGameId && !this.isPracticeMode) {
-        this.rejoinGame();
+        this.validateSession();
       }
+    }
+  }
+  
+  validateSession() {
+    if (this.currentGameId && !this.isPracticeMode) {
+      this.socket.emit('validate-session', { gameId: this.currentGameId });
     }
   }
 
@@ -189,7 +209,55 @@ class WebChessClient {
   }
 
   hostGame() {
+    this.resignFromPreviousGame();
     this.socket.emit('host-game');
+  }
+  
+  resumeGame() {
+    if (this.currentGameId && !this.isPracticeMode) {
+      this.rejoinGame();
+    }
+  }
+  
+  showResumeButton() {
+    // Only show if there's actually something to resume
+    if (this.currentGameId && !this.isPracticeMode) {
+      this.updateResumeButton();
+    }
+  }
+  
+  updateResumeButton() {
+    const resumeSection = document.getElementById('resume-section');
+    const resumeInfo = document.getElementById('resume-info');
+    
+    // Only show resume button for valid multiplayer sessions
+    const hasValidSession = this.currentGameId && 
+                           !this.isPracticeMode && 
+                           this.currentGameId !== 'practice';
+    
+    if (hasValidSession) {
+      resumeSection.classList.remove('hidden');
+      resumeInfo.textContent = `Resume game: ${this.currentGameId}`;
+    } else {
+      resumeSection.classList.add('hidden');
+    }
+  }
+  
+  resignFromPreviousGame() {
+    if (this.currentGameId && !this.isPracticeMode) {
+      // Send resignation for previous game
+      this.socket.emit('resign', { gameId: this.currentGameId });
+      this.clearGameSession();
+    }
+  }
+  
+  clearGameSession() {
+    this.currentGameId = null;
+    this.playerColor = null;
+    this.gameState = null;
+    this.isPracticeMode = false;
+    this.clearSessionStorage();
+    this.updateResumeButton();
   }
 
   showJoinScreen() {
@@ -204,6 +272,7 @@ class WebChessClient {
   joinGame() {
     const gameId = document.getElementById('game-id-input').value.trim().toUpperCase();
     if (gameId.length === 6) {
+      this.resignFromPreviousGame();
       this.socket.emit('join-game', { gameId });
     } else {
       this.showJoinError('Please enter a 6-character game ID');
@@ -301,13 +370,11 @@ class WebChessClient {
   }
 
   showMainMenu() {
-    this.currentGameId = null;
-    this.playerColor = null;
-    this.gameState = null;
-    this.isPracticeMode = false;
-    this.clearSessionStorage();
+    // Don't clear session data when just showing main menu
+    // Only clear when explicitly leaving/ending a game
     this.clearChat();
     this.showScreen('main-menu');
+    this.updateResumeButton();
   }
 
   showHostScreen(gameId) {
@@ -376,7 +443,9 @@ class WebChessClient {
     
     // Show/hide chat section (only for multiplayer)
     const chatSection = document.getElementById('chat-section');
-    if (!this.isPracticeMode && this.currentGameId) {
+    const shouldShowChat = !this.isPracticeMode && this.currentGameId;
+    
+    if (shouldShowChat) {
       chatSection.classList.remove('hidden');
     } else {
       chatSection.classList.add('hidden');
@@ -818,12 +887,16 @@ class WebChessClient {
         this.showMainMenu();
       } else {
         this.socket.emit('resign', { gameId: this.currentGameId });
+        this.clearGameSession(); // Clear session after resigning
       }
     }
   }
 
   leaveGame() {
     if (confirm('Are you sure you want to leave the game?')) {
+      if (!this.isPracticeMode) {
+        this.clearGameSession(); // Clear session when leaving multiplayer
+      }
       this.showMainMenu();
     }
   }

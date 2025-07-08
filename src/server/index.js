@@ -125,6 +125,26 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('validate-session', (data) => {
+    const { gameId } = data;
+    
+    if (!gameId) {
+      socket.emit('session-validation', { valid: false });
+      return;
+    }
+    
+    const game = gameManager.games.get(gameId);
+    const isValid = game && 
+                   game.status === 'active' && 
+                   (game.host === socket.id || game.guest === socket.id);
+    
+    socket.emit('session-validation', { 
+      valid: isValid,
+      gameId: gameId,
+      gameStatus: game ? game.status : null
+    });
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
     gameManager.handleDisconnect(socket.id);
