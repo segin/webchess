@@ -30,7 +30,8 @@ class GameManager {
       chess: new ChessGame(),
       status: 'waiting',
       createdAt: Date.now(),
-      lastActivity: Date.now()
+      lastActivity: Date.now(),
+      chatMessages: []
     };
 
     this.games.set(gameId, game);
@@ -159,10 +160,76 @@ class GameManager {
       const game = this.games.get(disconnectedInfo.gameId);
       if (game && game.status === 'active') {
         game.status = 'abandoned';
+        // Clean up chat messages
+        game.chatMessages = [];
         this.games.delete(disconnectedInfo.gameId);
         this.playerToGame.delete(game.host);
         this.playerToGame.delete(game.guest);
       }
+    }
+  }
+
+  addChatMessage(gameId, playerId, message) {
+    const game = this.games.get(gameId);
+    if (!game || (game.host !== playerId && game.guest !== playerId)) {
+      return { success: false, message: 'Player not in game' };
+    }
+
+    // Sanitize and validate message
+    const sanitizedMessage = message.trim().substring(0, 200);
+    if (!sanitizedMessage) {
+      return { success: false, message: 'Empty message' };
+    }
+
+    const isHost = game.host === playerId;
+    const senderColor = isHost ? 'White' : 'Black';
+    
+    const chatMessage = {
+      id: Date.now() + Math.random(), // Simple unique ID
+      message: sanitizedMessage,
+      sender: senderColor,
+      playerId: playerId,
+      timestamp: Date.now()
+    };
+
+    game.chatMessages.push(chatMessage);
+    game.lastActivity = Date.now();
+
+    // Limit chat history to 100 messages
+    if (game.chatMessages.length > 100) {
+      game.chatMessages = game.chatMessages.slice(-100);
+    }
+
+    return {
+      success: true,
+      chatMessage: {
+        message: sanitizedMessage,
+        sender: senderColor,
+        timestamp: chatMessage.timestamp
+      }
+    };
+  }
+
+  getChatMessages(gameId, playerId) {
+    const game = this.games.get(gameId);
+    if (!game || (game.host !== playerId && game.guest !== playerId)) {
+      return { success: false, messages: [] };
+    }
+
+    const messages = game.chatMessages.map(msg => ({
+      message: msg.message,
+      sender: msg.sender,
+      isOwn: msg.playerId === playerId,
+      timestamp: msg.timestamp
+    }));
+
+    return { success: true, messages };
+  }
+
+  cleanupGameChat(gameId) {
+    const game = this.games.get(gameId);
+    if (game) {
+      game.chatMessages = [];
     }
   }
 }

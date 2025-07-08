@@ -49,6 +49,12 @@ class WebChessClient {
     document.getElementById('pause-ai-btn').addEventListener('click', () => this.toggleAIPause());
     document.getElementById('step-ai-btn').addEventListener('click', () => this.stepAI());
     
+    // Chat controls
+    document.getElementById('send-chat-btn').addEventListener('click', () => this.sendChatMessage());
+    document.getElementById('chat-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') this.sendChatMessage();
+    });
+    
     // Game end screen
     document.getElementById('new-game-btn').addEventListener('click', () => this.showMainMenu());
     document.getElementById('back-to-menu-btn').addEventListener('click', () => this.showMainMenu());
@@ -75,12 +81,22 @@ class WebChessClient {
 
     this.socket.on('opponent-joined', (data) => {
       this.showGameScreen();
+      
+      // Request chat history when opponent joins
+      if (!this.isPracticeMode) {
+        this.socket.emit('get-chat-history', { gameId: this.currentGameId });
+      }
     });
 
     this.socket.on('game-start', (data) => {
       this.gameState = data.gameState;
       this.showGameScreen();
       this.updateGameBoard();
+      
+      // Request chat history for the game
+      if (!this.isPracticeMode) {
+        this.socket.emit('get-chat-history', { gameId: this.currentGameId });
+      }
     });
 
     this.socket.on('move-made', (data) => {
@@ -114,6 +130,19 @@ class WebChessClient {
       this.updateConnectionStatus('connected');
       if (this.currentGameId) {
         this.rejoinGame();
+      }
+    });
+
+    this.socket.on('chat-message', (data) => {
+      this.addChatMessage(data.message, data.sender, data.isOwn);
+    });
+
+    this.socket.on('chat-history', (data) => {
+      if (data.gameId === this.currentGameId) {
+        this.clearChat();
+        data.messages.forEach(msg => {
+          this.addChatMessage(msg.message, msg.sender, msg.isOwn);
+        });
       }
     });
   }
@@ -150,6 +179,13 @@ class WebChessClient {
       gameId: this.currentGameId,
       color: this.playerColor
     });
+    
+    // Request chat history on rejoin
+    if (!this.isPracticeMode && this.currentGameId && this.currentGameId !== 'practice') {
+      setTimeout(() => {
+        this.socket.emit('get-chat-history', { gameId: this.currentGameId });
+      }, 1000); // Small delay to ensure game state is restored first
+    }
   }
 
   hostGame() {
@@ -270,6 +306,7 @@ class WebChessClient {
     this.gameState = null;
     this.isPracticeMode = false;
     this.clearSessionStorage();
+    this.clearChat();
     this.showScreen('main-menu');
   }
 
@@ -335,6 +372,14 @@ class WebChessClient {
       aiControls.classList.remove('hidden');
     } else {
       aiControls.classList.add('hidden');
+    }
+    
+    // Show/hide chat section (only for multiplayer)
+    const chatSection = document.getElementById('chat-section');
+    if (!this.isPracticeMode && this.currentGameId) {
+      chatSection.classList.remove('hidden');
+    } else {
+      chatSection.classList.add('hidden');
     }
   }
   
@@ -786,6 +831,55 @@ class WebChessClient {
   selectPromotion(pieceType) {
     document.getElementById('promotion-modal').classList.add('hidden');
     // Handle promotion logic here
+  }
+  
+  sendChatMessage() {
+    const chatInput = document.getElementById('chat-input');
+    const message = chatInput.value.trim();
+    
+    if (message && !this.isPracticeMode && this.currentGameId) {
+      this.socket.emit('chat-message', {
+        gameId: this.currentGameId,
+        message: message
+      });
+      
+      // Add message immediately to own chat
+      this.addChatMessage(message, 'You', true);
+      
+      // Clear input
+      chatInput.value = '';
+    }
+  }
+  
+  addChatMessage(message, sender, isOwn = false) {
+    const chatMessages = document.getElementById('chat-messages');
+    const messageElement = document.createElement('div');
+    messageElement.className = `chat-message ${isOwn ? 'own-message' : 'other-message'}`;
+    
+    const senderElement = document.createElement('span');
+    senderElement.className = 'chat-sender';
+    senderElement.textContent = sender + ': ';
+    
+    const textElement = document.createElement('span');
+    textElement.className = 'chat-text';
+    textElement.textContent = message;
+    
+    messageElement.appendChild(senderElement);
+    messageElement.appendChild(textElement);
+    chatMessages.appendChild(messageElement);
+    
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    // Limit to 50 messages
+    while (chatMessages.children.length > 50) {
+      chatMessages.removeChild(chatMessages.firstChild);
+    }
+  }
+  
+  clearChat() {
+    const chatMessages = document.getElementById('chat-messages');
+    chatMessages.innerHTML = '';
   }
 }
 

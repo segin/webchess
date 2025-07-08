@@ -58,6 +58,11 @@ io.on('connection', (socket) => {
           status: result.gameState.status,
           winner: result.gameState.winner
         });
+        
+        // Clean up chat when game ends
+        setTimeout(() => {
+          gameManager.cleanupGameChat(gameId);
+        }, 30000); // Clean up after 30 seconds
       }
     } else {
       socket.emit('move-error', { message: result.message });
@@ -72,6 +77,50 @@ io.on('connection', (socket) => {
       io.to(gameId).emit('game-end', {
         status: 'resigned',
         winner: result.winner
+      });
+      
+      // Clean up chat when game ends
+      setTimeout(() => {
+        gameManager.cleanupGameChat(gameId);
+      }, 30000); // Clean up after 30 seconds
+    }
+  });
+
+  socket.on('chat-message', (data) => {
+    const { gameId, message } = data;
+    
+    // Basic validation
+    if (!gameId || !message || typeof message !== 'string') {
+      return;
+    }
+    
+    // Add message using GameManager
+    const result = gameManager.addChatMessage(gameId, socket.id, message);
+    
+    if (result.success) {
+      // Broadcast to the other player (not back to sender)
+      socket.to(gameId).emit('chat-message', {
+        message: result.chatMessage.message,
+        sender: result.chatMessage.sender,
+        isOwn: false,
+        timestamp: result.chatMessage.timestamp
+      });
+    }
+  });
+
+  socket.on('get-chat-history', (data) => {
+    const { gameId } = data;
+    
+    if (!gameId) {
+      return;
+    }
+    
+    const result = gameManager.getChatMessages(gameId, socket.id);
+    
+    if (result.success) {
+      socket.emit('chat-history', {
+        gameId: gameId,
+        messages: result.messages
       });
     }
   });
