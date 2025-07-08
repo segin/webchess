@@ -11,59 +11,10 @@ CONFIG_BACKUP_DIR="/tmp/webchess_config_backup"
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$CURRENT_DIR")"
 
-# Color codes for terminal output
-if [[ -t 1 ]] && command -v tput &> /dev/null; then
-    RED=$(tput setaf 1)
-    GREEN=$(tput setaf 2)
-    YELLOW=$(tput setaf 3)
-    BLUE=$(tput setaf 4)
-    MAGENTA=$(tput setaf 5)
-    CYAN=$(tput setaf 6)
-    WHITE=$(tput setaf 7)
-    BOLD=$(tput bold)
-    RESET=$(tput sgr0)
-else
-    RED=""
-    GREEN=""
-    YELLOW=""
-    BLUE=""
-    MAGENTA=""
-    CYAN=""
-    WHITE=""
-    BOLD=""
-    RESET=""
-fi
+# Source color and formatting functions
+source "$CURRENT_DIR/colors.sh"
 
-# Print functions with colors
-print_header() {
-    echo ""
-    echo "${BOLD}${CYAN}╔══════════════════════════════════════════════════════════════════════════════╗${RESET}"
-    echo "${BOLD}${CYAN}║                            WebChess Installation                            ║${RESET}"
-    echo "${BOLD}${CYAN}╚══════════════════════════════════════════════════════════════════════════════╝${RESET}"
-    echo ""
-}
-
-print_step() {
-    echo "${BOLD}${BLUE}➤ ${1}${RESET}"
-}
-
-print_success() {
-    echo "${GREEN}✓ ${1}${RESET}"
-}
-
-print_warning() {
-    echo "${YELLOW}⚠ ${1}${RESET}"
-}
-
-print_error() {
-    echo "${RED}✗ ${1}${RESET}"
-}
-
-print_info() {
-    echo "${CYAN}ℹ ${1}${RESET}"
-}
-
-print_header
+print_header "WebChess Installation"
 
 # Check if running as root
 if [[ $EUID -ne 0 ]]; then
@@ -191,11 +142,7 @@ else
     exit 1
 fi
 
-echo ""
-echo "${BOLD}${GREEN}╔══════════════════════════════════════════════════════════════════════════════╗${RESET}"
-echo "${BOLD}${GREEN}║                          Installation Complete!                             ║${RESET}"
-echo "${BOLD}${GREEN}╚══════════════════════════════════════════════════════════════════════════════╝${RESET}"
-echo ""
+print_completion_box "Installation Complete!"
 
 echo "${BOLD}${YELLOW}Service Management Commands:${RESET}"
 echo "  ${CYAN}Start:${RESET}   ${WHITE}systemctl start webchess${RESET}"

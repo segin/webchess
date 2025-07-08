@@ -9,59 +9,11 @@ WEBCHESS_USER="webchess"
 WEBCHESS_HOME="/opt/webchess"
 CONFIG_BACKUP_DIR="$HOME/webchess_config_backup_$(date +%Y%m%d_%H%M%S)"
 
-# Color codes for terminal output
-if [[ -t 1 ]] && command -v tput &> /dev/null; then
-    RED=$(tput setaf 1)
-    GREEN=$(tput setaf 2)
-    YELLOW=$(tput setaf 3)
-    BLUE=$(tput setaf 4)
-    MAGENTA=$(tput setaf 5)
-    CYAN=$(tput setaf 6)
-    WHITE=$(tput setaf 7)
-    BOLD=$(tput bold)
-    RESET=$(tput sgr0)
-else
-    RED=""
-    GREEN=""
-    YELLOW=""
-    BLUE=""
-    MAGENTA=""
-    CYAN=""
-    WHITE=""
-    BOLD=""
-    RESET=""
-fi
+# Source color and formatting functions
+CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$CURRENT_DIR/colors.sh"
 
-# Print functions with colors
-print_header() {
-    echo ""
-    echo "${BOLD}${RED}╔══════════════════════════════════════════════════════════════════════════════╗${RESET}"
-    echo "${BOLD}${RED}║                            WebChess Uninstall                               ║${RESET}"
-    echo "${BOLD}${RED}╚══════════════════════════════════════════════════════════════════════════════╝${RESET}"
-    echo ""
-}
-
-print_step() {
-    echo "${BOLD}${BLUE}➤ ${1}${RESET}"
-}
-
-print_success() {
-    echo "${GREEN}✓ ${1}${RESET}"
-}
-
-print_warning() {
-    echo "${YELLOW}⚠ ${1}${RESET}"
-}
-
-print_error() {
-    echo "${RED}✗ ${1}${RESET}"
-}
-
-print_info() {
-    echo "${CYAN}ℹ ${1}${RESET}"
-}
-
-print_header
+print_header "WebChess Uninstall" "RED"
 
 # Check if running as root
 if [[ $EUID -ne 0 ]]; then
@@ -144,11 +96,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     fi
 fi
 
-echo ""
-echo "${BOLD}${GREEN}╔══════════════════════════════════════════════════════════════════════════════╗${RESET}"
-echo "${BOLD}${GREEN}║                        Uninstall Complete!                                  ║${RESET}"
-echo "${BOLD}${GREEN}╚══════════════════════════════════════════════════════════════════════════════╝${RESET}"
-echo ""
+print_completion_box "Uninstall Complete!"
 
 if [[ $BACKUP_CONFIG == true ]] && [[ -d "$CONFIG_BACKUP_DIR" ]]; then
     echo ""

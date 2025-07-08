@@ -10,57 +10,9 @@ SUBDOMAIN="chess"
 DOMAIN=""
 CONFIG_NAME="webchess"
 
-# Color codes for terminal output
-if [[ -t 1 ]] && command -v tput &> /dev/null; then
-    RED=$(tput setaf 1)
-    GREEN=$(tput setaf 2)
-    YELLOW=$(tput setaf 3)
-    BLUE=$(tput setaf 4)
-    MAGENTA=$(tput setaf 5)
-    CYAN=$(tput setaf 6)
-    WHITE=$(tput setaf 7)
-    BOLD=$(tput bold)
-    RESET=$(tput sgr0)
-else
-    RED=""
-    GREEN=""
-    YELLOW=""
-    BLUE=""
-    MAGENTA=""
-    CYAN=""
-    WHITE=""
-    BOLD=""
-    RESET=""
-fi
-
-# Print functions with colors
-print_header() {
-    echo ""
-    echo "${BOLD}${CYAN}╔══════════════════════════════════════════════════════════════════════════════╗${RESET}"
-    echo "${BOLD}${CYAN}║                           WebChess Nginx Setup                              ║${RESET}"
-    echo "${BOLD}${CYAN}╚══════════════════════════════════════════════════════════════════════════════╝${RESET}"
-    echo ""
-}
-
-print_step() {
-    echo "${BOLD}${BLUE}➤ ${1}${RESET}"
-}
-
-print_success() {
-    echo "${GREEN}✓ ${1}${RESET}"
-}
-
-print_warning() {
-    echo "${YELLOW}⚠ ${1}${RESET}"
-}
-
-print_error() {
-    echo "${RED}✗ ${1}${RESET}"
-}
-
-print_info() {
-    echo "${CYAN}ℹ ${1}${RESET}"
-}
+# Source color and formatting functions
+CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$CURRENT_DIR/colors.sh"
 
 print_usage() {
     echo "${BOLD}Usage:${RESET} $0 -d DOMAIN [-s SUBDOMAIN] [-n CONFIG_NAME]"
@@ -124,7 +76,7 @@ SITES_AVAILABLE="/etc/nginx/sites-available"
 SITES_ENABLED="/etc/nginx/sites-enabled"
 CONFIG_FILE="${SITES_AVAILABLE}/${CONFIG_NAME}"
 
-print_header
+print_header "WebChess Nginx Setup"
 echo "${BOLD}${YELLOW}Domain:${RESET} ${WHITE}${FULL_DOMAIN}${RESET}"
 echo "${BOLD}${YELLOW}Config:${RESET} ${WHITE}${CONFIG_FILE}${RESET}"
 echo ""
@@ -179,11 +131,7 @@ print_step "Reloading nginx..."
 systemctl reload nginx
 print_success "nginx reloaded"
 
-echo ""
-echo "${BOLD}${GREEN}╔══════════════════════════════════════════════════════════════════════════════╗${RESET}"
-echo "${BOLD}${GREEN}║                              Setup Complete!                                ║${RESET}"
-echo "${BOLD}${GREEN}╚══════════════════════════════════════════════════════════════════════════════╝${RESET}"
-echo ""
+print_completion_box "Setup Complete!"
 
 echo "${BOLD}${MAGENTA}🌐 WebChess is now accessible at: ${WHITE}http://${FULL_DOMAIN}${RESET}"
 echo ""
