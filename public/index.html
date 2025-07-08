@@ -25,8 +25,17 @@
         </header>
 
         <main>
+            <!-- Loading Screen -->
+            <div id="loading-screen" class="screen">
+                <div class="loading-content">
+                    <h2>Loading WebChess...</h2>
+                    <div class="loading-spinner"></div>
+                    <p id="loading-status">Initializing game engine...</p>
+                </div>
+            </div>
+
             <!-- Main Menu -->
-            <div id="main-menu" class="screen">
+            <div id="main-menu" class="screen hidden">
                 <div class="menu-buttons">
                     <div id="resume-section" class="resume-section hidden">
                         <button id="resume-btn" class="btn btn-success">Resume Game</button>
@@ -195,21 +204,56 @@
         // Cache busting for main script
         const scriptElement = document.createElement('script');
         scriptElement.src = 'script.js?v=' + Date.now();
+        let webChessInitialized = false;
+        
+        function updateLoadingStatus(message) {
+            const statusElement = document.getElementById('loading-status');
+            if (statusElement) {
+                statusElement.textContent = message;
+            }
+            console.log('Loading:', message);
+        }
+        
+        function showMainMenu() {
+            document.getElementById('loading-screen').classList.add('hidden');
+            document.getElementById('main-menu').classList.remove('hidden');
+            console.log('WebChess fully loaded and ready!');
+        }
+        
+        function initializeWebChess() {
+            if (webChessInitialized) return;
+            
+            updateLoadingStatus('Checking game components...');
+            console.log('Attempting to initialize WebChess...');
+            console.log('WebChessClient type:', typeof WebChessClient);
+            console.log('ChessAI type:', typeof ChessAI);
+            
+            if (typeof WebChessClient === 'function' && typeof ChessAI === 'function') {
+                updateLoadingStatus('Starting game client...');
+                try {
+                    webChessInitialized = true;
+                    new WebChessClient();
+                    updateLoadingStatus('Loading complete!');
+                    setTimeout(showMainMenu, 500); // Brief delay to show completion
+                } catch (error) {
+                    console.error('Error initializing WebChessClient:', error);
+                    updateLoadingStatus('Error loading game. Please refresh.');
+                }
+            } else {
+                updateLoadingStatus('Loading game engine...');
+                setTimeout(initializeWebChess, 200);
+            }
+        }
+        
         scriptElement.onload = () => {
             console.log('script.js loaded successfully');
-            // Wait a bit to ensure all classes are defined
-            setTimeout(() => {
-                console.log('Checking classes after script load...');
-                console.log('WebChessClient:', typeof WebChessClient);
-                console.log('ChessAI:', typeof ChessAI);
-                
-                if (typeof WebChessClient === 'function') {
-                    console.log('Initializing WebChessClient...');
-                    new WebChessClient();
-                } else {
-                    console.error('WebChessClient class not found after script load');
-                }
-            }, 100);
+            updateLoadingStatus('Script loaded, initializing...');
+            // Wait for DOM to be ready, then initialize
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initializeWebChess);
+            } else {
+                initializeWebChess();
+            }
         };
         scriptElement.onerror = (e) => console.error('Failed to load script.js:', e);
         document.head.appendChild(scriptElement);
@@ -219,30 +263,8 @@
             console.error('JavaScript Error:', e.filename, e.lineno, e.error);
         });
         
-        // Debug: Check WebChessClient loading
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('DOM loaded - checking classes...');
-            
-            // Check if classes are available
-            console.log('WebChessClient class:', typeof WebChessClient);
-            console.log('ChessAI class:', typeof ChessAI);
-            console.log('io function:', typeof io);
-            
-            // Check test runner classes
-            setTimeout(() => {
-                console.log('Checking test classes...');
-                console.log('DynamicTestRunner:', typeof DynamicTestRunner);
-                console.log('WebChessTestSuite:', typeof WebChessTestSuite);
-                console.log('ComprehensiveUnitTests:', typeof ComprehensiveUnitTests);
-                
-                // Check if test button has event listener
-                const testBtn = document.getElementById('run-tests-btn');
-                console.log('Test button found:', !!testBtn);
-                if (testBtn) {
-                    console.log('Test button click listeners:', getEventListeners ? getEventListeners(testBtn) : 'getEventListeners not available');
-                }
-            }, 1000);
-        });
+        // Initialize loading status
+        updateLoadingStatus('Loading scripts...');
         
         // Load test suite files
         const testFiles = [
