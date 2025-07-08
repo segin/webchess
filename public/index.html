@@ -197,6 +197,21 @@
         scriptElement.src = 'script.js?v=' + Date.now();
         document.head.appendChild(scriptElement);
         
+        // Debug: Add test for button clicks
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded - checking buttons...');
+            const buttons = ['host-btn', 'join-btn', 'practice-btn', 'run-tests-btn'];
+            buttons.forEach(id => {
+                const btn = document.getElementById(id);
+                console.log(`Button ${id}:`, btn ? 'found' : 'NOT FOUND');
+                if (btn) {
+                    btn.addEventListener('click', (e) => {
+                        console.log(`Button ${id} clicked!`, e);
+                    });
+                }
+            });
+        });
+        
         // Load test suite files
         const testFiles = [
             'test_client.js',
