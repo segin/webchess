@@ -170,6 +170,16 @@ Total Coverage: 130+ tests validating all aspects of WebChess.
       this.testOverlay.remove();
       this.testOverlay = null;
     }
+    
+    // Ensure main game UI is properly visible
+    const mainScreens = ['main-menu', 'game-screen', 'practice-screen', 'host-screen', 'join-screen'];
+    mainScreens.forEach(screenId => {
+      const screen = document.getElementById(screenId);
+      if (screen && !screen.classList.contains('hidden')) {
+        screen.style.zIndex = ''; // Reset z-index
+        screen.style.position = ''; // Reset position
+      }
+    });
   }
 
   clearResults() {
@@ -430,7 +440,7 @@ Total Coverage: 130+ tests validating all aspects of WebChess.
       results.client = await this.runTestSuite('Client Tests', () => this.clientSuite.runAllTests());
       results.logic = await this.runTestSuite('Game Logic Tests', () => this.logicSuite.runAllTests());
       results.unit = await this.runTestSuite('Comprehensive Unit Tests', () => this.unitSuite.runAllTests());
-      results.integration = await this.runTestSuite('Integration Tests', () => this.runBasicIntegrationTests());
+      results.integration = await this.runTestSuite('Integration Tests', () => this.runDOMIntegrationTests());
 
       const endTime = Date.now();
       const duration = ((endTime - startTime) / 1000).toFixed(2);
