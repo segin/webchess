@@ -1416,14 +1416,14 @@ class ComprehensiveUnitTests {
     await this.runTest('Practice mode AI control validation', () => {
       const testClient = this.createMockWebChessClient();
       if (testClient.shouldAIMove) {
-        // Test ai-white mode
+        // Test ai-white mode (human plays white, AI plays black)
         testClient.practiceMode = 'ai-white';
-        testClient.gameState = { currentTurn: 'white' };
+        testClient.gameState = { currentTurn: 'black' };
         testClient.aiEngine = { test: true };
         testClient.aiPaused = false;
         
         if (!testClient.shouldAIMove()) {
-          throw new Error('AI should move when it controls white and it is whites turn');
+          throw new Error('AI should move when it controls black and it is blacks turn');
         }
       }
     }, 'Move Validation');
@@ -1438,11 +1438,11 @@ class ComprehensiveUnitTests {
         const whitePiece = { color: 'white', type: 'pawn' };
         const blackPiece = { color: 'black', type: 'pawn' };
         
-        if (testClient.canPlayerMovePiece(whitePiece)) {
-          throw new Error('Human should not control white pieces in ai-white mode');
+        if (!testClient.canPlayerMovePiece(whitePiece)) {
+          throw new Error('Human should control white pieces in ai-white mode');
         }
-        if (!testClient.canPlayerMovePiece(blackPiece)) {
-          throw new Error('Human should control black pieces in ai-white mode');
+        if (testClient.canPlayerMovePiece(blackPiece)) {
+          throw new Error('Human should not control black pieces in ai-white mode');
         }
       }
     }, 'Move Validation');
@@ -1479,16 +1479,16 @@ class ComprehensiveUnitTests {
     await this.runTest('Practice mode player color assignment', () => {
       const client = this.createMockWebChessClient();
       
-      // Test ai-white mode - human should play black
+      // Test ai-white mode - human should play white
       client.startPracticeMode('ai-white');
-      if (client.playerColor !== 'black') {
-        throw new Error('In ai-white mode, human should play black');
+      if (client.playerColor !== 'white') {
+        throw new Error('In ai-white mode, human should play white');
       }
       
-      // Test ai-black mode - human should play white
+      // Test ai-black mode - human should play black
       client.startPracticeMode('ai-black');
-      if (client.playerColor !== 'white') {
-        throw new Error('In ai-black mode, human should play white');
+      if (client.playerColor !== 'black') {
+        throw new Error('In ai-black mode, human should play black');
       }
     }, 'Move Validation');
 
@@ -1558,19 +1558,19 @@ class ComprehensiveUnitTests {
       
       // Test ai-white mode
       client.startPracticeMode('ai-white');
-      client.gameState.currentTurn = 'black';
+      client.gameState.currentTurn = 'white';
       
-      // Human should be able to move when it's black's turn
+      // Human should be able to move when it's white's turn
       const canMove = client.canPlayerMove();
       if (!canMove) {
-        throw new Error('Human should be able to move black pieces in ai-white mode');
+        throw new Error('Human should be able to move white pieces in ai-white mode');
       }
       
-      // Test piece selection for black piece
-      const blackPiece = { type: 'pawn', color: 'black' };
-      const canMovePiece = client.canPlayerMovePiece(blackPiece);
+      // Test piece selection for white piece
+      const whitePiece = { type: 'pawn', color: 'white' };
+      const canMovePiece = client.canPlayerMovePiece(whitePiece);
       if (!canMovePiece) {
-        throw new Error('Human should be able to select black pieces in ai-white mode');
+        throw new Error('Human should be able to select white pieces in ai-white mode');
       }
     }, 'Move Validation');
 
@@ -1863,9 +1863,9 @@ class ComprehensiveUnitTests {
           case 'ai-vs-ai':
             return true;
           case 'ai-white':
-            return this.gameState.currentTurn === 'white';
+            return this.gameState.currentTurn === 'black'; // AI plays black when human plays white
           case 'ai-black':
-            return this.gameState.currentTurn === 'black';
+            return this.gameState.currentTurn === 'white'; // AI plays white when human plays black
           default:
             return false;
         }
@@ -1878,8 +1878,8 @@ class ComprehensiveUnitTests {
         // Practice mode logic
         if (this.practiceMode === 'self') return true;
         if (this.practiceMode === 'ai-vs-ai') return false;
-        if (this.practiceMode === 'ai-white') return this.gameState.currentTurn === 'black'; // Human plays black
-        if (this.practiceMode === 'ai-black') return this.gameState.currentTurn === 'white'; // Human plays white
+        if (this.practiceMode === 'ai-white') return this.gameState.currentTurn === 'white'; // Human plays white
+        if (this.practiceMode === 'ai-black') return this.gameState.currentTurn === 'black'; // Human plays black
         return true;
       },
       canPlayerMovePiece: function(piece) {
@@ -1890,8 +1890,8 @@ class ComprehensiveUnitTests {
         // Practice mode logic
         if (this.practiceMode === 'self') return true;
         if (this.practiceMode === 'ai-vs-ai') return false;
-        if (this.practiceMode === 'ai-white') return piece.color === 'black'; // Human plays black
-        if (this.practiceMode === 'ai-black') return piece.color === 'white'; // Human plays white
+        if (this.practiceMode === 'ai-white') return piece.color === 'white'; // Human plays white
+        if (this.practiceMode === 'ai-black') return piece.color === 'black'; // Human plays black
         return true;
       },
       startPracticeMode: function(mode) {
@@ -1900,10 +1900,10 @@ class ComprehensiveUnitTests {
         
         switch (mode) {
           case 'ai-white':
-            this.playerColor = 'black'; // Human plays black when AI plays white
+            this.playerColor = 'white'; // Human plays white when AI plays black
             break;
           case 'ai-black':
-            this.playerColor = 'white'; // Human plays white when AI plays black
+            this.playerColor = 'black'; // Human plays black when AI plays white
             break;
           default:
             this.playerColor = 'both';
@@ -2023,8 +2023,64 @@ class ComprehensiveUnitTests {
         }
       },
       isKingInCheck: function(color) {
-        // Mock implementation - simplified
+        // Mock implementation with basic check detection
+        const kingPos = this.findKing(color);
+        if (!kingPos) return false;
+        
+        const opponentColor = color === 'white' ? 'black' : 'white';
+        
+        // Check if any opponent piece can attack the king
+        for (let row = 0; row < 8; row++) {
+          for (let col = 0; col < 8; col++) {
+            const piece = this.gameState.board[row][col];
+            if (piece && piece.color === opponentColor) {
+              const move = { from: { row, col }, to: kingPos };
+              if (this.isValidPieceMove(move, piece)) {
+                return true;
+              }
+            }
+          }
+        }
         return false;
+      },
+      findKing: function(color) {
+        for (let row = 0; row < 8; row++) {
+          for (let col = 0; col < 8; col++) {
+            const piece = this.gameState.board[row][col];
+            if (piece && piece.type === 'king' && piece.color === color) {
+              return { row, col };
+            }
+          }
+        }
+        return null;
+      },
+      isValidPieceMove: function(move, piece) {
+        // Mock implementation for piece movement validation
+        if (!move || !move.from || !move.to) return false;
+        
+        const dx = Math.abs(move.to.col - move.from.col);
+        const dy = Math.abs(move.to.row - move.from.row);
+        
+        switch (piece.type) {
+          case 'queen':
+            return dx === 0 || dy === 0 || dx === dy;
+          case 'rook':
+            return dx === 0 || dy === 0;
+          case 'bishop':
+            return dx === dy;
+          case 'knight':
+            return (dx === 2 && dy === 1) || (dx === 1 && dy === 2);
+          case 'pawn':
+            if (piece.color === 'white') {
+              return dx <= 1 && dy === 1 && move.to.row < move.from.row;
+            } else {
+              return dx <= 1 && dy === 1 && move.to.row > move.from.row;
+            }
+          case 'king':
+            return dx <= 1 && dy <= 1;
+          default:
+            return false;
+        }
       },
       checkDrawConditions: function() {
         // Check fifty-move rule
