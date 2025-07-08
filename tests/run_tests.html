@@ -106,6 +106,13 @@
         </div>
         
         <div class="test-section">
+            <h2>🧪 Comprehensive Unit Tests (100+)</h2>
+            <div id="unit-status" class="status">Ready to run</div>
+            <button id="run-unit-tests" class="run-button">Run All Unit Tests</button>
+            <div id="unit-results" class="test-results"></div>
+        </div>
+        
+        <div class="test-section">
             <h2>🔄 Integration Tests</h2>
             <div id="integration-status" class="status">Ready to run</div>
             <button id="run-integration-tests" class="run-button">Run Integration Tests</button>
@@ -123,6 +130,7 @@
     <script src="../public/script.js"></script>
     <script src="test_client.js"></script>
     <script src="test_game_logic.js"></script>
+    <script src="comprehensive_unit_tests.js"></script>
     
     <script>
         // Test runner implementation
@@ -130,6 +138,7 @@
             constructor() {
                 this.clientSuite = new WebChessTestSuite();
                 this.logicSuite = new GameLogicTestSuite();
+                this.unitSuite = new ComprehensiveUnitTests();
                 this.setupEventListeners();
             }
             
@@ -140,6 +149,10 @@
                 
                 document.getElementById('run-logic-tests').addEventListener('click', () => {
                     this.runLogicTests();
+                });
+                
+                document.getElementById('run-unit-tests').addEventListener('click', () => {
+                    this.runUnitTests();
                 });
                 
                 document.getElementById('run-integration-tests').addEventListener('click', () => {
@@ -204,6 +217,38 @@
                 try {
                     const success = await this.logicSuite.runAllTests();
                     status.textContent = success ? 'All tests passed!' : 'Some tests failed';
+                    status.className = success ? 'status passed' : 'status failed';
+                } catch (error) {
+                    status.textContent = 'Test suite error';
+                    status.className = 'status failed';
+                    results.textContent += '\n\nError: ' + error.message;
+                }
+                
+                console.log = originalLog;
+                button.disabled = false;
+            }
+            
+            async runUnitTests() {
+                const button = document.getElementById('run-unit-tests');
+                const status = document.getElementById('unit-status');
+                const results = document.getElementById('unit-results');
+                
+                button.disabled = true;
+                status.textContent = 'Running...';
+                status.className = 'status running';
+                results.textContent = '';
+                
+                // Capture console output
+                const originalLog = console.log;
+                const logs = [];
+                console.log = (...args) => {
+                    logs.push(args.join(' '));
+                    results.textContent = logs.join('\n');
+                };
+                
+                try {
+                    const success = await this.unitSuite.runAllTests();
+                    status.textContent = success ? 'All 100+ tests passed!' : 'Some tests failed';
                     status.className = success ? 'status passed' : 'status failed';
                 } catch (error) {
                     status.textContent = 'Test suite error';
@@ -295,21 +340,25 @@
                 // Run all test suites
                 await this.runClientTests();
                 await this.runLogicTests();
+                await this.runUnitTests();
                 await this.runIntegrationTests();
                 
                 // Compile overall results
                 const clientStatus = document.getElementById('client-status');
                 const logicStatus = document.getElementById('logic-status');
+                const unitStatus = document.getElementById('unit-status');
                 const integrationStatus = document.getElementById('integration-status');
                 
                 const allPassed = clientStatus.classList.contains('passed') &&
                                  logicStatus.classList.contains('passed') &&
+                                 unitStatus.classList.contains('passed') &&
                                  integrationStatus.classList.contains('passed');
                 
                 results.textContent += `\n📊 OVERALL TEST RESULTS\n`;
                 results.textContent += `========================\n`;
                 results.textContent += `Client Tests: ${clientStatus.textContent}\n`;
                 results.textContent += `Logic Tests: ${logicStatus.textContent}\n`;
+                results.textContent += `Unit Tests (100+): ${unitStatus.textContent}\n`;
                 results.textContent += `Integration Tests: ${integrationStatus.textContent}\n\n`;
                 
                 if (allPassed) {
