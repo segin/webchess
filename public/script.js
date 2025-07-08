@@ -12,6 +12,7 @@ class WebChessClient {
     this.aiEngine = null;
     this.aiPaused = false;
     this.aiMoveDelay = 1000; // 1 second delay for AI moves
+    this.pendingPromotionMove = null;
     
     this.initializeEventListeners();
     this.setupSocketListeners();
@@ -805,6 +806,19 @@ class WebChessClient {
   }
 
   makePracticeMove(move) {
+    // Check for pawn promotion before making the move
+    const piece = this.gameState.board[move.from.row][move.from.col];
+    const isPromotion = piece && piece.type === 'pawn' && 
+                       ((piece.color === 'white' && move.to.row === 0) || 
+                        (piece.color === 'black' && move.to.row === 7));
+    
+    if (isPromotion) {
+      // Store the pending promotion move and show modal
+      this.pendingPromotionMove = move;
+      this.showPromotionModal();
+      return;
+    }
+    
     // Use the chess game engine for proper move validation and execution
     const chessGame = this.createChessGameFromState();
     const result = chessGame.makeMove(move);
@@ -971,9 +985,59 @@ class WebChessClient {
     }
   }
 
+  showPromotionModal() {
+    const modal = document.getElementById('promotion-modal');
+    const piece = this.gameState.board[this.pendingPromotionMove.from.row][this.pendingPromotionMove.from.col];
+    
+    // Update the promotion pieces to show the correct color
+    const promotionPieces = document.querySelectorAll('.promotion-piece');
+    const pieces = piece.color === 'white' 
+      ? { queen: '♕', rook: '♖', bishop: '♗', knight: '♘' }
+      : { queen: '♛', rook: '♜', bishop: '♝', knight: '♞' };
+    
+    promotionPieces.forEach(btn => {
+      const pieceType = btn.dataset.piece;
+      btn.textContent = pieces[pieceType];
+    });
+    
+    modal.classList.remove('hidden');
+  }
+
   selectPromotion(pieceType) {
     document.getElementById('promotion-modal').classList.add('hidden');
-    // Handle promotion logic here
+    
+    if (!this.pendingPromotionMove) return;
+    
+    // Execute the promotion move
+    const move = this.pendingPromotionMove;
+    
+    // Make the basic move first
+    const chessGame = this.createChessGameFromState();
+    const result = chessGame.makeMove(move);
+    
+    if (result.success) {
+      // Get the piece that was moved (it's now at the destination)
+      const promotedPiece = this.gameState.board[move.to.row][move.to.col];
+      this.gameState.board[move.to.row][move.to.col] = {
+        type: pieceType,
+        color: promotedPiece.color
+      };
+      
+      // Update turn
+      this.gameState.currentTurn = this.gameState.currentTurn === 'white' ? 'black' : 'white';
+      this.gameState.moveHistory.push(move);
+      
+      this.updateGameBoard();
+      this.addMoveToHistory(move);
+      this.saveSessionToStorage();
+      
+      // Check if AI should make next move
+      if (this.shouldAIMove() && this.gameState.status === 'active') {
+        setTimeout(() => this.makeAIMove(), this.aiMoveDelay);
+      }
+    }
+    
+    this.pendingPromotionMove = null;
   }
   
   sendChatMessage() {
