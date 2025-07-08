@@ -274,10 +274,26 @@
             'test-runner.js'
         ];
         
+        let loadedTestFiles = 0;
+        const totalTestFiles = testFiles.length;
+        
         testFiles.forEach(file => {
             const script = document.createElement('script');
             script.src = file + '?v=' + Date.now();
-            script.onerror = () => console.warn(`Test file not found: ${file}`);
+            script.onload = () => {
+                loadedTestFiles++;
+                console.log(`Test file loaded: ${file} (${loadedTestFiles}/${totalTestFiles})`);
+                if (loadedTestFiles === totalTestFiles) {
+                    console.log('All test files loaded');
+                    // Check if test runner is available
+                    setTimeout(() => {
+                        console.log('DynamicTestRunner available:', typeof DynamicTestRunner);
+                    }, 100);
+                }
+            };
+            script.onerror = (e) => {
+                console.error(`Failed to load test file: ${file}`, e);
+            };
             document.head.appendChild(script);
         });
     </script>

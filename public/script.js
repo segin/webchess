@@ -846,6 +846,9 @@ class WebChessClient {
         this.gameState.moveHistory.push(move);
         
         return { success: true };
+      },
+      getGameState: () => {
+        return this.gameState;
       }
     };
   }
