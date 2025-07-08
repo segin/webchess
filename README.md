@@ -68,7 +68,18 @@ webchess/
 
 ### Quick System Installation
 
-For Unix/Linux systems with systemd:
+**For Debian/Ubuntu systems:**
+
+```bash
+# One-command installation
+git clone https://github.com/segin/webchess.git
+cd webchess
+sudo ./deployment/install.sh
+```
+
+See [DEBIAN_INSTALL.md](DEBIAN_INSTALL.md) for detailed Debian/Ubuntu instructions.
+
+**For other Unix/Linux systems with systemd:**
 
 ```bash
 # Clone and install as system service
