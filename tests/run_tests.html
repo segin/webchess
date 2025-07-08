@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>WebChess Test Suite</title>
     <style>
         body {
@@ -85,6 +85,43 @@
             background: #aa0000;
             color: #fff;
         }
+        
+        /* Mobile test styles */
+        .mobile-only {
+            display: none;
+        }
+        
+        @media (max-width: 480px) {
+            .mobile-only {
+                display: block;
+            }
+        }
+        
+        .mobile-chat-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .mobile-chat-card {
+            background: white;
+            border-radius: 15px 15px 0 0;
+        }
+        
+        .mobile-chat-header {
+            padding: 15px;
+        }
+        
+        input {
+            font-size: 16px;
+            padding: 12px;
+        }
+        
+        .btn {
+            min-height: 50px;
+        }
     </style>
 </head>
 <body>
@@ -124,6 +161,64 @@
             <button id="run-all-tests" class="run-button">Run All Tests</button>
             <div id="overall-results" class="test-results"></div>
         </div>
+    </div>
+
+    <!-- Hidden DOM elements for testing -->
+    <div style="display: none;">
+        <!-- Main menu elements -->
+        <button id="host-btn">Host Game</button>
+        <button id="join-btn">Join Game</button>
+        <button id="practice-btn">Practice</button>
+        <button id="resume-btn">Resume Game</button>
+        <div id="main-menu" class="screen"></div>
+        
+        <!-- Game screen elements -->
+        <div id="game-screen" class="screen"></div>
+        <div id="chess-board"></div>
+        
+        <!-- Modal elements -->
+        <div id="promotion-modal" class="modal">
+            <div class="modal-content"></div>
+        </div>
+        
+        <!-- Form elements -->
+        <input id="game-id-input" maxlength="6">
+        
+        <!-- Screen elements -->
+        <div id="host-screen" class="screen"></div>
+        <div id="join-screen" class="screen"></div>
+        <div id="practice-screen" class="screen"></div>
+        <div id="game-end-screen" class="screen"></div>
+        
+        <!-- Chat elements -->
+        <div id="chat-section"></div>
+        <div id="chat-messages"></div>
+        <input id="chat-input" maxlength="200">
+        <button id="send-chat-btn">Send</button>
+        
+        <!-- Mobile chat elements -->
+        <div id="mobile-chat-overlay" class="mobile-chat-overlay">
+            <div class="mobile-chat-card">
+                <div class="mobile-chat-header"></div>
+            </div>
+        </div>
+        <input id="mobile-chat-input" maxlength="200">
+        <button id="mobile-send-chat-btn">Send</button>
+        
+        <!-- Mobile elements -->
+        <button id="mobile-chat-toggle" class="mobile-only">Chat</button>
+        <button id="fullscreen-btn" class="mobile-only">Fullscreen</button>
+        
+        <!-- Practice elements -->
+        <button id="practice-self-btn">Self</button>
+        <button id="practice-ai-white-btn">AI White</button>
+        <button id="practice-ai-black-btn">AI Black</button>
+        <button id="practice-ai-vs-ai-btn">AI vs AI</button>
+        <select id="difficulty-select">
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+        </select>
     </div>
 
     <!-- Load the main WebChess files for testing -->

@@ -948,7 +948,8 @@ class ComprehensiveUnitTests {
       ];
       
       testCases.forEach(test => {
-        const shouldShow = test.gameId && 
+        // Updated logic to properly handle null gameId
+        const shouldShow = test.gameId !== null && test.gameId !== undefined && 
           ((test.gameId === 'practice' && test.isPracticeMode) ||
            (test.gameId !== 'practice' && !test.isPracticeMode));
         
