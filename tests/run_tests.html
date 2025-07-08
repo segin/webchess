@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebChess Test Suite</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #00ccff;
+            text-align: center;
+            border-bottom: 2px solid #00ccff;
+            padding-bottom: 10px;
+        }
+        
+        .test-section {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .test-results {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 3px;
+            padding: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-size: 14px;
+        }
+        
+        .run-button {
+            background: #00aa00;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        
+        .run-button:hover {
+            background: #00cc00;
+        }
+        
+        .run-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        
+        .status.running {
+            background: #ffaa00;
+            color: #000;
+        }
+        
+        .status.passed {
+            background: #00aa00;
+            color: #fff;
+        }
+        
+        .status.failed {
+            background: #aa0000;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 WebChess Test Suite</h1>
+        
+        <div class="test-section">
+            <h2>📱 Client-Side Tests</h2>
+            <div id="client-status" class="status">Ready to run</div>
+            <button id="run-client-tests" class="run-button">Run Client Tests</button>
+            <div id="client-results" class="test-results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>♟️ Game Logic Tests</h2>
+            <div id="logic-status" class="status">Ready to run</div>
+            <button id="run-logic-tests" class="run-button">Run Logic Tests</button>
+            <div id="logic-results" class="test-results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔄 Integration Tests</h2>
+            <div id="integration-status" class="status">Ready to run</div>
+            <button id="run-integration-tests" class="run-button">Run Integration Tests</button>
+            <div id="integration-results" class="test-results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📊 Overall Results</h2>
+            <button id="run-all-tests" class="run-button">Run All Tests</button>
+            <div id="overall-results" class="test-results"></div>
+        </div>
+    </div>
+
+    <!-- Load the main WebChess files for testing -->
+    <script src="../public/script.js"></script>
+    <script src="test_client.js"></script>
+    <script src="test_game_logic.js"></script>
+    
+    <script>
+        // Test runner implementation
+        class TestRunner {
+            constructor() {
+                this.clientSuite = new WebChessTestSuite();
+                this.logicSuite = new GameLogicTestSuite();
+                this.setupEventListeners();
+            }
+            
+            setupEventListeners() {
+                document.getElementById('run-client-tests').addEventListener('click', () => {
+                    this.runClientTests();
+                });
+                
+                document.getElementById('run-logic-tests').addEventListener('click', () => {
+                    this.runLogicTests();
+                });
+                
+                document.getElementById('run-integration-tests').addEventListener('click', () => {
+                    this.runIntegrationTests();
+                });
+                
+                document.getElementById('run-all-tests').addEventListener('click', () => {
+                    this.runAllTests();
+                });
+            }
+            
+            async runClientTests() {
+                const button = document.getElementById('run-client-tests');
+                const status = document.getElementById('client-status');
+                const results = document.getElementById('client-results');
+                
+                button.disabled = true;
+                status.textContent = 'Running...';
+                status.className = 'status running';
+                results.textContent = '';
+                
+                // Capture console output
+                const originalLog = console.log;
+                const logs = [];
+                console.log = (...args) => {
+                    logs.push(args.join(' '));
+                    results.textContent = logs.join('\n');
+                };
+                
+                try {
+                    const success = await this.clientSuite.runAllTests();
+                    status.textContent = success ? 'All tests passed!' : 'Some tests failed';
+                    status.className = success ? 'status passed' : 'status failed';
+                } catch (error) {
+                    status.textContent = 'Test suite error';
+                    status.className = 'status failed';
+                    results.textContent += '\n\nError: ' + error.message;
+                }
+                
+                console.log = originalLog;
+                button.disabled = false;
+            }
+            
+            async runLogicTests() {
+                const button = document.getElementById('run-logic-tests');
+                const status = document.getElementById('logic-status');
+                const results = document.getElementById('logic-results');
+                
+                button.disabled = true;
+                status.textContent = 'Running...';
+                status.className = 'status running';
+                results.textContent = '';
+                
+                // Capture console output
+                const originalLog = console.log;
+                const logs = [];
+                console.log = (...args) => {
+                    logs.push(args.join(' '));
+                    results.textContent = logs.join('\n');
+                };
+                
+                try {
+                    const success = await this.logicSuite.runAllTests();
+                    status.textContent = success ? 'All tests passed!' : 'Some tests failed';
+                    status.className = success ? 'status passed' : 'status failed';
+                } catch (error) {
+                    status.textContent = 'Test suite error';
+                    status.className = 'status failed';
+                    results.textContent += '\n\nError: ' + error.message;
+                }
+                
+                console.log = originalLog;
+                button.disabled = false;
+            }
+            
+            async runIntegrationTests() {
+                const button = document.getElementById('run-integration-tests');
+                const status = document.getElementById('integration-status');
+                const results = document.getElementById('integration-results');
+                
+                button.disabled = true;
+                status.textContent = 'Running...';
+                status.className = 'status running';
+                results.textContent = 'Integration tests:\n\n';
+                
+                // Simple integration tests
+                const tests = [
+                    {
+                        name: 'WebChessClient class instantiation',
+                        test: () => {
+                            // Mock socket.io for testing
+                            window.io = () => ({
+                                on: () => {},
+                                emit: () => {},
+                                to: () => ({ emit: () => {} })
+                            });
+                            
+                            const client = new WebChessClient();
+                            return client instanceof WebChessClient;
+                        }
+                    },
+                    {
+                        name: 'ChessAI class instantiation',
+                        test: () => {
+                            const ai = new ChessAI('medium');
+                            return ai instanceof ChessAI && ai.difficulty === 'medium';
+                        }
+                    },
+                    {
+                        name: 'DOM manipulation functions',
+                        test: () => {
+                            return typeof document.getElementById === 'function' &&
+                                   typeof document.createElement === 'function';
+                        }
+                    }
+                ];
+                
+                let passed = 0;
+                let failed = 0;
+                
+                for (const test of tests) {
+                    try {
+                        const result = test.test();
+                        if (result) {
+                            results.textContent += `✅ ${test.name}\n`;
+                            passed++;
+                        } else {
+                            results.textContent += `❌ ${test.name}: Test returned false\n`;
+                            failed++;
+                        }
+                    } catch (error) {
+                        results.textContent += `❌ ${test.name}: ${error.message}\n`;
+                        failed++;
+                    }
+                }
+                
+                results.textContent += `\nIntegration Tests: ${passed} passed, ${failed} failed\n`;
+                
+                const success = failed === 0;
+                status.textContent = success ? 'All tests passed!' : 'Some tests failed';
+                status.className = success ? 'status passed' : 'status failed';
+                
+                button.disabled = false;
+            }
+            
+            async runAllTests() {
+                const button = document.getElementById('run-all-tests');
+                const results = document.getElementById('overall-results');
+                
+                button.disabled = true;
+                results.textContent = 'Running comprehensive test suite...\n\n';
+                
+                // Run all test suites
+                await this.runClientTests();
+                await this.runLogicTests();
+                await this.runIntegrationTests();
+                
+                // Compile overall results
+                const clientStatus = document.getElementById('client-status');
+                const logicStatus = document.getElementById('logic-status');
+                const integrationStatus = document.getElementById('integration-status');
+                
+                const allPassed = clientStatus.classList.contains('passed') &&
+                                 logicStatus.classList.contains('passed') &&
+                                 integrationStatus.classList.contains('passed');
+                
+                results.textContent += `\n📊 OVERALL TEST RESULTS\n`;
+                results.textContent += `========================\n`;
+                results.textContent += `Client Tests: ${clientStatus.textContent}\n`;
+                results.textContent += `Logic Tests: ${logicStatus.textContent}\n`;
+                results.textContent += `Integration Tests: ${integrationStatus.textContent}\n\n`;
+                
+                if (allPassed) {
+                    results.textContent += `🎉 ALL TESTS PASSED! 🎉\n`;
+                    results.textContent += `WebChess is ready for deployment.\n`;
+                } else {
+                    results.textContent += `⚠️ SOME TESTS FAILED ⚠️\n`;
+                    results.textContent += `Please review and fix failing tests before deployment.\n`;
+                }
+                
+                button.disabled = false;
+            }
+        }
+        
+        // Initialize test runner when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new TestRunner();
+        });
+    </script>
+</body>
+</html>

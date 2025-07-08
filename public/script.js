@@ -56,6 +56,17 @@ class WebChessClient {
       if (e.key === 'Enter') this.sendChatMessage();
     });
     
+    // Mobile chat controls
+    document.getElementById('mobile-chat-toggle').addEventListener('click', () => this.toggleMobileChat());
+    document.getElementById('mobile-chat-close').addEventListener('click', () => this.closeMobileChat());
+    document.getElementById('mobile-send-chat-btn').addEventListener('click', () => this.sendMobileChatMessage());
+    document.getElementById('mobile-chat-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') this.sendMobileChatMessage();
+    });
+    
+    // Fullscreen control
+    document.getElementById('fullscreen-btn').addEventListener('click', () => this.toggleFullscreen());
+    
     // Game end screen
     document.getElementById('new-game-btn').addEventListener('click', () => this.showMainMenu());
     document.getElementById('back-to-menu-btn').addEventListener('click', () => this.showMainMenu());
@@ -138,13 +149,20 @@ class WebChessClient {
 
     this.socket.on('chat-message', (data) => {
       this.addChatMessage(data.message, data.sender, data.isOwn);
+      // Also add to mobile chat
+      this.addMobileChatMessage(data.message, data.sender, data.isOwn);
     });
 
     this.socket.on('chat-history', (data) => {
       if (data.gameId === this.currentGameId) {
         this.clearChat();
+        // Clear mobile chat too
+        const mobileMessages = document.getElementById('mobile-chat-messages');
+        mobileMessages.innerHTML = '';
+        
         data.messages.forEach(msg => {
           this.addChatMessage(msg.message, msg.sender, msg.isOwn);
+          this.addMobileChatMessage(msg.message, msg.sender, msg.isOwn);
         });
       }
     });
@@ -168,6 +186,13 @@ class WebChessClient {
       this.playerColor = data.color;
       this.isPracticeMode = data.isPracticeMode || false;
       
+      // Load additional practice mode data if available
+      if (this.isPracticeMode && data.practiceData) {
+        this.practiceMode = data.practiceData.mode;
+        this.aiDifficulty = data.practiceData.difficulty;
+        this.gameState = data.practiceData.gameState;
+      }
+      
       // Only validate multiplayer sessions
       if (this.currentGameId && !this.isPracticeMode) {
         this.validateSession();
@@ -187,6 +212,16 @@ class WebChessClient {
       color: this.playerColor,
       isPracticeMode: this.isPracticeMode
     };
+    
+    // Save additional practice mode data
+    if (this.isPracticeMode && this.gameState) {
+      session.practiceData = {
+        mode: this.practiceMode,
+        difficulty: this.aiDifficulty,
+        gameState: this.gameState
+      };
+    }
+    
     localStorage.setItem('webchess-session', JSON.stringify(session));
   }
 
@@ -208,20 +243,39 @@ class WebChessClient {
     }
   }
 
+  resumePracticeGame() {
+    // Initialize AI engine with saved difficulty
+    this.aiEngine = new ChessAI(this.aiDifficulty);
+    this.aiPaused = false;
+    
+    // Show game screen and update board
+    this.showGameScreen();
+    this.updateGameBoard();
+    
+    // Continue AI if it's AI's turn
+    if (this.shouldAIMove()) {
+      setTimeout(() => this.makeAIMove(), this.aiMoveDelay);
+    }
+  }
+
   hostGame() {
     this.resignFromPreviousGame();
     this.socket.emit('host-game');
   }
   
   resumeGame() {
-    if (this.currentGameId && !this.isPracticeMode) {
-      this.rejoinGame();
+    if (this.currentGameId) {
+      if (this.isPracticeMode) {
+        this.resumePracticeGame();
+      } else {
+        this.rejoinGame();
+      }
     }
   }
   
   showResumeButton() {
-    // Only show if there's actually something to resume
-    if (this.currentGameId && !this.isPracticeMode) {
+    // Show if there's actually something to resume (multiplayer or practice)
+    if (this.currentGameId) {
       this.updateResumeButton();
     }
   }
@@ -230,14 +284,17 @@ class WebChessClient {
     const resumeSection = document.getElementById('resume-section');
     const resumeInfo = document.getElementById('resume-info');
     
-    // Only show resume button for valid multiplayer sessions
+    // Show resume button for both multiplayer and practice sessions
     const hasValidSession = this.currentGameId && 
-                           !this.isPracticeMode && 
-                           this.currentGameId !== 'practice';
+                           (this.currentGameId !== 'practice' || this.isPracticeMode);
     
     if (hasValidSession) {
       resumeSection.classList.remove('hidden');
-      resumeInfo.textContent = `Resume game: ${this.currentGameId}`;
+      if (this.isPracticeMode) {
+        resumeInfo.textContent = 'Resume practice game';
+      } else {
+        resumeInfo.textContent = `Resume game: ${this.currentGameId}`;
+      }
     } else {
       resumeSection.classList.add('hidden');
     }
@@ -450,6 +507,9 @@ class WebChessClient {
     } else {
       chatSection.classList.add('hidden');
     }
+    
+    // Update mobile chat visibility
+    this.updateMobileChatVisibility();
   }
   
   getModeDisplayText() {
@@ -754,6 +814,9 @@ class WebChessClient {
       this.updateGameBoard();
       this.addMoveToHistory(move);
       
+      // Save session after successful move
+      this.saveSessionToStorage();
+      
       // Check if AI should make next move
       if (this.shouldAIMove() && this.gameState.status === 'active') {
         setTimeout(() => this.makeAIMove(), this.aiMoveDelay);
@@ -818,6 +881,9 @@ class WebChessClient {
         
         this.updateGameBoard();
         this.addMoveToHistory(aiMove);
+        
+        // Save session after AI move
+        this.saveSessionToStorage();
         
         // Check if AI should make next move (for AI vs AI)
         if (this.shouldAIMove() && this.gameState.status === 'active') {
@@ -953,6 +1019,97 @@ class WebChessClient {
   clearChat() {
     const chatMessages = document.getElementById('chat-messages');
     chatMessages.innerHTML = '';
+  }
+  
+  // Mobile chat functions
+  toggleMobileChat() {
+    const overlay = document.getElementById('mobile-chat-overlay');
+    overlay.classList.toggle('show');
+    
+    // Sync messages when opening
+    if (overlay.classList.contains('show')) {
+      this.syncMobileChatMessages();
+    }
+  }
+  
+  closeMobileChat() {
+    const overlay = document.getElementById('mobile-chat-overlay');
+    overlay.classList.remove('show');
+  }
+  
+  sendMobileChatMessage() {
+    const input = document.getElementById('mobile-chat-input');
+    const message = input.value.trim();
+    
+    if (message && !this.isPracticeMode && this.currentGameId) {
+      this.socket.emit('chat-message', {
+        gameId: this.currentGameId,
+        message: message
+      });
+      
+      // Add message to mobile chat
+      this.addMobileChatMessage(message, 'You', true);
+      input.value = '';
+    }
+  }
+  
+  addMobileChatMessage(message, sender, isOwn = false) {
+    const chatMessages = document.getElementById('mobile-chat-messages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chat-message ${isOwn ? 'own-message' : 'other-message'}`;
+    
+    messageDiv.innerHTML = `
+      <div class="chat-sender">${sender}</div>
+      <div class="chat-text">${this.escapeHtml(message)}</div>
+    `;
+    
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    // Limit to 50 messages
+    while (chatMessages.children.length > 50) {
+      chatMessages.removeChild(chatMessages.firstChild);
+    }
+  }
+  
+  syncMobileChatMessages() {
+    const desktopMessages = document.getElementById('chat-messages');
+    const mobileMessages = document.getElementById('mobile-chat-messages');
+    
+    // Clear mobile messages
+    mobileMessages.innerHTML = '';
+    
+    // Copy messages from desktop chat
+    Array.from(desktopMessages.children).forEach(message => {
+      const clone = message.cloneNode(true);
+      mobileMessages.appendChild(clone);
+    });
+    
+    // Scroll to bottom
+    mobileMessages.scrollTop = mobileMessages.scrollHeight;
+  }
+  
+  // Fullscreen functionality
+  toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.log('Error attempting to enable fullscreen:', err);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  }
+  
+  updateMobileChatVisibility() {
+    const toggleBtn = document.getElementById('mobile-chat-toggle');
+    
+    // Show mobile chat toggle for multiplayer games only
+    if (!this.isPracticeMode && this.currentGameId) {
+      toggleBtn.classList.remove('hidden');
+    } else {
+      toggleBtn.classList.add('hidden');
+      this.closeMobileChat();
+    }
   }
 }
 

@@ -107,6 +107,8 @@
                     <div class="game-actions">
                         <button id="resign-btn" class="btn btn-danger">Resign</button>
                         <button id="leave-game-btn" class="btn btn-secondary">Leave Game</button>
+                        <button id="mobile-chat-toggle" class="btn btn-info mobile-only hidden">Chat</button>
+                        <button id="fullscreen-btn" class="btn btn-secondary mobile-only">⛶</button>
                         <div id="ai-controls" class="ai-controls hidden">
                             <button id="pause-ai-btn" class="btn btn-warning">Pause</button>
                             <button id="step-ai-btn" class="btn btn-info">Step</button>
@@ -140,6 +142,21 @@
                                 <span class="indicator-text">Connected</span>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Chat Overlay -->
+            <div id="mobile-chat-overlay" class="mobile-chat-overlay hidden">
+                <div class="mobile-chat-card">
+                    <div class="mobile-chat-header">
+                        <h3>Chat</h3>
+                        <button id="mobile-chat-close" class="btn btn-sm btn-secondary">×</button>
+                    </div>
+                    <div id="mobile-chat-messages" class="mobile-chat-messages"></div>
+                    <div class="mobile-chat-input">
+                        <input type="text" id="mobile-chat-input" placeholder="Type a message..." maxlength="200">
+                        <button id="mobile-send-chat-btn" class="btn btn-sm btn-primary">Send</button>
                     </div>
                 </div>
             </div>

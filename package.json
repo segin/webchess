@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node src/server/index.js",
     "dev": "nodemon src/server/index.js",
-    "test": "jest",
+    "test": "node tests/run_tests.js",
+    "test:browser": "echo 'Open tests/run_tests.html in your browser to run comprehensive tests'",
+    "test:jest": "jest",
     "test:watch": "jest --watch",
     "install:production": "npm install --production",
     "daemon:install": "sudo cp deployment/webchess.service /etc/systemd/system/ && sudo systemctl daemon-reload",
