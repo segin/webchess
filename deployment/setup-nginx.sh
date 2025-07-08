@@ -10,26 +10,71 @@ SUBDOMAIN="chess"
 DOMAIN=""
 CONFIG_NAME="webchess"
 
-# Color codes for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Color codes for terminal output
+if [[ -t 1 ]] && command -v tput &> /dev/null; then
+    RED=$(tput setaf 1)
+    GREEN=$(tput setaf 2)
+    YELLOW=$(tput setaf 3)
+    BLUE=$(tput setaf 4)
+    MAGENTA=$(tput setaf 5)
+    CYAN=$(tput setaf 6)
+    WHITE=$(tput setaf 7)
+    BOLD=$(tput bold)
+    RESET=$(tput sgr0)
+else
+    RED=""
+    GREEN=""
+    YELLOW=""
+    BLUE=""
+    MAGENTA=""
+    CYAN=""
+    WHITE=""
+    BOLD=""
+    RESET=""
+fi
+
+# Print functions with colors
+print_header() {
+    echo ""
+    echo "${BOLD}${CYAN}╔══════════════════════════════════════════════════════════════════════════════╗${RESET}"
+    echo "${BOLD}${CYAN}║                           WebChess Nginx Setup                              ║${RESET}"
+    echo "${BOLD}${CYAN}╚══════════════════════════════════════════════════════════════════════════════╝${RESET}"
+    echo ""
+}
+
+print_step() {
+    echo "${BOLD}${BLUE}➤ ${1}${RESET}"
+}
+
+print_success() {
+    echo "${GREEN}✓ ${1}${RESET}"
+}
+
+print_warning() {
+    echo "${YELLOW}⚠ ${1}${RESET}"
+}
+
+print_error() {
+    echo "${RED}✗ ${1}${RESET}"
+}
+
+print_info() {
+    echo "${CYAN}ℹ ${1}${RESET}"
+}
 
 print_usage() {
-    echo "Usage: $0 -d DOMAIN [-s SUBDOMAIN] [-n CONFIG_NAME]"
+    echo "${BOLD}Usage:${RESET} $0 -d DOMAIN [-s SUBDOMAIN] [-n CONFIG_NAME]"
     echo ""
-    echo "Options:"
-    echo "  -d DOMAIN      Your domain name (required) - e.g., example.com"
-    echo "  -s SUBDOMAIN   Subdomain for WebChess (default: chess) - e.g., chess.example.com"
-    echo "  -n CONFIG_NAME Name for nginx config file (default: webchess)"
-    echo "  -h             Show this help message"
+    echo "${BOLD}Options:${RESET}"
+    echo "  ${CYAN}-d DOMAIN${RESET}      Your domain name (required) - e.g., example.com"
+    echo "  ${CYAN}-s SUBDOMAIN${RESET}   Subdomain for WebChess (default: chess) - e.g., chess.example.com"
+    echo "  ${CYAN}-n CONFIG_NAME${RESET} Name for nginx config file (default: webchess)"
+    echo "  ${CYAN}-h${RESET}             Show this help message"
     echo ""
-    echo "Examples:"
-    echo "  $0 -d example.com"
-    echo "  $0 -d example.com -s games"
-    echo "  $0 -d mydomain.net -s chess -n my-chess-site"
+    echo "${BOLD}Examples:${RESET}"
+    echo "  ${WHITE}$0 -d example.com${RESET}"
+    echo "  ${WHITE}$0 -d example.com -s games${RESET}"
+    echo "  ${WHITE}$0 -d mydomain.net -s chess -n my-chess-site${RESET}"
 }
 
 # Parse command line arguments
@@ -49,12 +94,12 @@ while getopts "d:s:n:h" opt; do
             exit 0
             ;;
         \?)
-            echo -e "${RED}Invalid option: -$OPTARG${NC}" >&2
+            print_error "Invalid option: -$OPTARG"
             print_usage
             exit 1
             ;;
         :)
-            echo -e "${RED}Option -$OPTARG requires an argument.${NC}" >&2
+            print_error "Option -$OPTARG requires an argument."
             print_usage
             exit 1
             ;;
@@ -63,14 +108,14 @@ done
 
 # Check if domain is provided
 if [ -z "$DOMAIN" ]; then
-    echo -e "${RED}Error: Domain is required.${NC}"
+    print_error "Domain is required."
     print_usage
     exit 1
 fi
 
 # Check if running as root
 if [[ $EUID -ne 0 ]]; then
-   echo -e "${RED}This script must be run as root or with sudo${NC}" 
+   print_error "This script must be run as root or with sudo"
    exit 1
 fi
 
@@ -79,76 +124,83 @@ SITES_AVAILABLE="/etc/nginx/sites-available"
 SITES_ENABLED="/etc/nginx/sites-enabled"
 CONFIG_FILE="${SITES_AVAILABLE}/${CONFIG_NAME}"
 
-echo -e "${BLUE}Setting up nginx for WebChess...${NC}"
-echo "Domain: ${FULL_DOMAIN}"
-echo "Config: ${CONFIG_FILE}"
+print_header
+echo "${BOLD}${YELLOW}Domain:${RESET} ${WHITE}${FULL_DOMAIN}${RESET}"
+echo "${BOLD}${YELLOW}Config:${RESET} ${WHITE}${CONFIG_FILE}${RESET}"
 echo ""
 
 # Check if nginx is installed
 if ! command -v nginx &> /dev/null; then
-    echo -e "${RED}nginx is not installed. Installing...${NC}"
+    print_warning "nginx is not installed. Installing..."
     apt update
     apt install -y nginx
 fi
 
 # Check if config already exists
 if [ -f "$CONFIG_FILE" ]; then
-    echo -e "${YELLOW}Configuration file already exists: $CONFIG_FILE${NC}"
-    read -p "Do you want to overwrite it? (y/N): " -n 1 -r
+    print_warning "Configuration file already exists: $CONFIG_FILE"
+    read -p "${BOLD}Do you want to overwrite it? (y/N): ${RESET}" -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo -e "${YELLOW}Aborted.${NC}"
+        print_info "Aborted."
         exit 1
     fi
 fi
 
 # Create nginx configuration from template
-echo -e "${BLUE}Creating nginx configuration...${NC}"
+print_step "Creating nginx configuration..."
 cp /opt/webchess/deployment/nginx-subdomain.conf "$CONFIG_FILE"
 
 # Replace placeholders in the configuration
 sed -i "s/SUBDOMAIN\.DOMAIN\.COM/${FULL_DOMAIN}/g" "$CONFIG_FILE"
 
-echo -e "${GREEN}✓ Configuration created: $CONFIG_FILE${NC}"
+print_success "Configuration created: $CONFIG_FILE"
 
 # Enable the site
-echo -e "${BLUE}Enabling site...${NC}"
+print_step "Enabling site..."
 if [ -L "${SITES_ENABLED}/${CONFIG_NAME}" ]; then
-    echo -e "${YELLOW}Site already enabled${NC}"
+    print_warning "Site already enabled"
 else
     ln -s "$CONFIG_FILE" "${SITES_ENABLED}/"
-    echo -e "${GREEN}✓ Site enabled${NC}"
+    print_success "Site enabled"
 fi
 
 # Test nginx configuration
-echo -e "${BLUE}Testing nginx configuration...${NC}"
+print_step "Testing nginx configuration..."
 if nginx -t; then
-    echo -e "${GREEN}✓ nginx configuration is valid${NC}"
+    print_success "nginx configuration is valid"
 else
-    echo -e "${RED}✗ nginx configuration test failed${NC}"
+    print_error "nginx configuration test failed"
     exit 1
 fi
 
 # Reload nginx
-echo -e "${BLUE}Reloading nginx...${NC}"
+print_step "Reloading nginx..."
 systemctl reload nginx
-echo -e "${GREEN}✓ nginx reloaded${NC}"
+print_success "nginx reloaded"
 
 echo ""
-echo -e "${GREEN}Setup complete!${NC}"
+echo "${BOLD}${GREEN}╔══════════════════════════════════════════════════════════════════════════════╗${RESET}"
+echo "${BOLD}${GREEN}║                              Setup Complete!                                ║${RESET}"
+echo "${BOLD}${GREEN}╚══════════════════════════════════════════════════════════════════════════════╝${RESET}"
 echo ""
-echo "WebChess is now accessible at: http://${FULL_DOMAIN}"
+
+echo "${BOLD}${MAGENTA}🌐 WebChess is now accessible at: ${WHITE}http://${FULL_DOMAIN}${RESET}"
 echo ""
-echo -e "${YELLOW}Next steps:${NC}"
-echo "1. Make sure your DNS points ${FULL_DOMAIN} to this server"
-echo "2. Test the site: curl -H 'Host: ${FULL_DOMAIN}' http://localhost"
-echo "3. Set up SSL certificate:"
-echo "   certbot --nginx -d ${FULL_DOMAIN}"
+
+echo "${BOLD}${YELLOW}📋 Next steps:${RESET}"
+echo "${BOLD}1.${RESET} Make sure your DNS points ${WHITE}${FULL_DOMAIN}${RESET} to this server"
+echo "${BOLD}2.${RESET} Test the site: ${WHITE}curl -H 'Host: ${FULL_DOMAIN}' http://localhost${RESET}"
+echo "${BOLD}3.${RESET} Set up SSL certificate:"
+echo "   ${WHITE}certbot --nginx -d ${FULL_DOMAIN}${RESET}"
 echo ""
-echo -e "${YELLOW}Configuration file location:${NC}"
-echo "  ${CONFIG_FILE}"
+
+echo "${BOLD}${YELLOW}📁 Configuration file location:${RESET}"
+echo "  ${WHITE}${CONFIG_FILE}${RESET}"
 echo ""
-echo -e "${YELLOW}To remove this configuration:${NC}"
-echo "  rm ${SITES_ENABLED}/${CONFIG_NAME}"
-echo "  rm ${CONFIG_FILE}"
-echo "  systemctl reload nginx"
+
+echo "${BOLD}${YELLOW}🗑️ To remove this configuration:${RESET}"
+echo "  ${WHITE}rm ${SITES_ENABLED}/${CONFIG_NAME}${RESET}"
+echo "  ${WHITE}rm ${CONFIG_FILE}${RESET}"
+echo "  ${WHITE}systemctl reload nginx${RESET}"
+echo ""
