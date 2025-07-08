@@ -660,8 +660,8 @@ class WebChessClient {
     // Practice mode logic
     if (this.practiceMode === 'self') return true;
     if (this.practiceMode === 'ai-vs-ai') return false;
-    if (this.practiceMode === 'ai-white') return piece.color === 'white';
-    if (this.practiceMode === 'ai-black') return piece.color === 'black';
+    if (this.practiceMode === 'ai-white') return piece.color === 'black'; // Human plays black
+    if (this.practiceMode === 'ai-black') return piece.color === 'white'; // Human plays white
     return true; // Default to allowing moves
   }
 
@@ -820,7 +820,7 @@ class WebChessClient {
 
   makePracticeMove(move) {
     // Validate the move before executing
-    if (!this.isValidMove(move)) {
+    if (!this.isValidMoveObject(move)) {
       this.showInvalidMoveMessage();
       return;
     }
@@ -903,18 +903,23 @@ class WebChessClient {
       case 'ai-vs-ai':
         return true;
       case 'ai-white':
-        return this.gameState.currentTurn === 'black';
-      case 'ai-black':
         return this.gameState.currentTurn === 'white';
+      case 'ai-black':
+        return this.gameState.currentTurn === 'black';
       default:
         return false;
     }
   }
   
   makeAIMove() {
-    if (!this.shouldAIMove() || this.gameState.status !== 'active') return;
+    if (!this.shouldAIMove() || this.gameState.status !== 'active') {
+      console.log('AI should not move:', this.shouldAIMove(), this.gameState.status);
+      return;
+    }
     
+    console.log('AI attempting to move for', this.gameState.currentTurn);
     const aiMove = this.aiEngine.getBestMove(this.gameState);
+    console.log('AI selected move:', aiMove);
     
     if (aiMove) {
       // Simple move execution for practice mode
@@ -1061,7 +1066,9 @@ class WebChessClient {
   }
   
   // Check validation methods
-  isValidMove(move) {
+  isValidMoveObject(move) {
+    if (!move || !move.from || !move.to) return false;
+    
     const piece = this.gameState.board[move.from.row][move.from.col];
     if (!piece || piece.color !== this.gameState.currentTurn) return false;
     
@@ -1075,6 +1082,8 @@ class WebChessClient {
   }
   
   isValidPieceMove(move, piece) {
+    if (!move || !move.from || !move.to) return false;
+    
     const dx = Math.abs(move.to.col - move.from.col);
     const dy = Math.abs(move.to.row - move.from.row);
     const target = this.gameState.board[move.to.row][move.to.col];
@@ -1101,6 +1110,8 @@ class WebChessClient {
   }
   
   isValidPawnMove(move, piece) {
+    if (!move || !move.from || !move.to) return false;
+    
     const direction = piece.color === 'white' ? -1 : 1;
     const startRow = piece.color === 'white' ? 6 : 1;
     const dy = move.to.row - move.from.row;
@@ -1395,6 +1406,7 @@ class ChessAI {
   
   getBestMove(gameState) {
     const moves = this.getAllValidMoves(gameState);
+    console.log('AI found', moves.length, 'valid moves for', gameState.currentTurn);
     if (moves.length === 0) return null;
     
     // Easy mode: random moves occasionally
@@ -1456,6 +1468,8 @@ class ChessAI {
   }
   
   isValidMove(gameState, move) {
+    if (!move || !move.from || !move.to) return false;
+    
     const piece = gameState.board[move.from.row][move.from.col];
     if (!piece) return false;
     
@@ -1643,6 +1657,8 @@ class ChessAI {
   }
   
   isPathClear(gameState, move) {
+    if (!move || !move.from || !move.to) return false;
+    
     const dx = Math.sign(move.to.col - move.from.col);
     const dy = Math.sign(move.to.row - move.from.row);
     let row = move.from.row + dy;
