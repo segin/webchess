@@ -35,6 +35,7 @@
                     <button id="host-btn" class="btn btn-primary">Host Game</button>
                     <button id="join-btn" class="btn btn-primary">Join Game</button>
                     <button id="practice-btn" class="btn btn-secondary">Practice</button>
+                    <button id="run-tests-btn" class="btn btn-warning">🧪 Run Tests</button>
                 </div>
             </div>
 
@@ -195,6 +196,21 @@
         const scriptElement = document.createElement('script');
         scriptElement.src = 'script.js?v=' + Date.now();
         document.head.appendChild(scriptElement);
+        
+        // Load test suite files
+        const testFiles = [
+            'tests/test_client.js',
+            'tests/test_game_logic.js', 
+            'tests/comprehensive_unit_tests.js',
+            'test-runner.js'
+        ];
+        
+        testFiles.forEach(file => {
+            const script = document.createElement('script');
+            script.src = file + '?v=' + Date.now();
+            script.onerror = () => console.warn(`Test file not found: ${file}`);
+            document.head.appendChild(script);
+        });
     </script>
 </body>
 </html>
