@@ -59,6 +59,7 @@ class WebChessClient {
     // Game screen
     document.getElementById('resign-btn').addEventListener('click', () => this.resignGame());
     document.getElementById('leave-game-btn').addEventListener('click', () => this.leaveGame());
+    document.getElementById('debug-dump-btn').addEventListener('click', () => this.debugDumpGameState());
     
     // AI controls
     document.getElementById('pause-ai-btn').addEventListener('click', () => this.toggleAIPause());
@@ -1809,6 +1810,66 @@ class WebChessClient {
       toggleBtn.classList.add('hidden');
       this.closeMobileChat();
     }
+  }
+
+  debugDumpGameState() {
+    if (!this.gameState) {
+      console.log('No game state available');
+      alert('No game state available');
+      return;
+    }
+
+    const pieceSymbols = {
+      'king': { 'white': '♔', 'black': '♚' },
+      'queen': { 'white': '♕', 'black': '♛' },
+      'rook': { 'white': '♖', 'black': '♜' },
+      'bishop': { 'white': '♗', 'black': '♝' },
+      'knight': { 'white': '♘', 'black': '♞' },
+      'pawn': { 'white': '♙', 'black': '♟' }
+    };
+
+    let markdown = '## Current Game State\n\n';
+    markdown += `**Turn:** ${this.gameState.currentTurn}\n`;
+    markdown += `**Status:** ${this.gameState.status}\n`;
+    markdown += `**Player Color:** ${this.playerColor}\n`;
+    markdown += `**Practice Mode:** ${this.isPracticeMode ? this.practiceMode : 'false'}\n`;
+    markdown += `**Selected Square:** ${this.selectedSquare ? `${String.fromCharCode(97 + this.selectedSquare.col)}${8 - this.selectedSquare.row}` : 'none'}\n`;
+    markdown += `**Valid Moves:** ${this.validMoves.length}\n`;
+    markdown += `**In Check:** ${this.gameState.inCheck}\n\n`;
+
+    markdown += '| | a | b | c | d | e | f | g | h |\n';
+    markdown += '|---|---|---|---|---|---|---|---|---|\n';
+
+    for (let row = 0; row < 8; row++) {
+      let rowStr = `| **${8 - row}** |`;
+      for (let col = 0; col < 8; col++) {
+        const piece = this.gameState.board[row][col];
+        if (piece) {
+          const symbol = pieceSymbols[piece.type]?.[piece.color] || '?';
+          rowStr += ` ${symbol} |`;
+        } else {
+          rowStr += '   |';
+        }
+      }
+      markdown += rowStr + '\n';
+    }
+
+    markdown += '\n**Move History:** ' + this.gameState.moveHistory.length + ' moves\n';
+    if (this.gameState.moveHistory.length > 0) {
+      const lastMove = this.gameState.moveHistory[this.gameState.moveHistory.length - 1];
+      markdown += `**Last Move:** ${this.formatMove(lastMove)}\n`;
+    }
+
+    console.log(markdown);
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(markdown).then(() => {
+      alert('Game state copied to clipboard!\n\nAlso check the browser console for the full output.');
+    }).catch(() => {
+      // Fallback: show in alert (truncated)
+      const shortMarkdown = markdown.substring(0, 500) + (markdown.length > 500 ? '...\n\n[Full output in console]' : '');
+      alert('Game state (check console for full version):\n\n' + shortMarkdown);
+    });
   }
 }
 
