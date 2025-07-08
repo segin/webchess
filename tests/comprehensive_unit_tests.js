@@ -1474,6 +1474,105 @@ class ComprehensiveUnitTests {
         }
       }, 'Move Validation');
     }
+
+    // Bug fix validation tests
+    await this.runTest('Practice mode player color assignment', () => {
+      const client = this.createMockWebChessClient();
+      
+      // Test ai-white mode - human should play black
+      client.startPracticeMode('ai-white');
+      if (client.playerColor !== 'black') {
+        throw new Error('In ai-white mode, human should play black');
+      }
+      
+      // Test ai-black mode - human should play white
+      client.startPracticeMode('ai-black');
+      if (client.playerColor !== 'white') {
+        throw new Error('In ai-black mode, human should play white');
+      }
+    }, 'Move Validation');
+
+    await this.runTest('King capture protection', () => {
+      const client = this.createMockWebChessClient();
+      const gameState = client.createInitialGameState();
+      
+      // Place pieces for test
+      gameState.board[4][4] = { type: 'rook', color: 'white' };
+      gameState.board[4][5] = { type: 'king', color: 'black' };
+      
+      // Try to capture king - should be invalid
+      const invalidMove = {
+        from: { row: 4, col: 4 },
+        to: { row: 4, col: 5 }
+      };
+      
+      client.gameState = gameState;
+      const isValid = client.isValidMoveObject(invalidMove);
+      if (isValid) {
+        throw new Error('Should not be able to capture a king');
+      }
+    }, 'Move Validation');
+
+    await this.runTest('AI pawn promotion', () => {
+      const client = this.createMockWebChessClient();
+      const gameState = client.createInitialGameState();
+      
+      // Place white pawn near promotion
+      gameState.board[1][0] = { type: 'pawn', color: 'white' };
+      gameState.board[7][0] = null; // Clear the square
+      
+      // Simulate AI promotion move
+      const promotionMove = {
+        from: { row: 1, col: 0 },
+        to: { row: 0, col: 0 }
+      };
+      
+      client.gameState = gameState;
+      client.aiEngine = {
+        getBestMove: () => promotionMove
+      };
+      
+      client.makeAIMove();
+      
+      // Check if pawn was promoted to queen
+      const promotedPiece = gameState.board[0][0];
+      if (!promotedPiece || promotedPiece.type !== 'queen') {
+        throw new Error('AI pawn should have been promoted to queen');
+      }
+    }, 'Move Validation');
+
+    await this.runTest('Null gameState protection in makeAIMove', () => {
+      const client = this.createMockWebChessClient();
+      client.gameState = null;
+      
+      // Should not throw error
+      try {
+        client.makeAIMove();
+      } catch (error) {
+        throw new Error('makeAIMove should handle null gameState gracefully');
+      }
+    }, 'Move Validation');
+
+    await this.runTest('Practice mode movement validation consistency', () => {
+      const client = this.createMockWebChessClient();
+      
+      // Test ai-white mode
+      client.startPracticeMode('ai-white');
+      client.gameState.currentTurn = 'black';
+      
+      // Human should be able to move when it's black's turn
+      const canMove = client.canPlayerMove();
+      if (!canMove) {
+        throw new Error('Human should be able to move black pieces in ai-white mode');
+      }
+      
+      // Test piece selection for black piece
+      const blackPiece = { type: 'pawn', color: 'black' };
+      const canMovePiece = client.canPlayerMovePiece(blackPiece);
+      if (!canMovePiece) {
+        throw new Error('Human should be able to select black pieces in ai-white mode');
+      }
+    }, 'Move Validation');
   }
 
   async testBoardRendering() {
@@ -1560,6 +1659,13 @@ class ComprehensiveUnitTests {
     return {
       isValidMoveObject: function(move) {
         if (!move || !move.from || !move.to) return false;
+        
+        // Check if trying to capture a king (not allowed)
+        if (this.gameState && this.gameState.board) {
+          const targetSquare = this.gameState.board[move.to.row][move.to.col];
+          if (targetSquare && targetSquare.type === 'king') return false;
+        }
+        
         return true;
       },
       shouldAIMove: function() {
@@ -1576,6 +1682,18 @@ class ComprehensiveUnitTests {
             return false;
         }
       },
+      canPlayerMove: function() {
+        if (!this.isPracticeMode) {
+          return this.gameState.currentTurn === this.playerColor;
+        }
+        
+        // Practice mode logic
+        if (this.practiceMode === 'self') return true;
+        if (this.practiceMode === 'ai-vs-ai') return false;
+        if (this.practiceMode === 'ai-white') return this.gameState.currentTurn === 'black'; // Human plays black
+        if (this.practiceMode === 'ai-black') return this.gameState.currentTurn === 'white'; // Human plays white
+        return true;
+      },
       canPlayerMovePiece: function(piece) {
         if (!this.isPracticeMode) {
           return piece.color === this.playerColor;
@@ -1588,8 +1706,63 @@ class ComprehensiveUnitTests {
         if (this.practiceMode === 'ai-black') return piece.color === 'white'; // Human plays white
         return true;
       },
+      startPracticeMode: function(mode) {
+        this.practiceMode = mode;
+        this.isPracticeMode = true;
+        
+        switch (mode) {
+          case 'ai-white':
+            this.playerColor = 'black'; // Human plays black when AI plays white
+            break;
+          case 'ai-black':
+            this.playerColor = 'white'; // Human plays white when AI plays black
+            break;
+          default:
+            this.playerColor = 'both';
+        }
+      },
+      createInitialGameState: function() {
+        return {
+          board: Array(8).fill(null).map(() => Array(8).fill(null)),
+          currentTurn: 'white',
+          status: 'active',
+          winner: null,
+          moveHistory: [],
+          inCheck: false
+        };
+      },
+      makeAIMove: function() {
+        if (!this.shouldAIMove() || !this.gameState || this.gameState.status !== 'active') {
+          return;
+        }
+        
+        if (this.aiEngine && this.aiEngine.getBestMove) {
+          const aiMove = this.aiEngine.getBestMove(this.gameState);
+          
+          if (aiMove) {
+            const piece = this.gameState.board[aiMove.from.row][aiMove.from.col];
+            if (piece && piece.color === this.gameState.currentTurn) {
+              this.gameState.board[aiMove.to.row][aiMove.to.col] = piece;
+              this.gameState.board[aiMove.from.row][aiMove.from.col] = null;
+              
+              // Handle AI pawn promotion
+              if (piece.type === 'pawn' && 
+                  ((piece.color === 'white' && aiMove.to.row === 0) || 
+                   (piece.color === 'black' && aiMove.to.row === 7))) {
+                this.gameState.board[aiMove.to.row][aiMove.to.col] = {
+                  type: 'queen',
+                  color: piece.color
+                };
+              }
+              
+              this.gameState.currentTurn = this.gameState.currentTurn === 'white' ? 'black' : 'white';
+              this.gameState.moveHistory.push(aiMove);
+            }
+          }
+        }
+      },
       practiceMode: 'ai-white',
-      gameState: { currentTurn: 'white' },
+      gameState: { currentTurn: 'white', board: Array(8).fill(null).map(() => Array(8).fill(null)), status: 'active' },
       aiEngine: { test: true },
       aiPaused: false,
       isPracticeMode: true,

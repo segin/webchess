@@ -362,10 +362,10 @@ class WebChessClient {
         this.playerColor = 'both';
         break;
       case 'ai-white':
-        this.playerColor = 'white';
+        this.playerColor = 'black'; // Human plays black when AI plays white
         break;
       case 'ai-black':
-        this.playerColor = 'black';
+        this.playerColor = 'white'; // Human plays white when AI plays black
         break;
       case 'ai-vs-ai':
         this.playerColor = 'spectator';
@@ -646,8 +646,8 @@ class WebChessClient {
     // Practice mode logic
     if (this.practiceMode === 'self') return true;
     if (this.practiceMode === 'ai-vs-ai') return false;
-    if (this.practiceMode === 'ai-white') return this.gameState.currentTurn === 'white';
-    if (this.practiceMode === 'ai-black') return this.gameState.currentTurn === 'black';
+    if (this.practiceMode === 'ai-white') return this.gameState.currentTurn === 'black'; // Human plays black
+    if (this.practiceMode === 'ai-black') return this.gameState.currentTurn === 'white'; // Human plays white
     return true; // Default to allowing moves
   }
   
@@ -912,8 +912,8 @@ class WebChessClient {
   }
   
   makeAIMove() {
-    if (!this.shouldAIMove() || this.gameState.status !== 'active') {
-      console.log('AI should not move:', this.shouldAIMove(), this.gameState.status);
+    if (!this.shouldAIMove() || !this.gameState || this.gameState.status !== 'active') {
+      console.log('AI should not move:', this.shouldAIMove(), this.gameState?.status);
       return;
     }
     
@@ -927,6 +927,18 @@ class WebChessClient {
       if (piece && piece.color === this.gameState.currentTurn) {
         this.gameState.board[aiMove.to.row][aiMove.to.col] = piece;
         this.gameState.board[aiMove.from.row][aiMove.from.col] = null;
+        
+        // Handle AI pawn promotion
+        if (piece.type === 'pawn' && 
+            ((piece.color === 'white' && aiMove.to.row === 0) || 
+             (piece.color === 'black' && aiMove.to.row === 7))) {
+          // AI always promotes to queen (best piece)
+          this.gameState.board[aiMove.to.row][aiMove.to.col] = {
+            type: 'queen',
+            color: piece.color
+          };
+        }
+        
         this.gameState.currentTurn = this.gameState.currentTurn === 'white' ? 'black' : 'white';
         this.gameState.moveHistory.push(aiMove);
         
@@ -937,7 +949,7 @@ class WebChessClient {
         this.saveSessionToStorage();
         
         // Check if AI should make next move (for AI vs AI)
-        if (this.shouldAIMove() && this.gameState.status === 'active') {
+        if (this.shouldAIMove() && this.gameState && this.gameState.status === 'active') {
           setTimeout(() => this.makeAIMove(), this.aiMoveDelay);
         }
       }
@@ -1071,6 +1083,10 @@ class WebChessClient {
     
     const piece = this.gameState.board[move.from.row][move.from.col];
     if (!piece || piece.color !== this.gameState.currentTurn) return false;
+    
+    // Check if trying to capture a king (not allowed)
+    const targetSquare = this.gameState.board[move.to.row][move.to.col];
+    if (targetSquare && targetSquare.type === 'king') return false;
     
     // Check if the move is a valid piece move
     if (!this.isValidPieceMove(move, piece)) return false;
