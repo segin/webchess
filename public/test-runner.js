@@ -219,9 +219,35 @@ Total Coverage: 130+ tests validating all aspects of WebChess.
 
     try {
       const success = await testFunction();
-      this.updateStatus(`${suiteName} completed: ${success ? 'PASSED' : 'FAILED'}`, success ? 'success' : 'error');
-      this.appendResults(`\n✅ ${suiteName} completed: ${success ? 'ALL PASSED' : 'SOME FAILED'}`);
-      return success;
+      
+      // Parse the console output to check for actual failures
+      const hasFailures = logs.some(log => 
+        log.includes('❌') || 
+        log.includes('Error:') ||
+        /\d+\s+failed/i.test(log) && !/failed:\s*0/i.test(log) ||
+        /failed:\s*[1-9]/i.test(log) ||
+        log.includes('SOME FAILED') ||
+        log.includes('TEST FAILED')
+      );
+      
+      // Look for success indicators
+      const hasSuccessIndicators = logs.some(log =>
+        log.includes('✅') ||
+        (log.includes('ALL') && log.includes('PASSED')) ||
+        log.includes('100.0%') ||
+        /passed:\s*\d+.*failed:\s*0/i.test(log) ||
+        /success rate:\s*100/i.test(log) ||
+        /failed:\s*0/i.test(log) ||
+        log.includes('test suite completed!') ||
+        log.includes('ALL TESTS PASSED')
+      );
+      
+      // If the function returned success, no failures in logs, and has success indicators, it passed
+      const actualSuccess = success !== false && !hasFailures && (hasSuccessIndicators || logs.length === 0);
+      
+      this.updateStatus(`${suiteName} completed: ${actualSuccess ? 'PASSED' : 'FAILED'}`, actualSuccess ? 'success' : 'error');
+      this.appendResults(`\n✅ ${suiteName} completed: ${actualSuccess ? 'ALL PASSED' : 'SOME FAILED'}`);
+      return actualSuccess;
     } catch (error) {
       this.updateStatus(`${suiteName} error: ${error.message}`, 'error');
       this.appendResults(`\n❌ ${suiteName} error: ${error.message}`);

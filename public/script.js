@@ -1,6 +1,6 @@
 class WebChessClient {
   constructor() {
-    this.socket = io();
+    this.socket = null;
     this.currentGameId = null;
     this.playerColor = null;
     this.gameState = null;
@@ -14,9 +14,19 @@ class WebChessClient {
     this.aiMoveDelay = 1000; // 1 second delay for AI moves
     this.pendingPromotionMove = null;
     
+    this.initializeSocket();
     this.initializeEventListeners();
     this.setupSocketListeners();
     this.loadSessionFromStorage();
+  }
+  
+  initializeSocket() {
+    try {
+      this.socket = io();
+    } catch (error) {
+      console.error('Socket.IO not available:', error);
+      this.socket = null;
+    }
   }
 
   initializeEventListeners() {
@@ -79,6 +89,8 @@ class WebChessClient {
   }
 
   setupSocketListeners() {
+    if (!this.socket) return;
+    
     this.socket.on('game-created', (data) => {
       this.currentGameId = data.gameId;
       this.playerColor = 'white';
@@ -96,8 +108,8 @@ class WebChessClient {
       this.showGameScreen();
       
       // Request chat history when opponent joins
-      if (!this.isPracticeMode) {
-        this.socket.emit('get-chat-history', { gameId: this.currentGameId });
+      if (!this.isPracticeMode && this.socket) {
+        if (this.socket) this.socket.emit('get-chat-history', { gameId: this.currentGameId });
       }
     });
 
@@ -108,7 +120,7 @@ class WebChessClient {
       
       // Request chat history for the game
       if (!this.isPracticeMode) {
-        this.socket.emit('get-chat-history', { gameId: this.currentGameId });
+        if (this.socket) this.socket.emit('get-chat-history', { gameId: this.currentGameId });
       }
     });
 
@@ -203,7 +215,7 @@ class WebChessClient {
   
   validateSession() {
     if (this.currentGameId && !this.isPracticeMode) {
-      this.socket.emit('validate-session', { gameId: this.currentGameId });
+      if (this.socket) this.socket.emit('validate-session', { gameId: this.currentGameId });
     }
   }
 
@@ -231,7 +243,7 @@ class WebChessClient {
   }
 
   rejoinGame() {
-    this.socket.emit('rejoin-game', {
+    if (this.socket) this.socket.emit('rejoin-game', {
       gameId: this.currentGameId,
       color: this.playerColor
     });
@@ -239,7 +251,7 @@ class WebChessClient {
     // Request chat history on rejoin
     if (!this.isPracticeMode && this.currentGameId && this.currentGameId !== 'practice') {
       setTimeout(() => {
-        this.socket.emit('get-chat-history', { gameId: this.currentGameId });
+        if (this.socket) this.socket.emit('get-chat-history', { gameId: this.currentGameId });
       }, 1000); // Small delay to ensure game state is restored first
     }
   }
@@ -261,6 +273,7 @@ class WebChessClient {
 
   hostGame() {
     this.resignFromPreviousGame();
+    if (!this.socket) return;
     this.socket.emit('host-game');
   }
   
@@ -304,7 +317,7 @@ class WebChessClient {
   resignFromPreviousGame() {
     if (this.currentGameId && !this.isPracticeMode) {
       // Send resignation for previous game
-      this.socket.emit('resign', { gameId: this.currentGameId });
+      if (this.socket) this.socket.emit('resign', { gameId: this.currentGameId });
       this.clearGameSession();
     }
   }
@@ -331,7 +344,7 @@ class WebChessClient {
     const gameId = document.getElementById('game-id-input').value.trim().toUpperCase();
     if (gameId.length === 6) {
       this.resignFromPreviousGame();
-      this.socket.emit('join-game', { gameId });
+      if (this.socket) this.socket.emit('join-game', { gameId });
     } else {
       this.showJoinError('Please enter a 6-character game ID');
     }
@@ -798,7 +811,7 @@ class WebChessClient {
     if (this.isPracticeMode) {
       this.makePracticeMove(move);
     } else {
-      this.socket.emit('make-move', {
+      if (this.socket) this.socket.emit('make-move', {
         gameId: this.currentGameId,
         move: move
       });
@@ -847,14 +860,10 @@ class WebChessClient {
     
     // Save session after successful move
     this.saveSessionToStorage();
-      
-      // Update check status
-      this.updateCheckStatus();
-      
-      // Check if AI should make next move
-      if (this.shouldAIMove() && this.gameState.status === 'active') {
-        setTimeout(() => this.makeAIMove(), this.aiMoveDelay);
-      }
+    
+    // Check if AI should make next move
+    if (this.shouldAIMove() && this.gameState.status === 'active') {
+      setTimeout(() => this.makeAIMove(), this.aiMoveDelay);
     }
   }
   
@@ -990,7 +999,7 @@ class WebChessClient {
         this.clearGameSession(); // Clear session for practice mode too
         this.showMainMenu();
       } else {
-        this.socket.emit('resign', { gameId: this.currentGameId });
+        if (this.socket) this.socket.emit('resign', { gameId: this.currentGameId });
         this.clearGameSession(); // Clear session after resigning
       }
     }
@@ -1224,7 +1233,7 @@ class WebChessClient {
     const message = chatInput.value.trim();
     
     if (message && !this.isPracticeMode && this.currentGameId) {
-      this.socket.emit('chat-message', {
+      if (this.socket) this.socket.emit('chat-message', {
         gameId: this.currentGameId,
         message: message
       });
@@ -1289,7 +1298,7 @@ class WebChessClient {
     const message = input.value.trim();
     
     if (message && !this.isPracticeMode && this.currentGameId) {
-      this.socket.emit('chat-message', {
+      if (this.socket) this.socket.emit('chat-message', {
         gameId: this.currentGameId,
         message: message
       });
