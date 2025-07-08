@@ -1286,7 +1286,4 @@ class ChessAI {
   }
 }
 
-// Initialize the game when the page loads
-document.addEventListener('DOMContentLoaded', () => {
-  new WebChessClient();
-});
+// WebChessClient initialization is now handled in index.html to ensure proper timing

@@ -195,7 +195,19 @@
         // Cache busting for main script
         const scriptElement = document.createElement('script');
         scriptElement.src = 'script.js?v=' + Date.now();
-        scriptElement.onload = () => console.log('script.js loaded successfully');
+        scriptElement.onload = () => {
+            console.log('script.js loaded successfully');
+            // Initialize WebChessClient after script loads and DOM is ready
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                console.log('DOM ready, initializing WebChessClient...');
+                new WebChessClient();
+            } else {
+                document.addEventListener('DOMContentLoaded', () => {
+                    console.log('DOM loaded after script, initializing WebChessClient...');
+                    new WebChessClient();
+                });
+            }
+        };
         scriptElement.onerror = (e) => console.error('Failed to load script.js:', e);
         document.head.appendChild(scriptElement);
         
