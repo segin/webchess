@@ -391,7 +391,21 @@ class WebChessClient {
       status: 'active',
       winner: null,
       moveHistory: [],
-      inCheck: false
+      inCheck: false,
+      castlingRights: {
+        whiteKingSide: true,
+        whiteQueenSide: true,
+        blackKingSide: true,
+        blackQueenSide: true
+      },
+      enPassantTarget: null, // { row, col } of the square where en passant can be captured
+      fiftyMoveRule: 0, // Counter for 50-move rule
+      positionHistory: [], // For threefold repetition
+      competitiveRules: {
+        fiftyMoveRule: true,
+        threefoldRepetition: true,
+        insufficientMaterial: true
+      }
     };
   }
 
@@ -457,6 +471,7 @@ class WebChessClient {
     this.showScreen('game-screen');
     this.updateGameInfo();
     this.createChessBoard();
+    this.clearMoveHistory();
   }
 
   showGameEndScreen(status, winner) {
@@ -620,7 +635,7 @@ class WebChessClient {
     }
     
     const piece = this.gameState.board[row][col];
-    if (piece && piece.color === this.gameState.currentTurn) {
+    if (piece) {
       let canSelect = false;
       
       if (this.isPracticeMode) {
@@ -688,8 +703,10 @@ class WebChessClient {
     
     this.validMoves.forEach(move => {
       const square = document.querySelector(`[data-row="${move.row}"][data-col="${move.col}"]`);
-      const isCapture = this.gameState.board[move.row][move.col] !== null;
-      square.classList.add(isCapture ? 'capture-move' : 'valid-move');
+      if (square) {
+        const isCapture = this.gameState.board[move.row][move.col] !== null;
+        square.classList.add(isCapture ? 'capture-move' : 'valid-move');
+      }
     });
   }
 
@@ -697,7 +714,9 @@ class WebChessClient {
     const moves = [];
     const piece = this.gameState.board[row][col];
     
-    if (!piece) return moves;
+    if (!piece) {
+      return moves;
+    }
     
     for (let toRow = 0; toRow < 8; toRow++) {
       for (let toCol = 0; toCol < 8; toCol++) {
@@ -740,6 +759,7 @@ class WebChessClient {
     const rowDiff = toRow - fromRow;
     const colDiff = Math.abs(toCol - fromCol);
     
+    // Forward move
     if (colDiff === 0) {
       if (rowDiff === direction && !this.gameState.board[toRow][toCol]) {
         return true;
@@ -749,8 +769,19 @@ class WebChessClient {
       }
     }
     
+    // Diagonal capture
     if (colDiff === 1 && rowDiff === direction) {
-      return this.gameState.board[toRow][toCol] !== null;
+      // Regular capture
+      if (this.gameState.board[toRow][toCol] !== null) {
+        return true;
+      }
+      
+      // En passant capture
+      if (this.gameState.enPassantTarget &&
+          this.gameState.enPassantTarget.row === toRow &&
+          this.gameState.enPassantTarget.col === toCol) {
+        return true;
+      }
     }
     
     return false;
@@ -780,7 +811,74 @@ class WebChessClient {
   isValidKingMove(fromRow, fromCol, toRow, toCol) {
     const rowDiff = Math.abs(toRow - fromRow);
     const colDiff = Math.abs(toCol - fromCol);
-    return rowDiff <= 1 && colDiff <= 1;
+    
+    // Normal king move (one square in any direction)
+    if (rowDiff <= 1 && colDiff <= 1) {
+      return true;
+    }
+    
+    // Castling move
+    if (rowDiff === 0 && colDiff === 2) {
+      return this.isValidCastlingMove(fromRow, fromCol, toRow, toCol);
+    }
+    
+    return false;
+  }
+
+  isValidCastlingMove(fromRow, fromCol, toRow, toCol) {
+    // Check if castling is valid
+    const piece = this.gameState.board[fromRow][fromCol];
+    if (!piece || piece.type !== 'king') return false;
+    
+    // King must be on starting square
+    const startRow = piece.color === 'white' ? 7 : 0;
+    if (fromRow !== startRow || fromCol !== 4) return false;
+    
+    // Check castling rights
+    const isKingSide = toCol > fromCol;
+    const castlingRight = piece.color === 'white' 
+      ? (isKingSide ? 'whiteKingSide' : 'whiteQueenSide')
+      : (isKingSide ? 'blackKingSide' : 'blackQueenSide');
+    
+    if (!this.gameState.castlingRights[castlingRight]) return false;
+    
+    // Check if king is in check
+    if (this.isKingInCheck(piece.color)) return false;
+    
+    // Check if path is clear and king doesn't move through check
+    const rookCol = isKingSide ? 7 : 0;
+    const direction = isKingSide ? 1 : -1;
+    const rook = this.gameState.board[startRow][rookCol];
+    
+    if (!rook || rook.type !== 'rook' || rook.color !== piece.color) return false;
+    
+    // Check squares between king and rook are empty
+    const startCol = Math.min(fromCol, rookCol) + 1;
+    const endCol = Math.max(fromCol, rookCol) - 1;
+    
+    for (let col = startCol; col <= endCol; col++) {
+      if (this.gameState.board[startRow][col] !== null) return false;
+    }
+    
+    // Check that king doesn't move through check
+    for (let col = fromCol; col !== toCol; col += direction) {
+      if (this.wouldKingBeInCheck(piece.color, startRow, col)) return false;
+    }
+    
+    return true;
+  }
+
+  wouldKingBeInCheck(color, row, col) {
+    // Temporarily place king at the position and check if it's in check
+    const originalPiece = this.gameState.board[row][col];
+    this.gameState.board[row][col] = { type: 'king', color: color };
+    
+    const inCheck = this.isKingInCheck(color);
+    
+    // Restore original piece
+    this.gameState.board[row][col] = originalPiece;
+    
+    return inCheck;
   }
 
   isPathClear(fromRow, fromCol, toRow, toCol) {
@@ -843,10 +941,28 @@ class WebChessClient {
   }
   
   executeMove(move) {
-    // Make the move on the board
     const piece = this.gameState.board[move.from.row][move.from.col];
-    this.gameState.board[move.to.row][move.to.col] = piece;
-    this.gameState.board[move.from.row][move.from.col] = null;
+    
+    // Handle castling
+    if (piece.type === 'king' && Math.abs(move.to.col - move.from.col) === 2) {
+      this.executeCastling(move);
+    } else {
+      // Regular move
+      this.gameState.board[move.to.row][move.to.col] = piece;
+      this.gameState.board[move.from.row][move.from.col] = null;
+    }
+    
+    // Update castling rights
+    this.updateCastlingRights(move, piece);
+    
+    // Handle en passant
+    this.handleEnPassant(move, piece);
+    
+    // Update fifty-move rule counter
+    this.updateFiftyMoveRule(move, piece);
+    
+    // Add position to history for threefold repetition
+    this.addPositionToHistory();
     
     // Update turn
     this.gameState.currentTurn = this.gameState.currentTurn === 'white' ? 'black' : 'white';
@@ -981,7 +1097,282 @@ class WebChessClient {
     moveList.scrollTop = moveList.scrollHeight;
   }
 
+  clearMoveHistory() {
+    const moveList = document.getElementById('move-list');
+    if (moveList) {
+      moveList.innerHTML = '';
+    }
+  }
+
+  executeCastling(move) {
+    const piece = this.gameState.board[move.from.row][move.from.col];
+    const isKingSide = move.to.col > move.from.col;
+    const rookFromCol = isKingSide ? 7 : 0;
+    const rookToCol = isKingSide ? 5 : 3;
+    
+    // Move king
+    this.gameState.board[move.to.row][move.to.col] = piece;
+    this.gameState.board[move.from.row][move.from.col] = null;
+    
+    // Move rook
+    const rook = this.gameState.board[move.from.row][rookFromCol];
+    this.gameState.board[move.from.row][rookToCol] = rook;
+    this.gameState.board[move.from.row][rookFromCol] = null;
+  }
+
+  updateCastlingRights(move, piece) {
+    if (piece.type === 'king') {
+      if (piece.color === 'white') {
+        this.gameState.castlingRights.whiteKingSide = false;
+        this.gameState.castlingRights.whiteQueenSide = false;
+      } else {
+        this.gameState.castlingRights.blackKingSide = false;
+        this.gameState.castlingRights.blackQueenSide = false;
+      }
+    } else if (piece.type === 'rook') {
+      if (piece.color === 'white') {
+        if (move.from.row === 7 && move.from.col === 0) {
+          this.gameState.castlingRights.whiteQueenSide = false;
+        } else if (move.from.row === 7 && move.from.col === 7) {
+          this.gameState.castlingRights.whiteKingSide = false;
+        }
+      } else {
+        if (move.from.row === 0 && move.from.col === 0) {
+          this.gameState.castlingRights.blackQueenSide = false;
+        } else if (move.from.row === 0 && move.from.col === 7) {
+          this.gameState.castlingRights.blackKingSide = false;
+        }
+      }
+    }
+  }
+
+  handleEnPassant(move, piece) {
+    // Clear previous en passant target
+    this.gameState.enPassantTarget = null;
+    
+    if (piece.type === 'pawn') {
+      const rowDiff = Math.abs(move.to.row - move.from.row);
+      
+      // Check if pawn moved two squares (set en passant target)
+      if (rowDiff === 2) {
+        this.gameState.enPassantTarget = {
+          row: (move.from.row + move.to.row) / 2,
+          col: move.from.col
+        };
+      }
+      
+      // Check if this is an en passant capture
+      if (Math.abs(move.to.col - move.from.col) === 1 && 
+          this.gameState.board[move.to.row][move.to.col] === null) {
+        // Remove the captured pawn
+        const capturedPawnRow = piece.color === 'white' ? move.to.row + 1 : move.to.row - 1;
+        this.gameState.board[capturedPawnRow][move.to.col] = null;
+      }
+    }
+  }
+
+  updateFiftyMoveRule(move, piece) {
+    if (!this.gameState.competitiveRules.fiftyMoveRule) return;
+    
+    const isCapture = this.gameState.board[move.to.row][move.to.col] !== null;
+    const isPawnMove = piece.type === 'pawn';
+    
+    if (isCapture || isPawnMove) {
+      this.gameState.fiftyMoveRule = 0;
+    } else {
+      this.gameState.fiftyMoveRule++;
+    }
+  }
+
+  addPositionToHistory() {
+    if (!this.gameState.competitiveRules.threefoldRepetition) return;
+    
+    const positionKey = this.getPositionKey();
+    this.gameState.positionHistory.push(positionKey);
+  }
+
+  getPositionKey() {
+    // Create a string representation of the position
+    let key = '';
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = this.gameState.board[row][col];
+        if (piece) {
+          key += piece.color[0] + piece.type[0];
+        } else {
+          key += '--';
+        }
+      }
+    }
+    
+    // Add castling rights and en passant target
+    key += this.gameState.castlingRights.whiteKingSide ? 'K' : '-';
+    key += this.gameState.castlingRights.whiteQueenSide ? 'Q' : '-';
+    key += this.gameState.castlingRights.blackKingSide ? 'k' : '-';
+    key += this.gameState.castlingRights.blackQueenSide ? 'q' : '-';
+    key += this.gameState.enPassantTarget ? 
+      `${this.gameState.enPassantTarget.row}${this.gameState.enPassantTarget.col}` : '--';
+    key += this.gameState.currentTurn;
+    
+    return key;
+  }
+
+  hasLegalMoves(color) {
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = this.gameState.board[row][col];
+        if (piece && piece.color === color) {
+          const validMoves = this.getValidMovesForPiece(row, col);
+          if (validMoves.length > 0) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  getValidMovesForPiece(row, col) {
+    const moves = [];
+    const piece = this.gameState.board[row][col];
+    
+    if (!piece) return moves;
+    
+    for (let toRow = 0; toRow < 8; toRow++) {
+      for (let toCol = 0; toCol < 8; toCol++) {
+        const move = { from: { row, col }, to: { row: toRow, col: toCol } };
+        if (this.isValidMoveObject(move)) {
+          moves.push({ row: toRow, col: toCol });
+        }
+      }
+    }
+    
+    return moves;
+  }
+
+  checkDrawConditions() {
+    // Check fifty-move rule
+    if (this.gameState.competitiveRules.fiftyMoveRule && this.gameState.fiftyMoveRule >= 100) {
+      this.gameState.status = 'draw';
+      this.gameState.winner = null;
+      this.showGameEndScreen('draw', null);
+      return;
+    }
+    
+    // Check threefold repetition
+    if (this.gameState.competitiveRules.threefoldRepetition) {
+      const currentPosition = this.getPositionKey();
+      const occurrences = this.gameState.positionHistory.filter(pos => pos === currentPosition).length;
+      if (occurrences >= 3) {
+        this.gameState.status = 'draw';
+        this.gameState.winner = null;
+        this.showGameEndScreen('draw', null);
+        return;
+      }
+    }
+    
+    // Check insufficient material
+    if (this.gameState.competitiveRules.insufficientMaterial && this.isInsufficientMaterial()) {
+      this.gameState.status = 'draw';
+      this.gameState.winner = null;
+      this.showGameEndScreen('draw', null);
+      return;
+    }
+  }
+
+  isInsufficientMaterial() {
+    const whitePieces = [];
+    const blackPieces = [];
+    
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = this.gameState.board[row][col];
+        if (piece) {
+          if (piece.color === 'white') {
+            whitePieces.push(piece.type);
+          } else {
+            blackPieces.push(piece.type);
+          }
+        }
+      }
+    }
+    
+    // King vs King
+    if (whitePieces.length === 1 && blackPieces.length === 1) {
+      return true;
+    }
+    
+    // King + Bishop vs King
+    if (whitePieces.length === 2 && blackPieces.length === 1) {
+      if (whitePieces.includes('king') && whitePieces.includes('bishop')) {
+        return true;
+      }
+    }
+    if (blackPieces.length === 2 && whitePieces.length === 1) {
+      if (blackPieces.includes('king') && blackPieces.includes('bishop')) {
+        return true;
+      }
+    }
+    
+    // King + Knight vs King
+    if (whitePieces.length === 2 && blackPieces.length === 1) {
+      if (whitePieces.includes('king') && whitePieces.includes('knight')) {
+        return true;
+      }
+    }
+    if (blackPieces.length === 2 && whitePieces.length === 1) {
+      if (blackPieces.includes('king') && blackPieces.includes('knight')) {
+        return true;
+      }
+    }
+    
+    // King + Bishop vs King + Bishop (same color squares)
+    if (whitePieces.length === 2 && blackPieces.length === 2) {
+      if (whitePieces.includes('king') && whitePieces.includes('bishop') &&
+          blackPieces.includes('king') && blackPieces.includes('bishop')) {
+        // This is a simplification - in reality we'd need to check if bishops are on same color squares
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
   formatMove(move) {
+    const piece = this.gameState.board[move.to.row][move.to.col];
+    if (!piece) return this.formatSimpleMove(move);
+    
+    // Handle castling
+    if (piece.type === 'king' && Math.abs(move.to.col - move.from.col) === 2) {
+      return move.to.col > move.from.col ? 'O-O' : 'O-O-O';
+    }
+    
+    const pieceSymbol = piece.type === 'pawn' ? '' : piece.type.toUpperCase()[0];
+    const toSquare = String.fromCharCode(97 + move.to.col) + (8 - move.to.row);
+    
+    // Check for capture
+    const isCapture = move.capture || (piece.type === 'pawn' && move.from.col !== move.to.col);
+    const captureSymbol = isCapture ? 'x' : '';
+    
+    // For pawn captures, include the file
+    const fromFile = piece.type === 'pawn' && isCapture ? 
+      String.fromCharCode(97 + move.from.col) : '';
+    
+    // Check for promotion
+    const promotionSymbol = move.promotion ? `=${move.promotion.toUpperCase()}` : '';
+    
+    // Check if move results in check/checkmate
+    let checkSymbol = '';
+    if (this.gameState.status === 'checkmate') {
+      checkSymbol = '#';
+    } else if (this.gameState.inCheck) {
+      checkSymbol = '+';
+    }
+    
+    return `${pieceSymbol}${fromFile}${captureSymbol}${toSquare}${promotionSymbol}${checkSymbol}`;
+  }
+
+  formatSimpleMove(move) {
     const fromSquare = String.fromCharCode(97 + move.from.col) + (8 - move.from.row);
     const toSquare = String.fromCharCode(97 + move.to.col) + (8 - move.to.row);
     return `${fromSquare}-${toSquare}`;
@@ -1221,6 +1612,28 @@ class WebChessClient {
     const blackInCheck = this.isKingInCheck('black');
     
     this.gameState.inCheck = whiteInCheck || blackInCheck;
+    
+    // Check for checkmate and stalemate
+    const currentPlayerInCheck = this.gameState.currentTurn === 'white' ? whiteInCheck : blackInCheck;
+    const hasLegalMoves = this.hasLegalMoves(this.gameState.currentTurn);
+    
+    if (!hasLegalMoves) {
+      if (currentPlayerInCheck) {
+        // Checkmate
+        this.gameState.status = 'checkmate';
+        this.gameState.winner = this.gameState.currentTurn === 'white' ? 'black' : 'white';
+        this.showGameEndScreen('checkmate', this.gameState.winner);
+      } else {
+        // Stalemate
+        this.gameState.status = 'stalemate';
+        this.gameState.winner = null;
+        this.showGameEndScreen('stalemate', null);
+      }
+      return;
+    }
+    
+    // Check for draw conditions
+    this.checkDrawConditions();
     
     // Update UI check indicator
     const checkIndicator = document.getElementById('check-indicator');

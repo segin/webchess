@@ -1573,6 +1573,194 @@ class ComprehensiveUnitTests {
         throw new Error('Human should be able to select black pieces in ai-white mode');
       }
     }, 'Move Validation');
+
+    // Advanced chess logic tests with predefined scenarios
+    await this.runTest('Castling kingside validation', () => {
+      const client = this.createMockWebChessClient();
+      const gameState = client.createInitialGameState();
+      
+      // Clear path for castling
+      gameState.board[7][5] = null; // Clear bishop
+      gameState.board[7][6] = null; // Clear knight
+      
+      client.gameState = gameState;
+      
+      // Test castling move
+      const castlingMove = {
+        from: { row: 7, col: 4 },
+        to: { row: 7, col: 6 }
+      };
+      
+      const isValid = client.isValidMoveObject(castlingMove);
+      if (!isValid) {
+        throw new Error('Kingside castling should be valid when path is clear');
+      }
+    }, 'Move Validation');
+
+    await this.runTest('Castling queenside validation', () => {
+      const client = this.createMockWebChessClient();
+      const gameState = client.createInitialGameState();
+      
+      // Clear path for queenside castling
+      gameState.board[7][1] = null; // Clear knight
+      gameState.board[7][2] = null; // Clear bishop
+      gameState.board[7][3] = null; // Clear queen
+      
+      client.gameState = gameState;
+      
+      // Test castling move
+      const castlingMove = {
+        from: { row: 7, col: 4 },
+        to: { row: 7, col: 2 }
+      };
+      
+      const isValid = client.isValidMoveObject(castlingMove);
+      if (!isValid) {
+        throw new Error('Queenside castling should be valid when path is clear');
+      }
+    }, 'Move Validation');
+
+    await this.runTest('En passant capture validation', () => {
+      const client = this.createMockWebChessClient();
+      const gameState = client.createInitialGameState();
+      
+      // Set up en passant scenario
+      gameState.board[3][4] = { type: 'pawn', color: 'white' };
+      gameState.board[3][5] = { type: 'pawn', color: 'black' };
+      gameState.enPassantTarget = { row: 2, col: 5 };
+      
+      client.gameState = gameState;
+      
+      // Test en passant capture
+      const enPassantMove = {
+        from: { row: 3, col: 4 },
+        to: { row: 2, col: 5 }
+      };
+      
+      const isValid = client.isValidMoveObject(enPassantMove);
+      if (!isValid) {
+        throw new Error('En passant capture should be valid when conditions are met');
+      }
+    }, 'Move Validation');
+
+    await this.runTest('Checkmate detection - Scholar\'s Mate', () => {
+      const client = this.createMockWebChessClient();
+      const gameState = client.createInitialGameState();
+      
+      // Set up Scholar's Mate position
+      gameState.board[6][4] = null; // Remove e2 pawn
+      gameState.board[4][4] = { type: 'pawn', color: 'white' };
+      gameState.board[5][5] = { type: 'bishop', color: 'white' };
+      gameState.board[3][7] = { type: 'queen', color: 'white' };
+      gameState.board[1][5] = null; // Remove f7 pawn
+      
+      client.gameState = gameState;
+      client.updateCheckStatus();
+      
+      if (gameState.status !== 'checkmate') {
+        throw new Error('Scholar\'s Mate should result in checkmate');
+      }
+    }, 'Move Validation');
+
+    await this.runTest('Stalemate detection', () => {
+      const client = this.createMockWebChessClient();
+      const gameState = {
+        board: Array(8).fill(null).map(() => Array(8).fill(null)),
+        currentTurn: 'black',
+        status: 'active',
+        moveHistory: [],
+        castlingRights: { whiteKingSide: false, whiteQueenSide: false, blackKingSide: false, blackQueenSide: false },
+        enPassantTarget: null,
+        fiftyMoveRule: 0,
+        positionHistory: [],
+        competitiveRules: { fiftyMoveRule: true, threefoldRepetition: true, insufficientMaterial: true }
+      };
+      
+      // Set up stalemate position - King and Queen vs King
+      gameState.board[0][0] = { type: 'king', color: 'black' };
+      gameState.board[1][2] = { type: 'queen', color: 'white' };
+      gameState.board[2][1] = { type: 'king', color: 'white' };
+      
+      client.gameState = gameState;
+      client.updateCheckStatus();
+      
+      if (gameState.status !== 'stalemate') {
+        throw new Error('Position should result in stalemate');
+      }
+    }, 'Move Validation');
+
+    await this.runTest('Fifty-move rule draw', () => {
+      const client = this.createMockWebChessClient();
+      const gameState = client.createInitialGameState();
+      
+      // Set fifty-move counter to 100 (50 moves by each player)
+      gameState.fiftyMoveRule = 100;
+      
+      client.gameState = gameState;
+      client.checkDrawConditions();
+      
+      if (gameState.status !== 'draw') {
+        throw new Error('Fifty-move rule should result in draw');
+      }
+    }, 'Move Validation');
+
+    await this.runTest('Threefold repetition draw', () => {
+      const client = this.createMockWebChessClient();
+      const gameState = client.createInitialGameState();
+      
+      // Simulate threefold repetition
+      const positionKey = 'test-position';
+      gameState.positionHistory = [positionKey, positionKey, positionKey];
+      
+      client.gameState = gameState;
+      client.getPositionKey = () => positionKey;
+      client.checkDrawConditions();
+      
+      if (gameState.status !== 'draw') {
+        throw new Error('Threefold repetition should result in draw');
+      }
+    }, 'Move Validation');
+
+    await this.runTest('Insufficient material draw - King vs King', () => {
+      const client = this.createMockWebChessClient();
+      const gameState = {
+        board: Array(8).fill(null).map(() => Array(8).fill(null)),
+        currentTurn: 'white',
+        status: 'active',
+        moveHistory: [],
+        castlingRights: { whiteKingSide: false, whiteQueenSide: false, blackKingSide: false, blackQueenSide: false },
+        enPassantTarget: null,
+        fiftyMoveRule: 0,
+        positionHistory: [],
+        competitiveRules: { fiftyMoveRule: true, threefoldRepetition: true, insufficientMaterial: true }
+      };
+      
+      // Set up King vs King
+      gameState.board[0][0] = { type: 'king', color: 'black' };
+      gameState.board[7][7] = { type: 'king', color: 'white' };
+      
+      client.gameState = gameState;
+      client.checkDrawConditions();
+      
+      if (gameState.status !== 'draw') {
+        throw new Error('King vs King should result in draw');
+      }
+    }, 'Move Validation');
+
+    await this.runTest('Algebraic notation formatting', () => {
+      const client = this.createMockWebChessClient();
+      const gameState = client.createInitialGameState();
+      
+      // Test pawn move
+      const pawnMove = { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } };
+      gameState.board[4][4] = { type: 'pawn', color: 'white' };
+      client.gameState = gameState;
+      
+      const formatted = client.formatMove(pawnMove);
+      if (formatted !== 'e4') {
+        throw new Error(`Expected 'e4', got '${formatted}'`);
+      }
+    }, 'Move Validation');
   }
 
   async testBoardRendering() {
@@ -1728,7 +1916,21 @@ class ComprehensiveUnitTests {
           status: 'active',
           winner: null,
           moveHistory: [],
-          inCheck: false
+          inCheck: false,
+          castlingRights: {
+            whiteKingSide: true,
+            whiteQueenSide: true,
+            blackKingSide: true,
+            blackQueenSide: true
+          },
+          enPassantTarget: null,
+          fiftyMoveRule: 0,
+          positionHistory: [],
+          competitiveRules: {
+            fiftyMoveRule: true,
+            threefoldRepetition: true,
+            insufficientMaterial: true
+          }
         };
       },
       makeAIMove: function() {
@@ -1760,6 +1962,77 @@ class ComprehensiveUnitTests {
             }
           }
         }
+      },
+      updateCheckStatus: function() {
+        // Mock implementation for testing
+        if (this.gameState.status === 'active') {
+          // Simplified check for testing purposes
+          this.gameState.inCheck = false;
+        }
+      },
+      checkDrawConditions: function() {
+        // Check fifty-move rule
+        if (this.gameState.competitiveRules.fiftyMoveRule && this.gameState.fiftyMoveRule >= 100) {
+          this.gameState.status = 'draw';
+          this.gameState.winner = null;
+          return;
+        }
+        
+        // Check threefold repetition
+        if (this.gameState.competitiveRules.threefoldRepetition && this.getPositionKey) {
+          const currentPosition = this.getPositionKey();
+          const occurrences = this.gameState.positionHistory.filter(pos => pos === currentPosition).length;
+          if (occurrences >= 3) {
+            this.gameState.status = 'draw';
+            this.gameState.winner = null;
+            return;
+          }
+        }
+        
+        // Check insufficient material
+        if (this.gameState.competitiveRules.insufficientMaterial && this.isInsufficientMaterial()) {
+          this.gameState.status = 'draw';
+          this.gameState.winner = null;
+          return;
+        }
+      },
+      isInsufficientMaterial: function() {
+        const whitePieces = [];
+        const blackPieces = [];
+        
+        for (let row = 0; row < 8; row++) {
+          for (let col = 0; col < 8; col++) {
+            const piece = this.gameState.board[row][col];
+            if (piece) {
+              if (piece.color === 'white') {
+                whitePieces.push(piece.type);
+              } else {
+                blackPieces.push(piece.type);
+              }
+            }
+          }
+        }
+        
+        // King vs King
+        if (whitePieces.length === 1 && blackPieces.length === 1) {
+          return true;
+        }
+        
+        return false;
+      },
+      formatMove: function(move) {
+        const piece = this.gameState.board[move.to.row][move.to.col];
+        if (!piece) return 'unknown';
+        
+        // Handle castling
+        if (piece.type === 'king' && Math.abs(move.to.col - move.from.col) === 2) {
+          return move.to.col > move.from.col ? 'O-O' : 'O-O-O';
+        }
+        
+        const pieceSymbol = piece.type === 'pawn' ? '' : piece.type.toUpperCase()[0];
+        const toSquare = String.fromCharCode(97 + move.to.col) + (8 - move.to.row);
+        
+        return `${pieceSymbol}${toSquare}`;
       },
       practiceMode: 'ai-white',
       gameState: { currentTurn: 'white', board: Array(8).fill(null).map(() => Array(8).fill(null)), status: 'active' },
