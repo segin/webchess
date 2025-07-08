@@ -1963,12 +1963,68 @@ class ComprehensiveUnitTests {
           }
         }
       },
-      updateCheckStatus: function() {
-        // Mock implementation for testing
-        if (this.gameState.status === 'active') {
-          // Simplified check for testing purposes
-          this.gameState.inCheck = false;
+      hasLegalMoves: function(color) {
+        for (let row = 0; row < 8; row++) {
+          for (let col = 0; col < 8; col++) {
+            const piece = this.gameState.board[row][col];
+            if (piece && piece.color === color) {
+              const validMoves = this.getValidMovesForPiece(row, col);
+              if (validMoves.length > 0) {
+                return true;
+              }
+            }
+          }
         }
+        return false;
+      },
+      getValidMovesForPiece: function(row, col) {
+        const moves = [];
+        const piece = this.gameState.board[row][col];
+        
+        if (!piece) return moves;
+        
+        for (let toRow = 0; toRow < 8; toRow++) {
+          for (let toCol = 0; toCol < 8; toCol++) {
+            const move = { from: { row, col }, to: { row: toRow, col: toCol } };
+            if (this.isValidMoveObject(move)) {
+              moves.push({ row: toRow, col: toCol });
+            }
+          }
+        }
+        
+        return moves;
+      },
+      showGameEndScreen: function(status, winner) {
+        // Mock implementation for testing
+        console.log('Game ended:', status, winner);
+      },
+      updateCheckStatus: function() {
+        // Mock implementation for testing with proper checkmate/stalemate logic
+        if (this.gameState.status === 'active') {
+          const currentPlayerInCheck = this.isKingInCheck ? this.isKingInCheck(this.gameState.currentTurn) : false;
+          const hasLegalMoves = this.hasLegalMoves(this.gameState.currentTurn);
+          
+          if (!hasLegalMoves) {
+            if (currentPlayerInCheck) {
+              // Checkmate
+              this.gameState.status = 'checkmate';
+              this.gameState.winner = this.gameState.currentTurn === 'white' ? 'black' : 'white';
+              this.showGameEndScreen('checkmate', this.gameState.winner);
+            } else {
+              // Stalemate
+              this.gameState.status = 'stalemate';
+              this.gameState.winner = null;
+              this.showGameEndScreen('stalemate', null);
+            }
+            return;
+          }
+          
+          this.gameState.inCheck = currentPlayerInCheck;
+        }
+      },
+      isKingInCheck: function(color) {
+        // Mock implementation - simplified
+        return false;
       },
       checkDrawConditions: function() {
         // Check fifty-move rule

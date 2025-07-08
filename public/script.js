@@ -14,6 +14,9 @@ class WebChessClient {
     this.aiMoveDelay = 1000; // 1 second delay for AI moves
     this.pendingPromotionMove = null;
     
+    // Make this instance globally accessible for testing
+    window.webChessClient = this;
+    
     this.initializeSocket();
     this.initializeEventListeners();
     this.setupSocketListeners();
@@ -362,10 +365,10 @@ class WebChessClient {
         this.playerColor = 'both';
         break;
       case 'ai-white':
-        this.playerColor = 'black'; // Human plays black when AI plays white
+        this.playerColor = 'white'; // Human plays white when AI plays black
         break;
       case 'ai-black':
-        this.playerColor = 'white'; // Human plays white when AI plays black
+        this.playerColor = 'black'; // Human plays black when AI plays white
         break;
       case 'ai-vs-ai':
         this.playerColor = 'spectator';
@@ -661,8 +664,8 @@ class WebChessClient {
     // Practice mode logic
     if (this.practiceMode === 'self') return true;
     if (this.practiceMode === 'ai-vs-ai') return false;
-    if (this.practiceMode === 'ai-white') return this.gameState.currentTurn === 'black'; // Human plays black
-    if (this.practiceMode === 'ai-black') return this.gameState.currentTurn === 'white'; // Human plays white
+    if (this.practiceMode === 'ai-white') return this.gameState.currentTurn === 'white'; // Human plays white
+    if (this.practiceMode === 'ai-black') return this.gameState.currentTurn === 'black'; // Human plays black
     return true; // Default to allowing moves
   }
   
@@ -675,8 +678,8 @@ class WebChessClient {
     // Practice mode logic
     if (this.practiceMode === 'self') return true;
     if (this.practiceMode === 'ai-vs-ai') return false;
-    if (this.practiceMode === 'ai-white') return piece.color === 'black'; // Human plays black
-    if (this.practiceMode === 'ai-black') return piece.color === 'white'; // Human plays white
+    if (this.practiceMode === 'ai-white') return piece.color === 'white'; // Human plays white
+    if (this.practiceMode === 'ai-black') return piece.color === 'black'; // Human plays black
     return true; // Default to allowing moves
   }
 
@@ -1019,9 +1022,9 @@ class WebChessClient {
       case 'ai-vs-ai':
         return true;
       case 'ai-white':
-        return this.gameState.currentTurn === 'white';
+        return this.gameState.currentTurn === 'black'; // AI plays black when human plays white
       case 'ai-black':
-        return this.gameState.currentTurn === 'black';
+        return this.gameState.currentTurn === 'white'; // AI plays white when human plays black
       default:
         return false;
     }

@@ -15,6 +15,7 @@ class DynamicTestRunner {
     this.clientSuite = new WebChessTestSuite();
     this.logicSuite = new GameLogicTestSuite();
     this.unitSuite = new ComprehensiveUnitTests();
+    this.integrationSuite = typeof IntegrationTests === 'function' ? new IntegrationTests() : null;
   }
 
   // Create the test UI overlay
@@ -295,7 +296,7 @@ Total Coverage: 130+ tests validating all aspects of WebChess.
     this.setRunning(true);
     
     try {
-      await this.runTestSuite('Integration Tests', () => this.runBasicIntegrationTests());
+      await this.runTestSuite('Integration Tests', () => this.runDOMIntegrationTests());
     } finally {
       this.setRunning(false);
     }
@@ -371,6 +372,45 @@ Total Coverage: 130+ tests validating all aspects of WebChess.
 
     this.appendResults(`\nIntegration Tests: ${passed} passed, ${failed} failed`);
     return failed === 0;
+  }
+
+  async runDOMIntegrationTests() {
+    this.appendResults('\n🔄 DOM Integration Tests:');
+    
+    if (typeof IntegrationTests !== 'function') {
+      this.appendResults('❌ IntegrationTests class not found');
+      return false;
+    }
+    
+    // Create integration test suite
+    const integrationSuite = new IntegrationTests();
+    
+    // Override console.log to capture output
+    const originalLog = console.log;
+    const logBuffer = [];
+    console.log = (...args) => {
+      logBuffer.push(args.join(' '));
+      originalLog(...args);
+    };
+    
+    try {
+      // Run the integration tests
+      await integrationSuite.runAllTests();
+      
+      // Display captured output
+      logBuffer.forEach(line => {
+        this.appendResults(line);
+      });
+      
+      // Return success based on test results
+      return integrationSuite.failedTests === 0;
+    } catch (error) {
+      this.appendResults(`❌ Integration test execution failed: ${error.message}`);
+      return false;
+    } finally {
+      // Restore console.log
+      console.log = originalLog;
+    }
   }
 
   async runAllTests() {
