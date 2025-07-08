@@ -51,30 +51,41 @@ curl http://localhost:3000
 
 ### Adding Nginx (Recommended)
 
+**Automated Setup (Recommended):**
+
 ```bash
 # Install nginx
 sudo apt install nginx
 
-# Copy WebChess nginx configuration
-sudo cp /opt/webchess/deployment/nginx.conf /etc/nginx/sites-available/webchess
+# Set up WebChess on a subdomain (e.g., chess.yourdomain.com)
+sudo /opt/webchess/deployment/setup-nginx.sh -d yourdomain.com
 
-# Edit the configuration to set your domain
+# For custom subdomain:
+sudo /opt/webchess/deployment/setup-nginx.sh -d yourdomain.com -s games
+```
+
+**Manual Setup:**
+
+```bash
+# Install nginx
+sudo apt install nginx
+
+# Copy and customize nginx configuration
+sudo cp /opt/webchess/deployment/nginx-subdomain.conf /etc/nginx/sites-available/webchess
+
+# Edit the configuration to set your subdomain and domain
 sudo nano /etc/nginx/sites-available/webchess
-# Change: server_name your-domain.com www.your-domain.com;
-# To:     server_name yourdomain.com www.yourdomain.com;
+# Change: SUBDOMAIN.DOMAIN.COM
+# To:     chess.yourdomain.com (or your preferred subdomain)
 
 # Enable the site
 sudo ln -s /etc/nginx/sites-available/webchess /etc/nginx/sites-enabled/
 
-# Remove default site (optional)
-sudo rm -f /etc/nginx/sites-enabled/default
-
 # Test configuration
 sudo nginx -t
 
-# Start and enable nginx
-sudo systemctl enable nginx
-sudo systemctl restart nginx
+# Reload nginx
+sudo systemctl reload nginx
 ```
 
 ### SSL Certificate (Optional but Recommended)
@@ -83,8 +94,8 @@ sudo systemctl restart nginx
 # Install certbot for Let's Encrypt
 sudo apt install certbot python3-certbot-nginx
 
-# Get SSL certificate (replace with your domain)
-sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+# Get SSL certificate for your subdomain
+sudo certbot --nginx -d chess.yourdomain.com
 
 # Verify auto-renewal
 sudo certbot renew --dry-run

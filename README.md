@@ -110,13 +110,17 @@ npm start
 
 ### Nginx Integration
 
-Copy the provided nginx configuration:
+Set up WebChess on a subdomain (works with existing sites):
 
 ```bash
-sudo cp deployment/nginx.conf /etc/nginx/sites-available/webchess
-sudo ln -s /etc/nginx/sites-available/webchess /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl restart nginx
+# Automated setup for subdomain
+sudo deployment/setup-nginx.sh -d yourdomain.com
+
+# Custom subdomain
+sudo deployment/setup-nginx.sh -d yourdomain.com -s games
 ```
+
+This creates `chess.yourdomain.com` (or custom subdomain) without affecting existing nginx sites.
 
 ### Service Management
 
