@@ -169,12 +169,17 @@
         <button id="host-btn">Host Game</button>
         <button id="join-btn">Join Game</button>
         <button id="practice-btn">Practice</button>
-        <button id="resume-btn">Resume Game</button>
+        <div id="resume-section" class="resume-section">
+            <button id="resume-btn">Resume Game</button>
+            <p id="resume-info">Resume info</p>
+        </div>
         <div id="main-menu" class="screen"></div>
         
         <!-- Game screen elements -->
         <div id="game-screen" class="screen"></div>
         <div id="chess-board"></div>
+        <button id="resign-btn">Resign</button>
+        <button id="leave-game-btn">Leave Game</button>
         
         <!-- Modal elements -->
         <div id="promotion-modal" class="modal">
@@ -199,7 +204,10 @@
         <!-- Mobile chat elements -->
         <div id="mobile-chat-overlay" class="mobile-chat-overlay">
             <div class="mobile-chat-card">
-                <div class="mobile-chat-header"></div>
+                <div class="mobile-chat-header">
+                    <h3>Chat</h3>
+                    <button id="mobile-chat-close">×</button>
+                </div>
             </div>
         </div>
         <input id="mobile-chat-input" maxlength="200">
