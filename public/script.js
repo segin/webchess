@@ -806,6 +806,12 @@ class WebChessClient {
   }
 
   makePracticeMove(move) {
+    // Validate the move before executing
+    if (!this.isValidMove(move)) {
+      this.showInvalidMoveMessage();
+      return;
+    }
+    
     // Check for pawn promotion before making the move
     const piece = this.gameState.board[move.from.row][move.from.col];
     const isPromotion = piece && piece.type === 'pawn' && 
@@ -819,17 +825,31 @@ class WebChessClient {
       return;
     }
     
-    // Use the chess game engine for proper move validation and execution
-    const chessGame = this.createChessGameFromState();
-    const result = chessGame.makeMove(move);
+    // Execute the move
+    this.executeMove(move);
+  }
+  
+  executeMove(move) {
+    // Make the move on the board
+    const piece = this.gameState.board[move.from.row][move.from.col];
+    this.gameState.board[move.to.row][move.to.col] = piece;
+    this.gameState.board[move.from.row][move.from.col] = null;
     
-    if (result.success) {
-      this.gameState = chessGame.getGameState();
-      this.updateGameBoard();
-      this.addMoveToHistory(move);
+    // Update turn
+    this.gameState.currentTurn = this.gameState.currentTurn === 'white' ? 'black' : 'white';
+    this.gameState.moveHistory.push(move);
+    
+    // Update check status
+    this.updateCheckStatus();
+    
+    this.updateGameBoard();
+    this.addMoveToHistory(move);
+    
+    // Save session after successful move
+    this.saveSessionToStorage();
       
-      // Save session after successful move
-      this.saveSessionToStorage();
+      // Update check status
+      this.updateCheckStatus();
       
       // Check if AI should make next move
       if (this.shouldAIMove() && this.gameState.status === 'active') {
@@ -1011,33 +1031,192 @@ class WebChessClient {
     // Execute the promotion move
     const move = this.pendingPromotionMove;
     
-    // Make the basic move first
-    const chessGame = this.createChessGameFromState();
-    const result = chessGame.makeMove(move);
+    // Execute the basic move
+    this.executeMove(move);
     
-    if (result.success) {
-      // Get the piece that was moved (it's now at the destination)
-      const promotedPiece = this.gameState.board[move.to.row][move.to.col];
-      this.gameState.board[move.to.row][move.to.col] = {
-        type: pieceType,
-        color: promotedPiece.color
-      };
-      
-      // Update turn
-      this.gameState.currentTurn = this.gameState.currentTurn === 'white' ? 'black' : 'white';
-      this.gameState.moveHistory.push(move);
-      
-      this.updateGameBoard();
-      this.addMoveToHistory(move);
-      this.saveSessionToStorage();
-      
-      // Check if AI should make next move
-      if (this.shouldAIMove() && this.gameState.status === 'active') {
-        setTimeout(() => this.makeAIMove(), this.aiMoveDelay);
-      }
+    // Replace the pawn with the selected piece
+    const promotedPiece = this.gameState.board[move.to.row][move.to.col];
+    this.gameState.board[move.to.row][move.to.col] = {
+      type: pieceType,
+      color: promotedPiece.color
+    };
+    
+    this.updateGameBoard();
+    
+    // Check if AI should make next move
+    if (this.shouldAIMove() && this.gameState.status === 'active') {
+      setTimeout(() => this.makeAIMove(), this.aiMoveDelay);
     }
     
     this.pendingPromotionMove = null;
+  }
+  
+  // Check validation methods
+  isValidMove(move) {
+    const piece = this.gameState.board[move.from.row][move.from.col];
+    if (!piece || piece.color !== this.gameState.currentTurn) return false;
+    
+    // Check if the move is a valid piece move
+    if (!this.isValidPieceMove(move, piece)) return false;
+    
+    // Check if the move would leave the king in check
+    if (this.wouldLeaveKingInCheck(move)) return false;
+    
+    return true;
+  }
+  
+  isValidPieceMove(move, piece) {
+    const dx = Math.abs(move.to.col - move.from.col);
+    const dy = Math.abs(move.to.row - move.from.row);
+    const target = this.gameState.board[move.to.row][move.to.col];
+    
+    // Can't capture own piece
+    if (target && target.color === piece.color) return false;
+    
+    switch (piece.type) {
+      case 'pawn':
+        return this.isValidPawnMove(move, piece);
+      case 'rook':
+        return (dx === 0 || dy === 0) && this.isPathClear(move);
+      case 'bishop':
+        return dx === dy && this.isPathClear(move);
+      case 'queen':
+        return (dx === 0 || dy === 0 || dx === dy) && this.isPathClear(move);
+      case 'knight':
+        return (dx === 2 && dy === 1) || (dx === 1 && dy === 2);
+      case 'king':
+        return dx <= 1 && dy <= 1;
+      default:
+        return false;
+    }
+  }
+  
+  isValidPawnMove(move, piece) {
+    const direction = piece.color === 'white' ? -1 : 1;
+    const startRow = piece.color === 'white' ? 6 : 1;
+    const dy = move.to.row - move.from.row;
+    const dx = Math.abs(move.to.col - move.from.col);
+    const target = this.gameState.board[move.to.row][move.to.col];
+    
+    // Forward move
+    if (dx === 0) {
+      if (target) return false; // Blocked
+      if (dy === direction) return true; // One square forward
+      if (dy === 2 * direction && move.from.row === startRow) return true; // Two squares from start
+      return false;
+    }
+    
+    // Diagonal capture
+    if (dx === 1 && dy === direction) {
+      return target && target.color !== piece.color;
+    }
+    
+    return false;
+  }
+  
+  isPathClear(move) {
+    const dx = Math.sign(move.to.col - move.from.col);
+    const dy = Math.sign(move.to.row - move.from.row);
+    let row = move.from.row + dy;
+    let col = move.from.col + dx;
+    
+    while (row !== move.to.row || col !== move.to.col) {
+      if (this.gameState.board[row][col]) return false;
+      row += dy;
+      col += dx;
+    }
+    
+    return true;
+  }
+  
+  wouldLeaveKingInCheck(move) {
+    // Make a temporary move to test
+    const originalPiece = this.gameState.board[move.to.row][move.to.col];
+    const movingPiece = this.gameState.board[move.from.row][move.from.col];
+    
+    this.gameState.board[move.to.row][move.to.col] = movingPiece;
+    this.gameState.board[move.from.row][move.from.col] = null;
+    
+    const inCheck = this.isKingInCheck(movingPiece.color);
+    
+    // Restore the board
+    this.gameState.board[move.from.row][move.from.col] = movingPiece;
+    this.gameState.board[move.to.row][move.to.col] = originalPiece;
+    
+    return inCheck;
+  }
+  
+  isKingInCheck(color) {
+    const kingPos = this.findKing(color);
+    if (!kingPos) return false;
+    
+    const opponentColor = color === 'white' ? 'black' : 'white';
+    
+    // Check if any opponent piece can attack the king
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = this.gameState.board[row][col];
+        if (piece && piece.color === opponentColor) {
+          const move = { from: { row, col }, to: kingPos };
+          if (this.isValidPieceMove(move, piece)) {
+            return true;
+          }
+        }
+      }
+    }
+    
+    return false;
+  }
+  
+  findKing(color) {
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = this.gameState.board[row][col];
+        if (piece && piece.type === 'king' && piece.color === color) {
+          return { row, col };
+        }
+      }
+    }
+    return null;
+  }
+  
+  updateCheckStatus() {
+    const whiteInCheck = this.isKingInCheck('white');
+    const blackInCheck = this.isKingInCheck('black');
+    
+    this.gameState.inCheck = whiteInCheck || blackInCheck;
+    
+    // Update UI check indicator
+    const checkIndicator = document.getElementById('check-indicator');
+    if (this.gameState.inCheck) {
+      checkIndicator.classList.remove('hidden');
+      checkIndicator.textContent = `${this.gameState.currentTurn === 'white' ? 'WHITE' : 'BLACK'} IN CHECK!`;
+    } else {
+      checkIndicator.classList.add('hidden');
+    }
+  }
+  
+  showInvalidMoveMessage() {
+    // Show temporary message for invalid moves
+    const message = document.createElement('div');
+    message.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #ff4444;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 5px;
+      z-index: 10000;
+      font-weight: bold;
+    `;
+    message.textContent = this.gameState.inCheck ? 'Must move out of check!' : 'Invalid move!';
+    document.body.appendChild(message);
+    
+    setTimeout(() => {
+      document.body.removeChild(message);
+    }, 2000);
   }
   
   sendChatMessage() {
@@ -1351,6 +1530,122 @@ class ChessAI {
     score += Math.random() * 10;
     
     return score;
+  }
+  
+  // Check validation methods for AI
+  isKingInCheck(gameState, color) {
+    const kingPos = this.findKing(gameState, color);
+    if (!kingPos) return false;
+    
+    const opponentColor = color === 'white' ? 'black' : 'white';
+    
+    // Check if any opponent piece can attack the king
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = gameState.board[row][col];
+        if (piece && piece.color === opponentColor) {
+          const move = { from: { row, col }, to: kingPos };
+          if (this.isValidPieceMove(gameState, move, piece)) {
+            return true;
+          }
+        }
+      }
+    }
+    
+    return false;
+  }
+  
+  findKing(gameState, color) {
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = gameState.board[row][col];
+        if (piece && piece.type === 'king' && piece.color === color) {
+          return { row, col };
+        }
+      }
+    }
+    return null;
+  }
+  
+  wouldLeaveKingInCheck(gameState, move, color) {
+    // Make a temporary move to test
+    const originalPiece = gameState.board[move.to.row][move.to.col];
+    const movingPiece = gameState.board[move.from.row][move.from.col];
+    
+    gameState.board[move.to.row][move.to.col] = movingPiece;
+    gameState.board[move.from.row][move.from.col] = null;
+    
+    const inCheck = this.isKingInCheck(gameState, color);
+    
+    // Restore the board
+    gameState.board[move.from.row][move.from.col] = movingPiece;
+    gameState.board[move.to.row][move.to.col] = originalPiece;
+    
+    return inCheck;
+  }
+  
+  isValidPieceMove(gameState, move, piece) {
+    const dx = Math.abs(move.to.col - move.from.col);
+    const dy = Math.abs(move.to.row - move.from.row);
+    const target = gameState.board[move.to.row][move.to.col];
+    
+    // Can't capture own piece
+    if (target && target.color === piece.color) return false;
+    
+    switch (piece.type) {
+      case 'pawn':
+        return this.isValidPawnMove(gameState, move, piece);
+      case 'rook':
+        return (dx === 0 || dy === 0) && this.isPathClear(gameState, move);
+      case 'bishop':
+        return dx === dy && this.isPathClear(gameState, move);
+      case 'queen':
+        return (dx === 0 || dy === 0 || dx === dy) && this.isPathClear(gameState, move);
+      case 'knight':
+        return (dx === 2 && dy === 1) || (dx === 1 && dy === 2);
+      case 'king':
+        return dx <= 1 && dy <= 1;
+      default:
+        return false;
+    }
+  }
+  
+  isValidPawnMove(gameState, move, piece) {
+    const direction = piece.color === 'white' ? -1 : 1;
+    const startRow = piece.color === 'white' ? 6 : 1;
+    const dy = move.to.row - move.from.row;
+    const dx = Math.abs(move.to.col - move.from.col);
+    const target = gameState.board[move.to.row][move.to.col];
+    
+    // Forward move
+    if (dx === 0) {
+      if (target) return false; // Blocked
+      if (dy === direction) return true; // One square forward
+      if (dy === 2 * direction && move.from.row === startRow) return true; // Two squares from start
+      return false;
+    }
+    
+    // Diagonal capture
+    if (dx === 1 && dy === direction) {
+      return target && target.color !== piece.color;
+    }
+    
+    return false;
+  }
+  
+  isPathClear(gameState, move) {
+    const dx = Math.sign(move.to.col - move.from.col);
+    const dy = Math.sign(move.to.row - move.from.row);
+    let row = move.from.row + dy;
+    let col = move.from.col + dx;
+    
+    while (row !== move.to.row || col !== move.to.col) {
+      if (gameState.board[row][col]) return false;
+      row += dy;
+      col += dx;
+    }
+    
+    return true;
   }
 }
 
