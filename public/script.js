@@ -953,6 +953,7 @@ class WebChessClient {
   resignGame() {
     if (confirm('Are you sure you want to resign?')) {
       if (this.isPracticeMode) {
+        this.clearGameSession(); // Clear session for practice mode too
         this.showMainMenu();
       } else {
         this.socket.emit('resign', { gameId: this.currentGameId });

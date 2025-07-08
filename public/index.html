@@ -285,9 +285,21 @@
                 console.log(`Test file loaded: ${file} (${loadedTestFiles}/${totalTestFiles})`);
                 if (loadedTestFiles === totalTestFiles) {
                     console.log('All test files loaded');
-                    // Check if test runner is available
+                    // Check if test runner is available and add click handler
                     setTimeout(() => {
                         console.log('DynamicTestRunner available:', typeof DynamicTestRunner);
+                        
+                        // Add direct click handler for test button
+                        const testBtn = document.getElementById('run-tests-btn');
+                        if (testBtn && typeof DynamicTestRunner === 'function') {
+                            console.log('Adding direct test button click handler');
+                            testBtn.addEventListener('click', (e) => {
+                                console.log('Test button clicked - creating test runner');
+                                e.preventDefault();
+                                const testRunner = new DynamicTestRunner();
+                                testRunner.createTestUI();
+                            });
+                        }
                     }, 100);
                 }
             };
