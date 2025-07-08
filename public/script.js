@@ -409,8 +409,12 @@ class WebChessClient {
     const row = parseInt(square.dataset.row);
     const col = parseInt(square.dataset.col);
     
-    // Don't allow clicks in AI vs AI mode or when it's AI's turn
-    if (this.practiceMode === 'ai-vs-ai' || !this.canPlayerMove()) {
+    // Don't allow clicks in AI vs AI mode or when it's not the player's turn
+    if (this.isPracticeMode && this.practiceMode === 'ai-vs-ai') {
+      return;
+    }
+    
+    if (!this.canPlayerMove()) {
       return;
     }
     
@@ -429,26 +433,48 @@ class WebChessClient {
     
     const piece = this.gameState.board[row][col];
     if (piece && piece.color === this.gameState.currentTurn) {
-      if (this.canPlayerMovePiece(piece)) {
+      let canSelect = false;
+      
+      if (this.isPracticeMode) {
+        // Practice mode: use the practice-specific logic
+        canSelect = this.canPlayerMovePiece(piece);
+      } else {
+        // Multiplayer mode: can select if it's the player's piece color
+        canSelect = (piece.color === this.playerColor);
+      }
+      
+      if (canSelect) {
         this.selectSquare(row, col);
       }
     }
   }
   
   canPlayerMove() {
+    // In multiplayer mode, check if it's the player's turn
+    if (!this.isPracticeMode) {
+      return this.gameState.currentTurn === this.playerColor;
+    }
+    
+    // Practice mode logic
     if (this.practiceMode === 'self') return true;
     if (this.practiceMode === 'ai-vs-ai') return false;
     if (this.practiceMode === 'ai-white') return this.gameState.currentTurn === 'white';
     if (this.practiceMode === 'ai-black') return this.gameState.currentTurn === 'black';
-    return false;
+    return true; // Default to allowing moves
   }
   
   canPlayerMovePiece(piece) {
+    // In multiplayer mode, check if the piece belongs to the player
+    if (!this.isPracticeMode) {
+      return piece.color === this.playerColor;
+    }
+    
+    // Practice mode logic
     if (this.practiceMode === 'self') return true;
     if (this.practiceMode === 'ai-vs-ai') return false;
     if (this.practiceMode === 'ai-white') return piece.color === 'white';
     if (this.practiceMode === 'ai-black') return piece.color === 'black';
-    return false;
+    return true; // Default to allowing moves
   }
 
   selectSquare(row, col) {
