@@ -750,9 +750,13 @@ class WebChessClient {
       console.log(`Checking one forward: ${oneForward}`);
       if (oneForward >= 0 && oneForward < 8) {
         console.log(`One forward is valid, calling isValidMoveForPiece(${row},${col} -> ${oneForward},${col})`);
-        if (this.isValidMoveForPiece(piece, row, col, oneForward, col)) {
+        const oneForwardValid = this.isValidMoveForPiece(piece, row, col, oneForward, col);
+        console.log('One forward result:', oneForwardValid);
+        if (oneForwardValid) {
           console.log('One forward move added');
           moves.push({ row: oneForward, col });
+        } else {
+          console.log('One forward move rejected');
         }
       }
       
@@ -762,9 +766,13 @@ class WebChessClient {
         console.log(`Checking two forward: ${twoForward}`);
         if (twoForward >= 0 && twoForward < 8) {
           console.log(`Two forward is valid, calling isValidMoveForPiece(${row},${col} -> ${twoForward},${col})`);
-          if (this.isValidMoveForPiece(piece, row, col, twoForward, col)) {
+          const twoForwardValid = this.isValidMoveForPiece(piece, row, col, twoForward, col);
+          console.log('Two forward result:', twoForwardValid);
+          if (twoForwardValid) {
             console.log('Two forward move added');
             moves.push({ row: twoForward, col });
+          } else {
+            console.log('Two forward move rejected');
           }
         }
       }
@@ -811,7 +819,14 @@ class WebChessClient {
     switch (piece.type) {
       case 'pawn':
         console.log('Calling pawn validation');
-        return this.isValidPawnMove(piece, fromRow, fromCol, toRow, toCol);
+        try {
+          const result = this.isValidPawnMove(piece, fromRow, fromCol, toRow, toCol);
+          console.log('Pawn validation result:', result);
+          return result;
+        } catch (error) {
+          console.error('Error in pawn validation:', error);
+          return false;
+        }
       case 'rook':
         return this.isValidRookMove(fromRow, fromCol, toRow, toCol);
       case 'knight':
