@@ -820,7 +820,8 @@ class WebChessClient {
       case 'pawn':
         console.log('Calling pawn validation');
         try {
-          const result = this.isValidPawnMove(piece, fromRow, fromCol, toRow, toCol);
+          const move = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
+          const result = this.isValidPawnMove(move, piece);
           console.log('Pawn validation result:', result);
           return result;
         } catch (error) {
@@ -843,49 +844,6 @@ class WebChessClient {
     }
   }
 
-  isValidPawnMove(piece, fromRow, fromCol, toRow, toCol) {
-    console.log('*** ENTERED isValidPawnMove method ***');
-    console.log('Arguments:', { piece, fromRow, fromCol, toRow, toCol });
-    
-    const direction = piece.color === 'white' ? -1 : 1;
-    const startRow = piece.color === 'white' ? 6 : 1;
-    const rowDiff = toRow - fromRow;
-    const colDiff = Math.abs(toCol - fromCol);
-    
-    console.log(`Checking pawn move: ${piece.color} from ${fromRow},${fromCol} to ${toRow},${toCol}`);
-    console.log(`Direction: ${direction}, startRow: ${startRow}, rowDiff: ${rowDiff}, colDiff: ${colDiff}`);
-    console.log(`Target square content:`, this.gameState.board[toRow][toCol]);
-    
-    // Forward move
-    if (colDiff === 0) {
-      if (rowDiff === direction && !this.gameState.board[toRow][toCol]) {
-        console.log(`Pawn one-square move valid: ${fromRow},${fromCol} -> ${toRow},${toCol}`);
-        return true;
-      }
-      if (fromRow === startRow && rowDiff === 2 * direction && !this.gameState.board[toRow][toCol]) {
-        console.log(`Pawn two-square move valid: ${fromRow},${fromCol} -> ${toRow},${toCol}`);
-        return true;
-      }
-      console.log(`Forward move blocked or invalid`);
-    }
-    
-    // Diagonal capture
-    if (colDiff === 1 && rowDiff === direction) {
-      // Regular capture
-      if (this.gameState.board[toRow][toCol] !== null) {
-        return true;
-      }
-      
-      // En passant capture
-      if (this.gameState.enPassantTarget &&
-          this.gameState.enPassantTarget.row === toRow &&
-          this.gameState.enPassantTarget.col === toCol) {
-        return true;
-      }
-    }
-    
-    return false;
-  }
 
   isValidRookMove(fromRow, fromCol, toRow, toCol) {
     return (fromRow === toRow || fromCol === toCol) && this.isPathClear(fromRow, fromCol, toRow, toCol);
