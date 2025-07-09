@@ -654,7 +654,10 @@ class WebChessClient {
       }
       
       if (canSelect) {
+        console.log(`Selecting square ${row},${col} with piece:`, piece);
         this.selectSquare(row, col);
+      } else {
+        console.log(`Cannot select square ${row},${col} with piece:`, piece);
       }
     }
   }
@@ -688,11 +691,17 @@ class WebChessClient {
   }
 
   selectSquare(row, col) {
+    console.log(`Selecting square ${row},${col}`);
     this.clearSelection();
     this.selectedSquare = { row, col };
     
     const square = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-    square.classList.add('selected');
+    if (square) {
+      square.classList.add('selected');
+      console.log('Added selected class to square');
+    } else {
+      console.error(`Could not find square element for ${row},${col}`);
+    }
     
     this.highlightValidMoves(row, col);
   }
@@ -724,17 +733,57 @@ class WebChessClient {
     const piece = this.gameState.board[row][col];
     
     if (!piece) {
+      console.log(`No piece at ${row},${col}`);
       return moves;
     }
     
-    for (let toRow = 0; toRow < 8; toRow++) {
-      for (let toCol = 0; toCol < 8; toCol++) {
-        if (this.isValidMoveForPiece(piece, row, col, toRow, toCol)) {
-          moves.push({ row: toRow, col: toCol });
+    console.log(`Getting valid moves for ${piece.color} ${piece.type} at ${row},${col}`);
+    
+    // Optimize for pawns - only check a few possible moves instead of all 64 squares
+    if (piece.type === 'pawn') {
+      const direction = piece.color === 'white' ? -1 : 1;
+      const startRow = piece.color === 'white' ? 6 : 1;
+      
+      // Check one square forward
+      const oneForward = row + direction;
+      if (oneForward >= 0 && oneForward < 8) {
+        if (this.isValidMoveForPiece(piece, row, col, oneForward, col)) {
+          moves.push({ row: oneForward, col });
+        }
+      }
+      
+      // Check two squares forward from starting position
+      if (row === startRow) {
+        const twoForward = row + 2 * direction;
+        if (twoForward >= 0 && twoForward < 8) {
+          if (this.isValidMoveForPiece(piece, row, col, twoForward, col)) {
+            moves.push({ row: twoForward, col });
+          }
+        }
+      }
+      
+      // Check diagonal captures
+      for (let colOffset of [-1, 1]) {
+        const newCol = col + colOffset;
+        const newRow = row + direction;
+        if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+          if (this.isValidMoveForPiece(piece, row, col, newRow, newCol)) {
+            moves.push({ row: newRow, col: newCol });
+          }
+        }
+      }
+    } else {
+      // For other pieces, check all squares
+      for (let toRow = 0; toRow < 8; toRow++) {
+        for (let toCol = 0; toCol < 8; toCol++) {
+          if (this.isValidMoveForPiece(piece, row, col, toRow, toCol)) {
+            moves.push({ row: toRow, col: toCol });
+          }
         }
       }
     }
     
+    console.log(`Total valid moves found: ${moves.length}`, moves);
     return moves;
   }
 
@@ -768,14 +817,21 @@ class WebChessClient {
     const rowDiff = toRow - fromRow;
     const colDiff = Math.abs(toCol - fromCol);
     
+    console.log(`Checking pawn move: ${piece.color} from ${fromRow},${fromCol} to ${toRow},${toCol}`);
+    console.log(`Direction: ${direction}, startRow: ${startRow}, rowDiff: ${rowDiff}, colDiff: ${colDiff}`);
+    console.log(`Target square content:`, this.gameState.board[toRow][toCol]);
+    
     // Forward move
     if (colDiff === 0) {
       if (rowDiff === direction && !this.gameState.board[toRow][toCol]) {
+        console.log(`Pawn one-square move valid: ${fromRow},${fromCol} -> ${toRow},${toCol}`);
         return true;
       }
       if (fromRow === startRow && rowDiff === 2 * direction && !this.gameState.board[toRow][toCol]) {
+        console.log(`Pawn two-square move valid: ${fromRow},${fromCol} -> ${toRow},${toCol}`);
         return true;
       }
+      console.log(`Forward move blocked or invalid`);
     }
     
     // Diagonal capture
