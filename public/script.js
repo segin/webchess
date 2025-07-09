@@ -844,6 +844,9 @@ class WebChessClient {
   }
 
   isValidPawnMove(piece, fromRow, fromCol, toRow, toCol) {
+    console.log('*** ENTERED isValidPawnMove method ***');
+    console.log('Arguments:', { piece, fromRow, fromCol, toRow, toCol });
+    
     const direction = piece.color === 'white' ? -1 : 1;
     const startRow = piece.color === 'white' ? 6 : 1;
     const rowDiff = toRow - fromRow;
