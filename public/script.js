@@ -665,8 +665,8 @@ class WebChessClient {
     // Practice mode logic
     if (this.practiceMode === 'self') return true;
     if (this.practiceMode === 'ai-vs-ai') return false;
-    if (this.practiceMode === 'ai-white') return this.gameState.currentTurn === 'white'; // Human plays white
-    if (this.practiceMode === 'ai-black') return this.gameState.currentTurn === 'black'; // Human plays black
+    if (this.practiceMode === 'ai-white') return this.gameState.currentTurn === 'white'; // Human plays white, AI plays black
+    if (this.practiceMode === 'ai-black') return this.gameState.currentTurn === 'black'; // Human plays black, AI plays white
     return true; // Default to allowing moves
   }
   
@@ -679,8 +679,8 @@ class WebChessClient {
     // Practice mode logic
     if (this.practiceMode === 'self') return true;
     if (this.practiceMode === 'ai-vs-ai') return false;
-    if (this.practiceMode === 'ai-white') return piece.color === 'white'; // Human plays white
-    if (this.practiceMode === 'ai-black') return piece.color === 'black'; // Human plays black
+    if (this.practiceMode === 'ai-white') return piece.color === 'white'; // Human plays white, AI plays black
+    if (this.practiceMode === 'ai-black') return piece.color === 'black'; // Human plays black, AI plays white
     return true; // Default to allowing moves
   }
 
@@ -946,6 +946,7 @@ class WebChessClient {
   
   executeMove(move) {
     const piece = this.gameState.board[move.from.row][move.from.col];
+    const capturedPiece = this.gameState.board[move.to.row][move.to.col];
     
     // Handle castling
     if (piece.type === 'king' && Math.abs(move.to.col - move.from.col) === 2) {
@@ -968,9 +969,18 @@ class WebChessClient {
     // Add position to history for threefold repetition
     this.addPositionToHistory();
     
-    // Update turn
+    // Update turn and add move to history with color info
+    const currentColor = this.gameState.currentTurn;
     this.gameState.currentTurn = this.gameState.currentTurn === 'white' ? 'black' : 'white';
-    this.gameState.moveHistory.push(move);
+    
+    // Enhance move object with piece color and type for history
+    const enhancedMove = {
+      ...move,
+      color: currentColor,
+      piece: piece.type,
+      captured: capturedPiece ? capturedPiece.type : null
+    };
+    this.gameState.moveHistory.push(enhancedMove);
     
     // Update check status
     this.updateCheckStatus();
