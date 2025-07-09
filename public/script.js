@@ -1110,16 +1110,7 @@ class WebChessClient {
       // Validate the AI move using the same checks as player moves
       if (!this.isValidMoveObject(aiMove)) {
         console.error('AI generated invalid move:', aiMove);
-        // Try to find a valid move instead of returning
-        console.log('AI attempting to find alternative move...');
-        const validMoves = this.getAllValidMovesForColor(this.gameState.currentTurn);
-        if (validMoves.length > 0) {
-          const fallbackMove = validMoves[Math.floor(Math.random() * validMoves.length)];
-          console.log('AI using fallback move:', fallbackMove);
-          this.executeMove(fallbackMove);
-        } else {
-          console.error('No valid moves available for AI');
-        }
+        console.log('AI move validation failed, skipping move');
         return;
       }
       
