@@ -1124,6 +1124,18 @@ class WebChessClient {
       
       // Execute the move using the same method as player moves
       this.executeMove(aiMove);
+    } else {
+      // AI found no valid moves - check if game should end
+      console.log('AI found no valid moves, checking if game should end');
+      const hasLegalMoves = this.hasLegalMoves(this.gameState.currentTurn);
+      console.log('Main game hasLegalMoves check:', hasLegalMoves);
+      
+      if (!hasLegalMoves) {
+        console.log('Triggering updateCheckStatus to handle checkmate/stalemate');
+        this.updateCheckStatus();
+      } else {
+        console.warn('AI found no moves but main game thinks there are legal moves - validation mismatch!');
+      }
     }
   }
   
@@ -1951,7 +1963,35 @@ class ChessAI {
   getBestMove(gameState) {
     const moves = this.getAllValidMoves(gameState);
     console.log('AI found', moves.length, 'valid moves for', gameState.currentTurn);
-    if (moves.length === 0) return null;
+    
+    // Debug: show details about current position
+    if (moves.length === 0) {
+      console.log('No valid moves found! Current position details:');
+      console.log('Current turn:', gameState.currentTurn);
+      console.log('King in check:', this.isKingInCheck ? 'checking...' : 'unknown');
+      
+      // Check if king is in check
+      const kingInCheck = this.isKingInCheckAI(gameState.currentTurn, gameState);
+      console.log('King in check (AI check):', kingInCheck);
+      
+      // Show all pieces for current player
+      const currentPlayerPieces = [];
+      for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+          const piece = gameState.board[row][col];
+          if (piece && piece.color === gameState.currentTurn) {
+            currentPlayerPieces.push({
+              type: piece.type,
+              position: String.fromCharCode(97 + col) + (8 - row),
+              row, col
+            });
+          }
+        }
+      }
+      console.log('Current player pieces:', currentPlayerPieces);
+      
+      return null;
+    }
     
     // Easy mode: random moves occasionally
     if (this.difficulty === 'easy' && Math.random() < 0.4) {
@@ -1994,6 +2034,12 @@ class ChessAI {
   
   getValidMovesForPiece(gameState, row, col) {
     const moves = [];
+    const piece = gameState.board[row][col];
+    
+    if (!piece) return moves;
+    
+    let checkedMoves = 0;
+    let rejectedMoves = 0;
     
     for (let toRow = 0; toRow < 8; toRow++) {
       for (let toCol = 0; toCol < 8; toCol++) {
@@ -2002,10 +2048,20 @@ class ChessAI {
           to: { row: toRow, col: toCol }
         };
         
+        checkedMoves++;
+        
         if (this.isValidMove(gameState, move)) {
           moves.push(move);
+        } else {
+          rejectedMoves++;
         }
       }
+    }
+    
+    // Debug output for pieces with no valid moves
+    if (moves.length === 0 && gameState.currentTurn === 'black') {
+      console.log(`No valid moves for ${piece.color} ${piece.type} at ${String.fromCharCode(97 + col)}${8 - row}`);
+      console.log(`Checked ${checkedMoves} moves, rejected ${rejectedMoves}`);
     }
     
     return moves;
@@ -2025,7 +2081,13 @@ class ChessAI {
     if (!this.isValidPieceMoveAI(move, piece, gameState)) return false;
     
     // Check if the move would leave the king in check
-    if (this.wouldLeaveKingInCheckAI(move, gameState)) return false;
+    if (this.wouldLeaveKingInCheckAI(move, gameState)) {
+      // Debug: show which moves are rejected due to leaving king in check
+      if (gameState.currentTurn === 'black' && piece.type === 'king') {
+        console.log(`King move ${String.fromCharCode(97 + move.from.col)}${8 - move.from.row} to ${String.fromCharCode(97 + move.to.col)}${8 - move.to.row} would leave king in check`);
+      }
+      return false;
+    }
     
     return true;
   }
