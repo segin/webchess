@@ -270,6 +270,12 @@ main {
     flex: 1;
     display: flex;
     justify-content: center;
+    padding: 20px;
+    background: #333;
+    border-radius: 8px;
+    max-width: 520px;
+    max-height: 520px;
+    margin: 0 auto;
 }
 
 .chess-board {
@@ -279,6 +285,8 @@ main {
     display: grid;
     grid-template-columns: repeat(8, 1fr);
     grid-template-rows: repeat(8, 1fr);
+    background: white;
+    border-radius: 4px;
 }
 
 .chess-square {
@@ -918,12 +926,19 @@ main {
         display: flex;
         justify-content: center;
         margin-bottom: 20px;
+        padding: 15px;
+        background: #333;
+        border-radius: 8px;
+        max-width: min(90vw, 390px);
+        margin: 0 auto 20px auto;
     }
     
     .chess-board {
         width: min(90vw, 360px);
         height: min(90vw, 360px);
         margin: 0;
+        background: white;
+        border-radius: 4px;
     }
     
     .chess-square {
@@ -1020,9 +1035,19 @@ main {
         font-size: 1rem;
     }
     
+    .chess-board-container {
+        padding: 18px;
+        background: #333;
+        border-radius: 8px;
+        max-width: min(70vw, 436px);
+        margin: 0 auto;
+    }
+    
     .chess-board {
         width: min(70vw, 400px);
         height: min(70vw, 400px);
+        background: white;
+        border-radius: 4px;
     }
     
     .chess-square {
