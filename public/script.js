@@ -1110,6 +1110,14 @@ class WebChessClient {
       // Validate the AI move using the same checks as player moves
       if (!this.isValidMoveObject(aiMove)) {
         console.error('AI generated invalid move:', aiMove);
+        console.log('AI move details:', {
+          from: aiMove.from,
+          to: aiMove.to,
+          piece: this.gameState.board[aiMove.from.row][aiMove.from.col],
+          target: this.gameState.board[aiMove.to.row][aiMove.to.col],
+          currentTurn: this.gameState.currentTurn,
+          inCheck: this.gameState.inCheck
+        });
         console.log('AI move validation failed, skipping move');
         return;
       }
@@ -2007,14 +2015,144 @@ class ChessAI {
     if (!move || !move.from || !move.to) return false;
     
     const piece = gameState.board[move.from.row][move.from.col];
-    if (!piece) return false;
+    if (!piece || piece.color !== gameState.currentTurn) return false;
     
-    // Basic validation - piece can move to target square
+    // Check if trying to capture a king (not allowed)
+    const targetSquare = gameState.board[move.to.row][move.to.col];
+    if (targetSquare && targetSquare.type === 'king') return false;
+    
+    // Check if the move is a valid piece move
+    if (!this.isValidPieceMoveAI(move, piece, gameState)) return false;
+    
+    // Check if the move would leave the king in check
+    if (this.wouldLeaveKingInCheckAI(move, gameState)) return false;
+    
+    return true;
+  }
+  
+  isValidPieceMoveAI(move, piece, gameState) {
+    if (!move || !move.from || !move.to) return false;
+    
+    const dx = Math.abs(move.to.col - move.from.col);
+    const dy = Math.abs(move.to.row - move.from.row);
     const target = gameState.board[move.to.row][move.to.col];
+    
+    // Can't capture own piece
     if (target && target.color === piece.color) return false;
     
-    // Use simplified move validation
-    return this.isValidMoveForPiece(piece, move.from.row, move.from.col, move.to.row, move.to.col, gameState);
+    switch (piece.type) {
+      case 'pawn':
+        return this.isValidPawnMoveAI(move, piece, gameState);
+      case 'rook':
+        return (dx === 0 || dy === 0) && this.isPathClearAI(move, gameState);
+      case 'bishop':
+        return dx === dy && this.isPathClearAI(move, gameState);
+      case 'queen':
+        return (dx === 0 || dy === 0 || dx === dy) && this.isPathClearAI(move, gameState);
+      case 'knight':
+        return (dx === 2 && dy === 1) || (dx === 1 && dy === 2);
+      case 'king':
+        return dx <= 1 && dy <= 1;
+      default:
+        return false;
+    }
+  }
+  
+  isValidPawnMoveAI(move, piece, gameState) {
+    if (!move || !move.from || !move.to) return false;
+    
+    const direction = piece.color === 'white' ? -1 : 1;
+    const startRow = piece.color === 'white' ? 6 : 1;
+    const dy = move.to.row - move.from.row;
+    const dx = Math.abs(move.to.col - move.from.col);
+    const target = gameState.board[move.to.row][move.to.col];
+    
+    // Forward move
+    if (dx === 0) {
+      if (target) return false; // Blocked
+      if (dy === direction) return true; // One square forward
+      if (dy === 2 * direction && move.from.row === startRow) return true; // Two squares from start
+      return false;
+    }
+    
+    // Diagonal capture
+    if (dx === 1 && dy === direction) {
+      return target && target.color !== piece.color;
+    }
+    
+    return false;
+  }
+  
+  isPathClearAI(move, gameState) {
+    const dx = Math.sign(move.to.col - move.from.col);
+    const dy = Math.sign(move.to.row - move.from.row);
+    let row = move.from.row + dy;
+    let col = move.from.col + dx;
+    
+    while (row !== move.to.row || col !== move.to.col) {
+      if (gameState.board[row][col]) return false;
+      row += dy;
+      col += dx;
+    }
+    
+    return true;
+  }
+  
+  wouldLeaveKingInCheckAI(move, gameState) {
+    // Make a temporary move to test
+    const originalPiece = gameState.board[move.to.row][move.to.col];
+    const movingPiece = gameState.board[move.from.row][move.from.col];
+    
+    gameState.board[move.to.row][move.to.col] = movingPiece;
+    gameState.board[move.from.row][move.from.col] = null;
+    
+    const inCheck = this.isKingInCheckAI(movingPiece.color, gameState);
+    
+    // Restore the board
+    gameState.board[move.from.row][move.from.col] = movingPiece;
+    gameState.board[move.to.row][move.to.col] = originalPiece;
+    
+    return inCheck;
+  }
+  
+  isKingInCheckAI(color, gameState) {
+    // Find the king
+    let kingRow = -1, kingCol = -1;
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = gameState.board[row][col];
+        if (piece && piece.type === 'king' && piece.color === color) {
+          kingRow = row;
+          kingCol = col;
+          break;
+        }
+      }
+      if (kingRow !== -1) break;
+    }
+    
+    if (kingRow === -1) return false; // No king found
+    
+    // Check if any opponent piece can attack the king
+    const opponentColor = color === 'white' ? 'black' : 'white';
+    
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = gameState.board[row][col];
+        if (piece && piece.color === opponentColor) {
+          const attackMove = {
+            from: { row, col },
+            to: { row: kingRow, col: kingCol }
+          };
+          
+          // Check if this piece can attack the king position
+          if (this.isValidPieceMoveAI(attackMove, piece, gameState)) {
+            return true;
+          }
+        }
+      }
+    }
+    
+    return false;
   }
   
   isValidMoveForPiece(piece, fromRow, fromCol, toRow, toCol, gameState) {

@@ -1647,12 +1647,22 @@ class ComprehensiveUnitTests {
       const client = this.createMockWebChessClient();
       const gameState = client.createInitialGameState();
       
-      // Set up Scholar's Mate position
-      gameState.board[6][4] = null; // Remove e2 pawn
-      gameState.board[4][4] = { type: 'pawn', color: 'white' };
-      gameState.board[5][5] = { type: 'bishop', color: 'white' };
-      gameState.board[3][7] = { type: 'queen', color: 'white' };
-      gameState.board[1][5] = null; // Remove f7 pawn
+      // Set up simple back-rank mate position
+      // Clear the board first
+      for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+          gameState.board[row][col] = null;
+        }
+      }
+      
+      // Set up back-rank mate: Black king on back rank, White rook attacks
+      gameState.currentTurn = 'black';
+      gameState.board[0][4] = { type: 'king', color: 'black' }; // Black king on e8
+      gameState.board[1][3] = { type: 'pawn', color: 'black' }; // Block escape
+      gameState.board[1][4] = { type: 'pawn', color: 'black' }; // Block escape  
+      gameState.board[1][5] = { type: 'pawn', color: 'black' }; // Block escape
+      gameState.board[7][4] = { type: 'rook', color: 'white' }; // White rook giving checkmate
+      gameState.board[7][7] = { type: 'king', color: 'white' }; // White king
       
       client.gameState = gameState;
       client.updateCheckStatus();
@@ -1676,10 +1686,11 @@ class ComprehensiveUnitTests {
         competitiveRules: { fiftyMoveRule: true, threefoldRepetition: true, insufficientMaterial: true }
       };
       
-      // Set up stalemate position - King and Queen vs King
-      gameState.board[0][0] = { type: 'king', color: 'black' };
-      gameState.board[1][2] = { type: 'queen', color: 'white' };
-      gameState.board[2][1] = { type: 'king', color: 'white' };
+      // Set up proper stalemate position
+      // Black king in corner with no legal moves but not in check
+      gameState.board[0][0] = { type: 'king', color: 'black' }; // Black king on a8
+      gameState.board[1][1] = { type: 'queen', color: 'white' }; // White queen on b7
+      gameState.board[2][2] = { type: 'king', color: 'white' }; // White king on c6
       
       client.gameState = gameState;
       client.updateCheckStatus();
@@ -1857,7 +1868,7 @@ class ComprehensiveUnitTests {
         return true;
       },
       shouldAIMove: function() {
-        if (!this.aiEngine || this.aiPaused) return false;
+        if (!this.aiEngine || this.aiPaused || !this.gameState) return false;
         
         switch (this.practiceMode) {
           case 'ai-vs-ai':
