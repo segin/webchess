@@ -618,10 +618,12 @@ class WebChessClient {
     
     // Don't allow clicks in AI vs AI mode or when it's not the player's turn
     if (this.isPracticeMode && this.practiceMode === 'ai-vs-ai') {
+      console.log('Click blocked: AI vs AI mode');
       return;
     }
     
     if (!this.canPlayerMove()) {
+      console.log(`Click blocked: canPlayerMove=false, mode=${this.practiceMode}, currentTurn=${this.gameState.currentTurn}`);
       return;
     }
     
@@ -645,6 +647,7 @@ class WebChessClient {
       if (this.isPracticeMode) {
         // Practice mode: use the practice-specific logic
         canSelect = this.canPlayerMovePiece(piece);
+        console.log(`Square click: mode=${this.practiceMode}, piece=${piece.color}, canSelect=${canSelect}, currentTurn=${this.gameState.currentTurn}`);
       } else {
         // Multiplayer mode: can select if it's the player's piece color
         canSelect = (piece.color === this.playerColor);
@@ -704,12 +707,14 @@ class WebChessClient {
 
   highlightValidMoves(row, col) {
     this.validMoves = this.getValidMoves(row, col);
+    console.log(`Valid moves for ${row},${col}:`, this.validMoves);
     
     this.validMoves.forEach(move => {
       const square = document.querySelector(`[data-row="${move.row}"][data-col="${move.col}"]`);
       if (square) {
         const isCapture = this.gameState.board[move.row][move.col] !== null;
         square.classList.add(isCapture ? 'capture-move' : 'valid-move');
+        console.log(`Highlighted square ${move.row},${move.col} as ${isCapture ? 'capture' : 'valid'} move`);
       }
     });
   }
@@ -1009,14 +1014,13 @@ class WebChessClient {
       winner: this.gameState.winner,
       moveHistory: [...this.gameState.moveHistory],
       makeMove: (move) => {
-        // Simple move execution for AI
+        // Simple move execution for AI - don't change turn here as executeMove will handle it
         const piece = this.gameState.board[move.from.row][move.from.col];
         if (!piece) return { success: false };
         
         this.gameState.board[move.to.row][move.to.col] = piece;
         this.gameState.board[move.from.row][move.from.col] = null;
-        this.gameState.currentTurn = this.gameState.currentTurn === 'white' ? 'black' : 'white';
-        this.gameState.moveHistory.push(move);
+        // Don't change turn or update move history here - executeMove will handle it
         
         return { success: true };
       },
@@ -1055,26 +1059,21 @@ class WebChessClient {
       // Validate the AI move using the same checks as player moves
       if (!this.isValidMoveObject(aiMove)) {
         console.error('AI generated invalid move:', aiMove);
+        // Try to find a valid move instead of returning
+        console.log('AI attempting to find alternative move...');
+        const validMoves = this.getAllValidMovesForColor(this.gameState.currentTurn);
+        if (validMoves.length > 0) {
+          const fallbackMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+          console.log('AI using fallback move:', fallbackMove);
+          this.executeMove(fallbackMove);
+        } else {
+          console.error('No valid moves available for AI');
+        }
         return;
       }
       
       // Execute the move using the same method as player moves
       this.executeMove(aiMove);
-      
-      // Update UI and check game status  
-      this.updateGameBoard();
-      this.addMoveToHistory(aiMove);
-      this.updateCheckStatus();
-      
-      // Save session after AI move
-      this.saveSessionToStorage();
-      
-      // Check if AI should make next move (for AI vs AI)
-      if (this.shouldAIMove() && this.gameState && this.gameState.status === 'active') {
-        // Ensure delay is at least 100ms for normal gameplay (prevent infinite loops)
-        const delay = Math.max(this.aiMoveDelay, 100);
-        setTimeout(() => this.makeAIMove(), delay);
-      }
     }
   }
   
@@ -2166,6 +2165,27 @@ class ChessAI {
     }
     
     return true;
+  }
+  
+  getAllValidMovesForColor(color) {
+    const validMoves = [];
+    
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = this.gameState.board[row][col];
+        if (piece && piece.color === color) {
+          const pieceMoves = this.getValidMoves(row, col);
+          pieceMoves.forEach(move => {
+            validMoves.push({
+              from: { row, col },
+              to: { row: move.row, col: move.col }
+            });
+          });
+        }
+      }
+    }
+    
+    return validMoves;
   }
 }
 
