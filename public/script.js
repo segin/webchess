@@ -647,17 +647,17 @@ class WebChessClient {
       if (this.isPracticeMode) {
         // Practice mode: use the practice-specific logic
         canSelect = this.canPlayerMovePiece(piece);
-        console.log(`Square click: mode=${this.practiceMode}, piece=${piece.color}, canSelect=${canSelect}, currentTurn=${this.gameState.currentTurn}`);
+        // Debug: console.log(`Square click: mode=${this.practiceMode}, piece=${piece.color}, canSelect=${canSelect}, currentTurn=${this.gameState.currentTurn}`);
       } else {
         // Multiplayer mode: can select if it's the player's piece color
         canSelect = (piece.color === this.playerColor);
       }
       
       if (canSelect) {
-        console.log(`Selecting square ${row},${col} with piece:`, piece);
+        // Debug: console.log(`Selecting square ${row},${col} with piece:`, piece);
         this.selectSquare(row, col);
       } else {
-        console.log(`Cannot select square ${row},${col} with piece:`, piece);
+        // Debug: console.log(`Cannot select square ${row},${col} with piece:`, piece);
       }
     }
   }
@@ -846,7 +846,8 @@ class WebChessClient {
 
 
   isValidRookMove(fromRow, fromCol, toRow, toCol) {
-    return (fromRow === toRow || fromCol === toCol) && this.isPathClear(fromRow, fromCol, toRow, toCol);
+    const move = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
+    return (fromRow === toRow || fromCol === toCol) && this.isPathClear(move);
   }
 
   isValidKnightMove(fromRow, fromCol, toRow, toCol) {
@@ -858,7 +859,8 @@ class WebChessClient {
   isValidBishopMove(fromRow, fromCol, toRow, toCol) {
     const rowDiff = Math.abs(toRow - fromRow);
     const colDiff = Math.abs(toCol - fromCol);
-    return rowDiff === colDiff && this.isPathClear(fromRow, fromCol, toRow, toCol);
+    const move = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
+    return rowDiff === colDiff && this.isPathClear(move);
   }
 
   isValidQueenMove(fromRow, fromCol, toRow, toCol) {
