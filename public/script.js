@@ -743,11 +743,15 @@ class WebChessClient {
     if (piece.type === 'pawn') {
       const direction = piece.color === 'white' ? -1 : 1;
       const startRow = piece.color === 'white' ? 6 : 1;
+      console.log(`Pawn optimization: direction=${direction}, startRow=${startRow}, current row=${row}`);
       
       // Check one square forward
       const oneForward = row + direction;
+      console.log(`Checking one forward: ${oneForward}`);
       if (oneForward >= 0 && oneForward < 8) {
+        console.log(`One forward is valid, calling isValidMoveForPiece(${row},${col} -> ${oneForward},${col})`);
         if (this.isValidMoveForPiece(piece, row, col, oneForward, col)) {
+          console.log('One forward move added');
           moves.push({ row: oneForward, col });
         }
       }
@@ -755,8 +759,11 @@ class WebChessClient {
       // Check two squares forward from starting position
       if (row === startRow) {
         const twoForward = row + 2 * direction;
+        console.log(`Checking two forward: ${twoForward}`);
         if (twoForward >= 0 && twoForward < 8) {
+          console.log(`Two forward is valid, calling isValidMoveForPiece(${row},${col} -> ${twoForward},${col})`);
           if (this.isValidMoveForPiece(piece, row, col, twoForward, col)) {
+            console.log('Two forward move added');
             moves.push({ row: twoForward, col });
           }
         }
@@ -788,13 +795,22 @@ class WebChessClient {
   }
 
   isValidMoveForPiece(piece, fromRow, fromCol, toRow, toCol) {
-    if (fromRow === toRow && fromCol === toCol) return false;
+    console.log(`isValidMoveForPiece: ${piece.color} ${piece.type} from ${fromRow},${fromCol} to ${toRow},${toCol}`);
+    
+    if (fromRow === toRow && fromCol === toCol) {
+      console.log('Same square, invalid');
+      return false;
+    }
     
     const target = this.gameState.board[toRow][toCol];
-    if (target && target.color === piece.color) return false;
+    if (target && target.color === piece.color) {
+      console.log('Same color piece at target, invalid');
+      return false;
+    }
     
     switch (piece.type) {
       case 'pawn':
+        console.log('Calling pawn validation');
         return this.isValidPawnMove(piece, fromRow, fromCol, toRow, toCol);
       case 'rook':
         return this.isValidRookMove(fromRow, fromCol, toRow, toCol);
@@ -807,6 +823,7 @@ class WebChessClient {
       case 'king':
         return this.isValidKingMove(fromRow, fromCol, toRow, toCol);
       default:
+        console.log('Unknown piece type');
         return false;
     }
   }
