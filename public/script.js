@@ -1042,36 +1042,28 @@ class WebChessClient {
     console.log('AI selected move:', aiMove);
     
     if (aiMove) {
-      // Simple move execution for practice mode
-      const piece = this.gameState.board[aiMove.from.row][aiMove.from.col];
-      if (piece && piece.color === this.gameState.currentTurn) {
-        this.gameState.board[aiMove.to.row][aiMove.to.col] = piece;
-        this.gameState.board[aiMove.from.row][aiMove.from.col] = null;
-        
-        // Handle AI pawn promotion
-        if (piece.type === 'pawn' && 
-            ((piece.color === 'white' && aiMove.to.row === 0) || 
-             (piece.color === 'black' && aiMove.to.row === 7))) {
-          // AI always promotes to queen (best piece)
-          this.gameState.board[aiMove.to.row][aiMove.to.col] = {
-            type: 'queen',
-            color: piece.color
-          };
-        }
-        
-        this.gameState.currentTurn = this.gameState.currentTurn === 'white' ? 'black' : 'white';
-        this.gameState.moveHistory.push(aiMove);
-        
-        this.updateGameBoard();
-        this.addMoveToHistory(aiMove);
-        
-        // Save session after AI move
-        this.saveSessionToStorage();
-        
-        // Check if AI should make next move (for AI vs AI)
-        if (this.shouldAIMove() && this.gameState && this.gameState.status === 'active') {
-          setTimeout(() => this.makeAIMove(), this.aiMoveDelay);
-        }
+      // Validate the AI move using the same checks as player moves
+      if (!this.isValidMoveObject(aiMove)) {
+        console.error('AI generated invalid move:', aiMove);
+        return;
+      }
+      
+      // Execute the move using the same method as player moves
+      this.executeMove(aiMove);
+      
+      // Update UI and check game status  
+      this.updateGameBoard();
+      this.addMoveToHistory(aiMove);
+      this.updateCheckStatus();
+      
+      // Save session after AI move
+      this.saveSessionToStorage();
+      
+      // Check if AI should make next move (for AI vs AI)
+      if (this.shouldAIMove() && this.gameState && this.gameState.status === 'active') {
+        // Ensure delay is at least 100ms for normal gameplay (prevent infinite loops)
+        const delay = Math.max(this.aiMoveDelay, 100);
+        setTimeout(() => this.makeAIMove(), delay);
       }
     }
   }
