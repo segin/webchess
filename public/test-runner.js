@@ -75,8 +75,11 @@ class DynamicTestRunner {
           <!-- Test Results (Left Side) -->
           <div style="flex: 2; display: flex; flex-direction: column; border-right: 2px solid #444;">
             <!-- Status Bar -->
-            <div id="test-status" style="background: #333; padding: 10px; color: #fff; font-weight: bold; flex-shrink: 0;">
-              Ready to run tests
+            <div id="test-status" style="background: #333; padding: 10px; color: #fff; font-weight: bold; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center;">
+              <span>Ready to run tests</span>
+              <button id="copy-test-results" style="background: #4CAF50; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px;">
+                📋 Copy Results
+              </button>
             </div>
             
             <!-- Results Container -->
@@ -145,11 +148,13 @@ Total Coverage: 130+ tests validating all aspects of WebChess.
     const runAllBtn = this.testOverlay.querySelector('#run-all-tests');
     const clearBtn = this.testOverlay.querySelector('#clear-results');
     const copyBtn = this.testOverlay.querySelector('#copy-tech-details');
+    const copyResultsBtn = this.testOverlay.querySelector('#copy-test-results');
 
     closeBtn.addEventListener('click', () => this.closeTestUI());
     runAllBtn.addEventListener('click', () => this.runAllTests());
     clearBtn.addEventListener('click', () => this.clearResults());
     copyBtn.addEventListener('click', () => this.copyTechnicalDetails());
+    copyResultsBtn.addEventListener('click', () => this.copyTestResults());
 
     // Individual test suite buttons
     this.testOverlay.querySelector('#run-client-tests').addEventListener('click', () => this.runClientTests());
@@ -486,22 +491,11 @@ Total Coverage: 130+ tests validating all aspects of WebChess.
         this.updateStatus('Some tests failed', 'error');
       }
 
-      // Add auto-close and reset functionality
-      this.appendResults('\n📋 Test suite completed. Returning to main menu in 3 seconds...');
-      setTimeout(() => {
-        this.resetToMainMenu();
-        this.closeTestUI();
-      }, 3000);
+      this.appendResults('\n📋 Test suite completed. Use the copy button to save results.');
 
     } catch (error) {
       this.appendResults(`\n💥 Test suite error: ${error.message}`);
       this.updateStatus('Test suite error', 'error');
-      
-      // Still return to main menu on error
-      setTimeout(() => {
-        this.resetToMainMenu();
-        this.closeTestUI();
-      }, 3000);
     } finally {
       this.setRunning(false);
     }
@@ -640,6 +634,35 @@ Generated: ${currentTime}
 
 ---
 This technical report can be copied and pasted into development chats for debugging and analysis purposes.`;
+  }
+
+  copyTestResults() {
+    const resultsDiv = this.testOverlay.querySelector('#test-results');
+    const testResults = resultsDiv.textContent;
+    
+    navigator.clipboard.writeText(testResults).then(() => {
+      const copyBtn = this.testOverlay.querySelector('#copy-test-results');
+      const originalText = copyBtn.textContent;
+      
+      copyBtn.textContent = '✅ Copied!';
+      copyBtn.style.background = '#00aa00';
+      
+      setTimeout(() => {
+        copyBtn.textContent = originalText;
+        copyBtn.style.background = '#4CAF50';
+      }, 2000);
+    }).catch(err => {
+      console.error('Failed to copy test results: ', err);
+      
+      // Fallback: select text
+      const range = document.createRange();
+      range.selectNodeContents(resultsDiv);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      
+      alert('Copy failed. Text has been selected - please copy manually.');
+    });
   }
 
   copyTechnicalDetails() {

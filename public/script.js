@@ -1570,17 +1570,37 @@ class WebChessClient {
     if (!move || !move.from || !move.to) return false;
     
     const piece = this.gameState.board[move.from.row][move.from.col];
-    if (!piece || piece.color !== this.gameState.currentTurn) return false;
+    if (!piece || piece.color !== this.gameState.currentTurn) {
+      if (piece && piece.type === 'king') {
+        console.log(`King move rejected: piece color ${piece.color}, current turn ${this.gameState.currentTurn}`);
+      }
+      return false;
+    }
     
     // Check if trying to capture a king (not allowed)
     const targetSquare = this.gameState.board[move.to.row][move.to.col];
-    if (targetSquare && targetSquare.type === 'king') return false;
+    if (targetSquare && targetSquare.type === 'king') {
+      if (piece.type === 'king') {
+        console.log('King move rejected: trying to capture another king');
+      }
+      return false;
+    }
     
     // Check if the move is a valid piece move
-    if (!this.isValidPieceMove(move, piece)) return false;
+    if (!this.isValidPieceMove(move, piece)) {
+      if (piece.type === 'king') {
+        console.log('King move rejected: invalid piece move');
+      }
+      return false;
+    }
     
     // Check if the move would leave the king in check
-    if (this.wouldLeaveKingInCheck(move)) return false;
+    if (this.wouldLeaveKingInCheck(move)) {
+      if (piece.type === 'king') {
+        console.log('King move rejected: would leave king in check');
+      }
+      return false;
+    }
     
     return true;
   }
@@ -1607,7 +1627,15 @@ class WebChessClient {
       case 'knight':
         return (dx === 2 && dy === 1) || (dx === 1 && dy === 2);
       case 'king':
-        return dx <= 1 && dy <= 1;
+        // Can't move to the same square
+        if (dx === 0 && dy === 0) return false;
+        // Normal king move (one square in any direction)
+        if (dx <= 1 && dy <= 1) return true;
+        // Castling move (handled separately)
+        if (dy === 0 && dx === 2) {
+          return this.isValidCastlingMove(move.from.row, move.from.col, move.to.row, move.to.col);
+        }
+        return false;
       default:
         return false;
     }
@@ -1662,6 +1690,11 @@ class WebChessClient {
     this.gameState.board[move.from.row][move.from.col] = null;
     
     const inCheck = this.isKingInCheck(movingPiece.color);
+    
+    // Debug for king moves
+    if (movingPiece.type === 'king') {
+      console.log(`King check test: moving ${movingPiece.color} king from [${move.from.row},${move.from.col}] to [${move.to.row},${move.to.col}], would be in check: ${inCheck}`);
+    }
     
     // Restore the board
     this.gameState.board[move.from.row][move.from.col] = movingPiece;
