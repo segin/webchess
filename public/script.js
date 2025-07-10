@@ -1107,6 +1107,17 @@ class WebChessClient {
     console.log('AI selected move:', aiMove);
     
     if (aiMove) {
+      // Check for AI pawn promotion before validation
+      const piece = this.gameState.board[aiMove.from.row][aiMove.from.col];
+      const isPromotion = piece && piece.type === 'pawn' && 
+                         ((piece.color === 'white' && aiMove.to.row === 0) || 
+                          (piece.color === 'black' && aiMove.to.row === 7));
+      
+      if (isPromotion) {
+        // AI always promotes to queen (best choice)
+        aiMove.promotion = 'queen';
+      }
+      
       // Validate the AI move using the same checks as player moves
       if (!this.isValidMoveObject(aiMove)) {
         console.error('AI generated invalid move:', aiMove);
@@ -1122,8 +1133,12 @@ class WebChessClient {
         return;
       }
       
-      // Execute the move using the same method as player moves
-      this.executeMove(aiMove);
+      // Execute the move (with promotion if needed)
+      if (isPromotion) {
+        this.executeAIPawnPromotion(aiMove);
+      } else {
+        this.executeMove(aiMove);
+      }
     } else {
       // AI found no valid moves - check if game should end
       console.log('AI found no valid moves, checking if game should end');
@@ -1137,6 +1152,21 @@ class WebChessClient {
         console.warn('AI found no moves but main game thinks there are legal moves - validation mismatch!');
       }
     }
+  }
+  
+  executeAIPawnPromotion(move) {
+    // Execute the basic move first
+    this.executeMove(move);
+    
+    // Replace the pawn with the promoted piece (always queen for AI)
+    const promotedPiece = this.gameState.board[move.to.row][move.to.col];
+    this.gameState.board[move.to.row][move.to.col] = {
+      type: 'queen',
+      color: promotedPiece.color
+    };
+    
+    console.log(`AI promoted ${promotedPiece.color} pawn to queen`);
+    this.updateGameBoard();
   }
   
   toggleAIPause() {

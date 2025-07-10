@@ -104,34 +104,67 @@ class IntegrationTests {
   }
 
   async simulatePlayerMove() {
-    // Find a white pawn and make a simple move (e2 to e4)
-    const e2Square = document.querySelector('[data-row="6"][data-col="4"]');
-    const e4Square = document.querySelector('[data-row="4"][data-col="4"]');
+    // Determine which color the human should play based on practice mode
+    const humanColor = this.determineHumanColor();
+    const currentTurn = this.webChessClient.gameState.currentTurn;
     
-    if (!e2Square || !e4Square) {
-      throw new Error('Could not find e2 or e4 square');
+    // Check if it's the human's turn
+    if (currentTurn !== humanColor) {
+      throw new Error(`Not human's turn. Current turn: ${currentTurn}, Human plays: ${humanColor}`);
     }
     
-    // Click on e2 to select pawn
-    e2Square.click();
+    let fromSquare, toSquare, expectedRow, expectedCol, expectedColor;
+    
+    if (humanColor === 'white') {
+      // Human plays white - move e2 to e4
+      fromSquare = document.querySelector('[data-row="6"][data-col="4"]');
+      toSquare = document.querySelector('[data-row="4"][data-col="4"]');
+      expectedRow = 4;
+      expectedCol = 4;
+      expectedColor = 'white';
+    } else {
+      // Human plays black - move e7 to e5
+      fromSquare = document.querySelector('[data-row="1"][data-col="4"]');
+      toSquare = document.querySelector('[data-row="3"][data-col="4"]');
+      expectedRow = 3;
+      expectedCol = 4;
+      expectedColor = 'black';
+    }
+    
+    if (!fromSquare || !toSquare) {
+      throw new Error(`Could not find squares for ${humanColor} pawn move`);
+    }
+    
+    // Click on from square to select pawn
+    fromSquare.click();
     await this.delay(100);
     
     // Verify square is selected
-    if (!e2Square.classList.contains('selected')) {
+    if (!fromSquare.classList.contains('selected')) {
       throw new Error('Square not selected after click');
     }
     
-    // Click on e4 to move pawn
-    e4Square.click();
+    // Click on to square to move pawn
+    toSquare.click();
     await this.delay(100);
     
     // Verify move was made
-    const piece = this.webChessClient.gameState.board[4][4];
-    if (!piece || piece.type !== 'pawn' || piece.color !== 'white') {
-      throw new Error('Move not executed correctly');
+    const piece = this.webChessClient.gameState.board[expectedRow][expectedCol];
+    if (!piece || piece.type !== 'pawn' || piece.color !== expectedColor) {
+      throw new Error(`Move not executed correctly. Expected ${expectedColor} pawn at [${expectedRow}][${expectedCol}]`);
     }
     
-    console.log('✅ Player move simulated successfully');
+    console.log(`✅ Player move simulated successfully: ${humanColor} pawn`);
+  }
+  
+  determineHumanColor() {
+    const mode = this.webChessClient.practiceMode;
+    switch (mode) {
+      case 'ai-white': return 'white'; // Human plays white, AI plays black
+      case 'ai-black': return 'black'; // Human plays black, AI plays white
+      case 'self': return this.webChessClient.gameState.currentTurn; // Can play both
+      default: return 'white';
+    }
   }
 
   async verifyAIMove(expectedColor) {

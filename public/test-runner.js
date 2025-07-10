@@ -165,6 +165,25 @@ Total Coverage: 130+ tests validating all aspects of WebChess.
     });
   }
 
+  resetToMainMenu() {
+    // Reset WebChess client to main menu state
+    if (window.webChessClient) {
+      // Clear any active game
+      window.webChessClient.isPracticeMode = false;
+      window.webChessClient.currentGameId = null;
+      window.webChessClient.gameState = null;
+      window.webChessClient.selectedSquare = null;
+      window.webChessClient.validMoves = [];
+      window.webChessClient.aiPaused = false;
+      
+      // Clear game session
+      window.webChessClient.clearGameSession();
+      
+      // Show main menu
+      window.webChessClient.showMainMenu();
+    }
+  }
+
   closeTestUI() {
     if (this.testOverlay) {
       this.testOverlay.remove();
@@ -467,9 +486,22 @@ Total Coverage: 130+ tests validating all aspects of WebChess.
         this.updateStatus('Some tests failed', 'error');
       }
 
+      // Add auto-close and reset functionality
+      this.appendResults('\n📋 Test suite completed. Returning to main menu in 3 seconds...');
+      setTimeout(() => {
+        this.resetToMainMenu();
+        this.closeTestUI();
+      }, 3000);
+
     } catch (error) {
       this.appendResults(`\n💥 Test suite error: ${error.message}`);
       this.updateStatus('Test suite error', 'error');
+      
+      // Still return to main menu on error
+      setTimeout(() => {
+        this.resetToMainMenu();
+        this.closeTestUI();
+      }, 3000);
     } finally {
       this.setRunning(false);
     }

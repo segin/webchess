@@ -2157,6 +2157,189 @@ class ComprehensiveUnitTests {
         
         return `${pieceSymbol}${toSquare}`;
       },
+      hasLegalMoves: function(color) {
+        for (let row = 0; row < 8; row++) {
+          for (let col = 0; col < 8; col++) {
+            const piece = this.gameState.board[row][col];
+            if (piece && piece.color === color) {
+              const validMoves = this.getValidMovesForPiece(row, col);
+              if (validMoves.length > 0) {
+                return true;
+              }
+            }
+          }
+        }
+        return false;
+      },
+      getValidMovesForPiece: function(row, col) {
+        const moves = [];
+        const piece = this.gameState.board[row][col];
+        
+        if (!piece) return moves;
+        
+        for (let toRow = 0; toRow < 8; toRow++) {
+          for (let toCol = 0; toCol < 8; toCol++) {
+            const move = { from: { row, col }, to: { row: toRow, col: toCol } };
+            if (this.isValidMoveObject(move)) {
+              moves.push({ row: toRow, col: toCol });
+            }
+          }
+        }
+        
+        return moves;
+      },
+      isKingInCheck: function(color) {
+        // Find the king
+        let kingRow = -1, kingCol = -1;
+        for (let row = 0; row < 8; row++) {
+          for (let col = 0; col < 8; col++) {
+            const piece = this.gameState.board[row][col];
+            if (piece && piece.type === 'king' && piece.color === color) {
+              kingRow = row;
+              kingCol = col;
+              break;
+            }
+          }
+          if (kingRow !== -1) break;
+        }
+        
+        if (kingRow === -1) return false; // No king found
+        
+        // Check if any opponent piece can attack the king
+        const opponentColor = color === 'white' ? 'black' : 'white';
+        
+        for (let row = 0; row < 8; row++) {
+          for (let col = 0; col < 8; col++) {
+            const piece = this.gameState.board[row][col];
+            if (piece && piece.color === opponentColor) {
+              const attackMove = {
+                from: { row, col },
+                to: { row: kingRow, col: kingCol }
+              };
+              
+              // Simplified check - just basic piece movement
+              if (this.canPieceReach(piece, row, col, kingRow, kingCol)) {
+                return true;
+              }
+            }
+          }
+        }
+        
+        return false;
+      },
+      canPieceReach: function(piece, fromRow, fromCol, toRow, toCol) {
+        const rowDiff = Math.abs(toRow - fromRow);
+        const colDiff = Math.abs(toCol - fromCol);
+        
+        switch (piece.type) {
+          case 'pawn':
+            const direction = piece.color === 'white' ? -1 : 1;
+            const rowMove = toRow - fromRow;
+            return colDiff === 1 && rowMove === direction;
+          case 'rook':
+            return (fromRow === toRow || fromCol === toCol);
+          case 'knight':
+            return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
+          case 'bishop':
+            return rowDiff === colDiff;
+          case 'queen':
+            return (fromRow === toRow || fromCol === toCol) || (rowDiff === colDiff);
+          case 'king':
+            return rowDiff <= 1 && colDiff <= 1;
+          default:
+            return false;
+        }
+      },
+      updateCheckStatus: function() {
+        // Check if kings are in check
+        const whiteInCheck = this.isKingInCheck('white');
+        const blackInCheck = this.isKingInCheck('black');
+        
+        this.gameState.inCheck = this.gameState.currentTurn === 'white' ? whiteInCheck : blackInCheck;
+        
+        // Check for checkmate and stalemate
+        const currentPlayerInCheck = this.gameState.currentTurn === 'white' ? whiteInCheck : blackInCheck;
+        const hasLegalMoves = this.hasLegalMoves(this.gameState.currentTurn);
+        
+        if (!hasLegalMoves) {
+          if (currentPlayerInCheck) {
+            // Checkmate
+            this.gameState.status = 'checkmate';
+            this.gameState.winner = this.gameState.currentTurn === 'white' ? 'black' : 'white';
+          } else {
+            // Stalemate
+            this.gameState.status = 'stalemate';
+            this.gameState.winner = null;
+          }
+          return;
+        }
+      },
+      checkDrawConditions: function() {
+        // Check fifty-move rule
+        if (this.gameState.competitiveRules.fiftyMoveRule && this.gameState.fiftyMoveRule >= 100) {
+          this.gameState.status = 'draw';
+          this.gameState.winner = null;
+          return;
+        }
+        
+        // Check threefold repetition
+        if (this.gameState.competitiveRules.threefoldRepetition) {
+          const currentPosition = this.getPositionKey();
+          const occurrences = this.gameState.positionHistory.filter(pos => pos === currentPosition).length;
+          if (occurrences >= 3) {
+            this.gameState.status = 'draw';
+            this.gameState.winner = null;
+            return;
+          }
+        }
+        
+        // Check insufficient material
+        if (this.gameState.competitiveRules.insufficientMaterial && this.isInsufficientMaterial()) {
+          this.gameState.status = 'draw';
+          this.gameState.winner = null;
+          return;
+        }
+      },
+      getPositionKey: function() {
+        // Simple position key generation
+        let key = '';
+        for (let row = 0; row < 8; row++) {
+          for (let col = 0; col < 8; col++) {
+            const piece = this.gameState.board[row][col];
+            if (piece) {
+              key += piece.color[0] + piece.type[0];
+            } else {
+              key += '--';
+            }
+          }
+        }
+        key += this.gameState.currentTurn;
+        return key;
+      },
+      isInsufficientMaterial: function() {
+        const whitePieces = [];
+        const blackPieces = [];
+        
+        for (let row = 0; row < 8; row++) {
+          for (let col = 0; col < 8; col++) {
+            const piece = this.gameState.board[row][col];
+            if (piece) {
+              if (piece.color === 'white') {
+                whitePieces.push(piece.type);
+              } else {
+                blackPieces.push(piece.type);
+              }
+            }
+          }
+        }
+        
+        // King vs King
+        if (whitePieces.length === 1 && blackPieces.length === 1) {
+          return true;
+        }
+        
+        return false;
+      },
       practiceMode: 'ai-white',
       gameState: { currentTurn: 'white', board: Array(8).fill(null).map(() => Array(8).fill(null)), status: 'active' },
       aiEngine: { test: true },
