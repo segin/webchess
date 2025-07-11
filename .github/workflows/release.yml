@@ -76,7 +76,7 @@ jobs:
         echo "See DEPLOYMENT.md and DEBIAN_INSTALL.md for installation instructions." >> CHANGELOG.md
     
     - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         body_path: CHANGELOG.md
         files: |
