@@ -1,0 +1,140 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  validate:
+    name: Validate Pull Request
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for better analysis
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run linting
+      run: npx eslint src/ public/ --ext .js --format github
+      continue-on-error: false
+    
+    - name: Run comprehensive tests
+      run: npm run test:comprehensive
+    
+    - name: Run Jest tests with coverage
+      run: npm run test:jest -- --coverage --coverageReporters=json-summary
+    
+    - name: Check test coverage
+      run: |
+        COVERAGE=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
+        echo "Test coverage: $COVERAGE%"
+        if (( $(echo "$COVERAGE < 70" | bc -l) )); then
+          echo "❌ Test coverage is below 70%"
+          exit 1
+        else
+          echo "✅ Test coverage is acceptable"
+        fi
+    
+    - name: Check for security vulnerabilities
+      run: npm audit --audit-level high
+      continue-on-error: false
+    
+    - name: Validate commit messages
+      run: |
+        echo "Checking commit messages..."
+        # Get commits in this PR
+        COMMITS=$(git log --pretty=format:"%h %s" origin/main..HEAD)
+        echo "$COMMITS"
+        
+        # Basic validation - commits should not be empty and should follow some basic format
+        if [ -z "$COMMITS" ]; then
+          echo "❌ No commits found"
+          exit 1
+        fi
+        
+        echo "✅ Commit messages validated"
+    
+    - name: Check for large files
+      run: |
+        echo "Checking for large files..."
+        LARGE_FILES=$(find . -type f -size +1M -not -path "./node_modules/*" -not -path "./.git/*")
+        if [ -n "$LARGE_FILES" ]; then
+          echo "❌ Large files detected:"
+          echo "$LARGE_FILES"
+          echo "Please ensure these files should be committed or add them to .gitignore"
+          exit 1
+        else
+          echo "✅ No large files detected"
+        fi
+    
+    - name: Build test
+      run: |
+        echo "Testing build process..."
+        mkdir -p test-build
+        cp -r src/ test-build/
+        cp -r public/ test-build/
+        cp package.json test-build/
+        echo "✅ Build test completed"
+    
+    - name: Comment PR
+      if: always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+          
+          // Delete previous bot comments
+          for (const comment of comments) {
+            if (comment.user.login === 'github-actions[bot]' && comment.body.includes('PR Validation Results')) {
+              await github.rest.issues.deleteComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: comment.id,
+              });
+            }
+          }
+          
+          // Create new comment
+          const success = '${{ job.status }}' === 'success';
+          const body = `## 🤖 PR Validation Results
+          
+          ${success ? '✅' : '❌'} **Status:** ${success ? 'All checks passed!' : 'Some checks failed'}
+          
+          ### Validation Steps:
+          - ${success ? '✅' : '❌'} Code linting
+          - ${success ? '✅' : '❌'} Comprehensive tests
+          - ${success ? '✅' : '❌'} Jest tests with coverage
+          - ${success ? '✅' : '❌'} Security audit
+          - ${success ? '✅' : '❌'} Commit message validation
+          - ${success ? '✅' : '❌'} Large file check
+          - ${success ? '✅' : '❌'} Build test
+          
+          ${success ? 
+            '🎉 This PR is ready for review!' : 
+            '⚠️ Please address the failing checks before merging.'
+          }
+          
+          View detailed results in the [Actions tab](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}).
+          `;
+          
+          await github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: body
+          });

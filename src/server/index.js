@@ -26,6 +26,31 @@ app.use(express.static(path.join(__dirname, '../../public'), {
   }
 }));
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  const health = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    version: require('../../package.json').version,
+    memory: process.memoryUsage(),
+    activeGames: gameManager.getActiveGameCount ? gameManager.getActiveGameCount() : 0,
+  };
+  
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.status(200).json(health);
+});
+
+// Readiness check endpoint  
+app.get('/ready', (req, res) => {
+  // Add any readiness checks here (database connections, etc.)
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.status(200).json({ status: 'ready' });
+});
+
 app.get('/', (req, res) => {
   // Set cache headers for the main HTML file
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');

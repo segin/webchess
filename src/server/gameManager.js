@@ -232,6 +232,18 @@ class GameManager {
       game.chatMessages = [];
     }
   }
+
+  getActiveGameCount() {
+    return this.games.size;
+  }
+
+  getStats() {
+    return {
+      activeGames: this.games.size,
+      activePlayers: this.playerToGame.size,
+      disconnectedPlayers: this.disconnectedPlayers.size,
+    };
+  }
 }
 
 module.exports = GameManager;
