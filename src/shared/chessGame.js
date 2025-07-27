@@ -741,8 +741,26 @@ class ChessGame {
     return true;
   }
 
+  /**
+   * Enhanced FIDE-compliant queen movement validation
+   * Queens combine both rook (horizontal/vertical) and bishop (diagonal) movement patterns
+   * @param {Object} from - Source square
+   * @param {Object} to - Destination square
+   * @returns {boolean} True if the move pattern is valid
+   */
   isValidQueenMove(from, to) {
-    return this.isValidRookMove(from, to) || this.isValidBishopMove(from, to);
+    // Validate coordinates are within bounds (should already be validated, but double-check)
+    if (!this.isValidSquare(from) || !this.isValidSquare(to)) {
+      return false;
+    }
+    
+    // Queen combines rook and bishop movement patterns
+    // Valid if it's either a valid rook move OR a valid bishop move
+    const isValidRookPattern = this.isValidRookMove(from, to);
+    const isValidBishopPattern = this.isValidBishopMove(from, to);
+    
+    // Queen can move like a rook (horizontal/vertical) or like a bishop (diagonal)
+    return isValidRookPattern || isValidBishopPattern;
   }
 
   isValidKingMove(from, to, piece) {

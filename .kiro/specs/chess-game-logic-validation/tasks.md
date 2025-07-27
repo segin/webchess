@@ -44,7 +44,7 @@
   - Write unit tests for invalid bishop moves including horizontal, vertical, and irregular diagonal attempts
   - _Requirements: 1.5, 1.1_
 
-- [ ] 6. Implement queen movement validation combining rook and bishop patterns
+- [x] 6. Implement queen movement validation combining rook and bishop patterns
   - Code queen movement validation that combines both rook (horizontal/vertical) and bishop (diagonal) movement patterns
   - Implement unified path clearing for queen moves across all valid directions
   - Add comprehensive capture validation for queen moves in all directions
