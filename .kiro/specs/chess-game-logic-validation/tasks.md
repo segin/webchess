@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [-] 1. Enhance core move validation infrastructure
+- [x] 1. Enhance core move validation infrastructure
   - Create enhanced move validation methods in ChessGame class with comprehensive input validation
   - Implement detailed error response structure with categorized error types and user-friendly messages
   - Add validation result structure with granular validation details for debugging
@@ -8,7 +8,7 @@
   - Write unit tests for edge cases like null inputs, malformed coordinates, and invalid piece references
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.6_
 
-- [ ] 2. Implement comprehensive pawn movement validation
+- [x] 2. Implement comprehensive pawn movement validation
   - Code enhanced pawn movement validation with all FIDE-compliant rules including forward moves, captures, and initial two-square moves
   - Implement pawn promotion validation with all valid promotion pieces (queen, rook, bishop, knight)
   - Add en passant validation with proper target tracking and capture mechanics
