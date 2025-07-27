@@ -657,20 +657,88 @@ class ChessGame {
     return false;
   }
 
+  /**
+   * Enhanced FIDE-compliant rook movement validation
+   * Rooks move horizontally and vertically only (path validation handled separately)
+   * @param {Object} from - Source square
+   * @param {Object} to - Destination square
+   * @returns {boolean} True if the move pattern is valid
+   */
   isValidRookMove(from, to) {
-    return (from.row === to.row || from.col === to.col) && this.isPathClear(from, to);
+    // Validate coordinates are within bounds (should already be validated, but double-check)
+    if (!this.isValidSquare(from) || !this.isValidSquare(to)) {
+      return false;
+    }
+    
+    // Rook moves only horizontally (same row) or vertically (same column)
+    const isHorizontal = from.row === to.row && from.col !== to.col;
+    const isVertical = from.col === to.col && from.row !== to.row;
+    
+    return isHorizontal || isVertical;
   }
 
+  /**
+   * Enhanced FIDE-compliant knight movement validation
+   * Knights move in an L-shape: 2 squares in one direction and 1 square perpendicular
+   * Knights can jump over other pieces
+   * @param {Object} from - Source square
+   * @param {Object} to - Destination square
+   * @returns {boolean} True if the move is valid
+   */
   isValidKnightMove(from, to) {
+    // Validate coordinates are within bounds (should already be validated, but double-check)
+    if (!this.isValidSquare(from) || !this.isValidSquare(to)) {
+      return false;
+    }
+    
     const rowDiff = Math.abs(to.row - from.row);
     const colDiff = Math.abs(to.col - from.col);
-    return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
+    
+    // Knight moves in L-shape: (2,1) or (1,2) pattern
+    // Valid combinations: 2+1, 1+2 in any direction
+    const isValidLShape = (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
+    
+    if (!isValidLShape) {
+      return false;
+    }
+    
+    // Knights can jump over pieces, so no path validation needed
+    // Only need to check that destination is not occupied by own piece
+    // (this is handled by validateCapture in the main validation pipeline)
+    
+    return true;
   }
 
+  /**
+   * Enhanced FIDE-compliant bishop movement validation
+   * Bishops move diagonally only with proper slope calculation and path clearing
+   * @param {Object} from - Source square
+   * @param {Object} to - Destination square
+   * @returns {boolean} True if the move pattern is valid
+   */
   isValidBishopMove(from, to) {
+    // Validate coordinates are within bounds (should already be validated, but double-check)
+    if (!this.isValidSquare(from) || !this.isValidSquare(to)) {
+      return false;
+    }
+    
     const rowDiff = Math.abs(to.row - from.row);
     const colDiff = Math.abs(to.col - from.col);
-    return rowDiff === colDiff && this.isPathClear(from, to);
+    
+    // Bishop moves only diagonally - row and column differences must be equal
+    // This ensures the move is along a diagonal line with slope of ±1
+    if (rowDiff !== colDiff) {
+      return false;
+    }
+    
+    // Prevent zero movement (should already be caught by coordinate validation)
+    if (rowDiff === 0) {
+      return false;
+    }
+    
+    // Path clearing validation is handled separately in the main validation pipeline
+    // This method only validates the movement pattern
+    return true;
   }
 
   isValidQueenMove(from, to) {

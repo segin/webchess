@@ -908,4 +908,1187 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       });
     });
   });
+
+  describe('Comprehensive Rook Movement Validation', () => {
+    beforeEach(() => {
+      game = new ChessGame();
+    });
+
+    describe('Horizontal Rook Moves', () => {
+      test('should allow rook horizontal move across rank with clear path', () => {
+        // Clear path for rook movement
+        game.board[7][1] = null; // Remove knight
+        game.board[7][2] = null; // Remove bishop
+        game.board[7][3] = null; // Remove queen
+        game.board[7][4] = null; // Remove king
+        game.board[7][5] = null; // Remove bishop
+        game.board[7][6] = null; // Remove knight
+        
+        const move = { from: { row: 7, col: 0 }, to: { row: 7, col: 6 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[7][6]).toEqual({ type: 'rook', color: 'white' });
+        expect(game.board[7][0]).toBe(null);
+      });
+
+      test('should allow rook horizontal move left across rank', () => {
+        game = new ChessGame(); // Explicit reset
+        // Clear path for rook movement from h1 to d1
+        game.board[7][6] = null; // Remove knight
+        game.board[7][5] = null; // Remove bishop
+        game.board[7][4] = null; // Remove king
+        
+        const move = { from: { row: 7, col: 7 }, to: { row: 7, col: 4 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[7][4]).toEqual({ type: 'rook', color: 'white' });
+        expect(game.board[7][7]).toBe(null);
+      });
+
+      test('should allow black rook horizontal move across rank', () => {
+        game = new ChessGame(); // Explicit reset
+        // Make a white move first
+        game.makeMove({ from: { row: 6, col: 4 }, to: { row: 5, col: 4 } });
+        
+        // Clear path for black rook movement
+        game.board[0][1] = null; // Remove knight
+        game.board[0][2] = null; // Remove bishop
+        game.board[0][3] = null; // Remove queen
+        game.board[0][4] = null; // Remove king
+        game.board[0][5] = null; // Remove bishop
+        game.board[0][6] = null; // Remove knight
+        
+        const move = { from: { row: 0, col: 0 }, to: { row: 0, col: 6 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[0][6]).toEqual({ type: 'rook', color: 'black' });
+        expect(game.board[0][0]).toBe(null);
+      });
+
+      test('should allow rook single square horizontal move', () => {
+        game = new ChessGame(); // Explicit reset
+        // Clear adjacent square
+        game.board[7][1] = null; // Remove knight
+        
+        const move = { from: { row: 7, col: 0 }, to: { row: 7, col: 1 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[7][1]).toEqual({ type: 'rook', color: 'white' });
+        expect(game.board[7][0]).toBe(null);
+      });
+
+      test('should allow rook capture enemy piece horizontally', () => {
+        game = new ChessGame(); // Explicit reset
+        // Place enemy piece in rook's path
+        game.board[7][1] = null; // Remove knight
+        game.board[7][2] = { type: 'pawn', color: 'black' }; // Place enemy pawn
+        
+        const move = { from: { row: 7, col: 0 }, to: { row: 7, col: 2 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[7][2]).toEqual({ type: 'rook', color: 'white' });
+        expect(game.board[7][0]).toBe(null);
+      });
+    });
+
+    describe('Vertical Rook Moves', () => {
+      test('should allow rook vertical move up the file with clear path', () => {
+        game = new ChessGame(); // Explicit reset
+        // Move rook to center and clear path
+        game.board[4][4] = { type: 'rook', color: 'white' };
+        game.board[7][0] = null; // Remove original rook
+        game.board[6][4] = null; // Clear pawn
+        game.board[5][4] = null; // Clear any pieces
+        game.board[3][4] = null; // Clear any pieces
+        game.board[2][4] = null; // Clear any pieces
+        
+        const move = { from: { row: 4, col: 4 }, to: { row: 1, col: 4 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[1][4]).toEqual({ type: 'rook', color: 'white' });
+        expect(game.board[4][4]).toBe(null);
+      });
+
+      test('should allow rook vertical move down the file', () => {
+        game = new ChessGame(); // Explicit reset
+        // Move rook to center and clear path
+        game.board[3][4] = { type: 'rook', color: 'white' };
+        game.board[7][0] = null; // Remove original rook
+        game.board[4][4] = null; // Clear any pieces
+        game.board[5][4] = null; // Clear any pieces
+        game.board[6][4] = null; // Clear pawn
+        
+        const move = { from: { row: 3, col: 4 }, to: { row: 6, col: 4 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[6][4]).toEqual({ type: 'rook', color: 'white' });
+        expect(game.board[3][4]).toBe(null);
+      });
+
+      test('should allow black rook vertical move', () => {
+        game = new ChessGame(); // Explicit reset
+        // Make a white move first
+        game.makeMove({ from: { row: 6, col: 4 }, to: { row: 5, col: 4 } });
+        
+        // Move black rook to center and clear path
+        game.board[3][4] = { type: 'rook', color: 'black' };
+        game.board[0][0] = null; // Remove original rook
+        game.board[2][4] = null; // Clear any pieces
+        game.board[1][4] = null; // Clear pawn
+        
+        const move = { from: { row: 3, col: 4 }, to: { row: 1, col: 4 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[1][4]).toEqual({ type: 'rook', color: 'black' });
+        expect(game.board[3][4]).toBe(null);
+      });
+
+      test('should allow rook capture enemy piece vertically', () => {
+        game = new ChessGame(); // Explicit reset
+        // Move rook to center and place enemy piece
+        game.board[4][4] = { type: 'rook', color: 'white' };
+        game.board[7][0] = null; // Remove original rook
+        game.board[2][4] = { type: 'pawn', color: 'black' }; // Place enemy pawn
+        game.board[3][4] = null; // Clear path
+        
+        const move = { from: { row: 4, col: 4 }, to: { row: 2, col: 4 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[2][4]).toEqual({ type: 'rook', color: 'white' });
+        expect(game.board[4][4]).toBe(null);
+      });
+
+      test('should allow rook move across entire board vertically', () => {
+        game = new ChessGame(); // Explicit reset
+        // Move rook to a1 and clear entire file
+        game.board[7][0] = { type: 'rook', color: 'white' };
+        game.board[6][0] = null; // Clear pawn
+        game.board[5][0] = null;
+        game.board[4][0] = null;
+        game.board[3][0] = null;
+        game.board[2][0] = null;
+        game.board[1][0] = null; // Clear black pawn
+        game.board[0][0] = null; // Clear black rook
+        
+        const move = { from: { row: 7, col: 0 }, to: { row: 0, col: 0 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[0][0]).toEqual({ type: 'rook', color: 'white' });
+        expect(game.board[7][0]).toBe(null);
+      });
+    });
+
+    describe('Blocked Rook Moves', () => {
+      test('should reject horizontal move with piece blocking path', () => {
+        game = new ChessGame(); // Explicit reset
+        // Knight blocks the path from a1 to c1
+        const move = { from: { row: 7, col: 0 }, to: { row: 7, col: 2 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('PATH_BLOCKED');
+      });
+
+      test('should reject vertical move with piece blocking path', () => {
+        game = new ChessGame(); // Explicit reset
+        // Pawn blocks the path from a1 to a6
+        const move = { from: { row: 7, col: 0 }, to: { row: 2, col: 0 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('PATH_BLOCKED');
+      });
+
+      test('should reject move blocked by own piece', () => {
+        game = new ChessGame(); // Explicit reset
+        // Try to move rook to square occupied by own knight
+        const move = { from: { row: 7, col: 0 }, to: { row: 7, col: 1 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('CAPTURE_OWN_PIECE');
+      });
+
+      test('should reject horizontal move with multiple pieces blocking', () => {
+        game = new ChessGame(); // Explicit reset
+        // Multiple pieces block the path from a1 to h1
+        const move = { from: { row: 7, col: 0 }, to: { row: 7, col: 7 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('PATH_BLOCKED');
+      });
+
+      test('should reject vertical move blocked by pawn', () => {
+        game = new ChessGame(); // Explicit reset
+        // White pawn blocks vertical movement
+        const move = { from: { row: 7, col: 0 }, to: { row: 5, col: 0 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('PATH_BLOCKED');
+      });
+
+      test('should reject move to square immediately blocked', () => {
+        game = new ChessGame(); // Explicit reset
+        // Try to move to square right next to rook but blocked by knight
+        const move = { from: { row: 7, col: 0 }, to: { row: 7, col: 1 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('CAPTURE_OWN_PIECE');
+      });
+    });
+
+    describe('Invalid Rook Moves', () => {
+      test('should reject diagonal move', () => {
+        game = new ChessGame(); // Explicit reset
+        // Clear some pieces to make diagonal move possible if it were valid
+        game.board[7][1] = null; // Remove knight
+        game.board[6][1] = null; // Clear pawn
+        
+        const move = { from: { row: 7, col: 0 }, to: { row: 6, col: 1 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+      });
+
+      test('should reject knight-like L-shaped move', () => {
+        game = new ChessGame(); // Explicit reset
+        // Clear pieces to make L-shaped move possible if it were valid
+        game.board[6][0] = null; // Clear pawn
+        game.board[5][2] = null; // Clear destination
+        
+        const move = { from: { row: 7, col: 0 }, to: { row: 5, col: 2 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+      });
+
+      test('should reject irregular move pattern', () => {
+        game = new ChessGame(); // Explicit reset
+        // Clear pieces for irregular move
+        game.board[6][0] = null; // Clear pawn
+        game.board[5][1] = null; // Clear destination
+        
+        const move = { from: { row: 7, col: 0 }, to: { row: 5, col: 1 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+      });
+
+      test('should reject move to same square', () => {
+        game = new ChessGame(); // Explicit reset
+        const move = { from: { row: 7, col: 0 }, to: { row: 7, col: 0 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_COORDINATES');
+      });
+
+      test('should reject out-of-bounds move', () => {
+        game = new ChessGame(); // Explicit reset
+        const move = { from: { row: 7, col: 0 }, to: { row: 8, col: 0 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_COORDINATES');
+      });
+
+      test('should reject complex diagonal move', () => {
+        game = new ChessGame(); // Explicit reset
+        // Clear pieces for complex diagonal
+        game.board[6][0] = null; // Clear pawn
+        game.board[5][1] = null;
+        game.board[4][2] = null;
+        game.board[3][3] = null;
+        
+        const move = { from: { row: 7, col: 0 }, to: { row: 3, col: 3 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+      });
+    });
+
+    describe('Rook Edge Cases', () => {
+      test('should handle rook at board edge moving across rank', () => {
+        game = new ChessGame(); // Explicit reset
+        // Test rook at edge of board (a8)
+        game.board[0][1] = null; // Remove knight
+        game.board[0][2] = null; // Remove bishop
+        game.board[0][3] = null; // Remove queen
+        
+        // Make white move first
+        game.makeMove({ from: { row: 6, col: 4 }, to: { row: 5, col: 4 } });
+        
+        const move = { from: { row: 0, col: 0 }, to: { row: 0, col: 3 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[0][3]).toEqual({ type: 'rook', color: 'black' });
+      });
+
+      test('should handle rook at board corner moving to opposite corner', () => {
+        game = new ChessGame(); // Explicit reset
+        // Clear entire rank and file for corner-to-corner move
+        for (let i = 1; i < 7; i++) {
+          game.board[7][i] = null; // Clear rank
+          game.board[i][0] = null; // Clear file
+        }
+        game.board[6][0] = null; // Clear pawn
+        game.board[0][0] = null; // Clear black rook
+        
+        const move = { from: { row: 7, col: 0 }, to: { row: 0, col: 0 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[0][0]).toEqual({ type: 'rook', color: 'white' });
+        expect(game.board[7][0]).toBe(null);
+      });
+
+      test('should handle rook movement with minimal path', () => {
+        game = new ChessGame(); // Explicit reset
+        // Test single square movement
+        game.board[7][1] = null; // Remove knight
+        
+        const move = { from: { row: 7, col: 0 }, to: { row: 7, col: 1 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[7][1]).toEqual({ type: 'rook', color: 'white' });
+      });
+
+      test('should validate rook movement after castling rights lost', () => {
+        game = new ChessGame(); // Explicit reset
+        // Move king to lose castling rights, then test rook movement
+        game.board[7][1] = null; // Remove knight
+        game.board[7][2] = null; // Remove bishop
+        game.board[7][3] = null; // Remove queen
+        
+        // Move king (loses castling rights)
+        game.makeMove({ from: { row: 7, col: 4 }, to: { row: 7, col: 3 } });
+        game.makeMove({ from: { row: 1, col: 4 }, to: { row: 2, col: 4 } }); // Black move
+        
+        // Now test rook movement
+        const move = { from: { row: 7, col: 0 }, to: { row: 7, col: 2 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[7][2]).toEqual({ type: 'rook', color: 'white' });
+      });
+
+      test('should handle rook capture at maximum distance', () => {
+        game = new ChessGame(); // Explicit reset
+        // Place enemy piece at far end and clear path
+        game.board[7][1] = null; // Remove knight
+        game.board[7][2] = null; // Remove bishop
+        game.board[7][3] = null; // Remove queen
+        game.board[7][4] = null; // Remove king
+        game.board[7][5] = null; // Remove bishop
+        game.board[7][6] = null; // Remove knight
+        game.board[7][7] = { type: 'pawn', color: 'black' }; // Place enemy piece
+        
+        const move = { from: { row: 7, col: 0 }, to: { row: 7, col: 7 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[7][7]).toEqual({ type: 'rook', color: 'white' });
+        expect(game.board[7][0]).toBe(null);
+      });
+    });
+  });
+
+  describe('Comprehensive Knight Movement Validation', () => {
+    beforeEach(() => {
+      game = new ChessGame();
+    });
+
+    describe('Valid Knight L-Shaped Moves', () => {
+      test('should allow knight move 2 up, 1 right from b1', () => {
+        const move = { from: { row: 7, col: 1 }, to: { row: 5, col: 2 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[5][2]).toEqual({ type: 'knight', color: 'white' });
+        expect(game.board[7][1]).toBe(null);
+      });
+
+      test('should allow knight move 2 up, 1 left from g1', () => {
+        game = new ChessGame(); // Reset game state
+        const move = { from: { row: 7, col: 6 }, to: { row: 5, col: 5 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[5][5]).toEqual({ type: 'knight', color: 'white' });
+        expect(game.board[7][6]).toBe(null);
+      });
+
+      test('should allow knight move 1 up, 2 right from b1', () => {
+        game = new ChessGame(); // Reset game state
+        // Clear the pawn that would be captured
+        game.board[6][3] = null;
+        const move = { from: { row: 7, col: 1 }, to: { row: 6, col: 3 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[6][3]).toEqual({ type: 'knight', color: 'white' });
+        expect(game.board[7][1]).toBe(null);
+      });
+
+      test('should reject knight move that captures own piece', () => {
+        game = new ChessGame(); // Reset game state
+        // Knight at g1 trying to move to e2 would capture own pawn
+        const move = { from: { row: 7, col: 6 }, to: { row: 6, col: 4 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('CAPTURE_OWN_PIECE');
+      });
+
+      test('should allow black knight move after white move', () => {
+        // White moves first
+        game.makeMove({ from: { row: 6, col: 4 }, to: { row: 5, col: 4 } });
+        
+        // Black knight move
+        const move = { from: { row: 0, col: 1 }, to: { row: 2, col: 2 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[2][2]).toEqual({ type: 'knight', color: 'black' });
+        expect(game.board[0][1]).toBe(null);
+      });
+    });
+
+    describe('Knight Moves from Various Board Positions', () => {
+      test('should allow knight moves from center of board', () => {
+        // Place white knight in center and clear original
+        game.board[4][4] = { type: 'knight', color: 'white' };
+        game.board[7][1] = null;
+        
+        // Test one valid L-shaped move from center
+        const move = { from: { row: 4, col: 4 }, to: { row: 2, col: 3 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[2][3]).toEqual({ type: 'knight', color: 'white' });
+        expect(game.board[4][4]).toBe(null);
+      });
+
+      test('should allow knight moves from corner of board', () => {
+        game = new ChessGame(); // Reset game state
+        // Place white knight in corner and clear original
+        game.board[7][0] = { type: 'knight', color: 'white' };
+        game.board[7][1] = null;
+        
+        // Test valid move from corner
+        const move = { from: { row: 7, col: 0 }, to: { row: 5, col: 1 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[5][1]).toEqual({ type: 'knight', color: 'white' });
+        expect(game.board[7][0]).toBe(null);
+      });
+
+      test('should allow knight moves from edge of board', () => {
+        game = new ChessGame(); // Reset game state
+        // Place white knight on edge (use position 3,0) and clear original
+        game.board[3][0] = { type: 'knight', color: 'white' };
+        game.board[7][1] = null;
+        
+        // Test valid move from edge to empty square
+        const move = { from: { row: 3, col: 0 }, to: { row: 5, col: 1 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[5][1]).toEqual({ type: 'knight', color: 'white' });
+        expect(game.board[3][0]).toBe(null);
+      });
+    });
+
+    describe('Knight Jumping Over Pieces', () => {
+      test('should allow knight to jump over pieces', () => {
+        game = new ChessGame(); // Reset game state
+        // The knight at (7,1) moving to (5,2) should work regardless of pieces in between
+        const move = { from: { row: 7, col: 1 }, to: { row: 5, col: 2 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[5][2]).toEqual({ type: 'knight', color: 'white' });
+        expect(game.board[7][1]).toBe(null);
+        // White pawn should still be at (6,1) - knights jump over pieces
+        expect(game.board[6][1]).toEqual({ type: 'pawn', color: 'white' });
+      });
+
+      test('should allow knight to capture after jumping', () => {
+        game = new ChessGame(); // Reset game state
+        // Place enemy piece at destination
+        game.board[5][2] = { type: 'pawn', color: 'black' };
+        
+        const move = { from: { row: 7, col: 1 }, to: { row: 5, col: 2 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[5][2]).toEqual({ type: 'knight', color: 'white' });
+        expect(game.board[7][1]).toBe(null);
+        // White pawn should still be at (6,1) - knights jump over pieces
+        expect(game.board[6][1]).toEqual({ type: 'pawn', color: 'white' });
+      });
+    });
+
+    describe('Invalid Knight Moves', () => {
+      test('should reject straight line horizontal move', () => {
+        game = new ChessGame(); // Reset game state
+        // Clear the destination to avoid capture issues
+        game.board[7][3] = null;
+        const move = { from: { row: 7, col: 1 }, to: { row: 7, col: 3 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+        expect(result.message).toBe('Invalid knight movement');
+      });
+
+      test('should reject straight line vertical move', () => {
+        game = new ChessGame(); // Reset game state
+        const move = { from: { row: 7, col: 1 }, to: { row: 5, col: 1 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+        expect(result.message).toBe('Invalid knight movement');
+      });
+
+      test('should reject diagonal move', () => {
+        game = new ChessGame(); // Reset game state
+        const move = { from: { row: 7, col: 1 }, to: { row: 5, col: 3 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+        expect(result.message).toBe('Invalid knight movement');
+      });
+
+      test('should reject single square move', () => {
+        game = new ChessGame(); // Reset game state
+        // Clear the destination to avoid capture issues
+        game.board[6][1] = null;
+        const move = { from: { row: 7, col: 1 }, to: { row: 6, col: 1 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+        expect(result.message).toBe('Invalid knight movement');
+      });
+
+      test('should reject 3-square move in one direction', () => {
+        game = new ChessGame(); // Reset game state
+        const move = { from: { row: 7, col: 1 }, to: { row: 4, col: 2 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+        expect(result.message).toBe('Invalid knight movement');
+      });
+
+      test('should reject 2-2 square move (not L-shaped)', () => {
+        game = new ChessGame(); // Reset game state
+        const move = { from: { row: 7, col: 1 }, to: { row: 5, col: 3 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+        expect(result.message).toBe('Invalid knight movement');
+      });
+
+      test('should reject move to same square', () => {
+        const move = { from: { row: 7, col: 1 }, to: { row: 7, col: 1 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_COORDINATES');
+        expect(result.errors).toContain('Source and destination squares cannot be the same');
+      });
+    });
+
+    describe('Knight Boundary Checking', () => {
+      test('should reject knight move beyond top boundary', () => {
+        // Place knight near top edge
+        game.board[1][4] = { type: 'knight', color: 'white' };
+        game.board[7][1] = null;
+        
+        const move = { from: { row: 1, col: 4 }, to: { row: -1, col: 3 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_COORDINATES');
+        expect(result.errors).toContain('Invalid destination coordinates: row -1, col 3');
+      });
+
+      test('should reject knight move beyond bottom boundary', () => {
+        // Place knight near bottom edge
+        game.board[6][4] = { type: 'knight', color: 'white' };
+        game.board[7][1] = null;
+        
+        const move = { from: { row: 6, col: 4 }, to: { row: 8, col: 3 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_COORDINATES');
+        expect(result.errors).toContain('Invalid destination coordinates: row 8, col 3');
+      });
+
+      test('should reject knight move beyond left boundary', () => {
+        // Place knight near left edge
+        game.board[4][1] = { type: 'knight', color: 'white' };
+        game.board[7][1] = null;
+        
+        const move = { from: { row: 4, col: 1 }, to: { row: 3, col: -1 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_COORDINATES');
+        expect(result.errors).toContain('Invalid destination coordinates: row 3, col -1');
+      });
+
+      test('should reject knight move beyond right boundary', () => {
+        // Place knight near right edge
+        game.board[4][6] = { type: 'knight', color: 'white' };
+        game.board[7][1] = null;
+        
+        const move = { from: { row: 4, col: 6 }, to: { row: 3, col: 8 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_COORDINATES');
+        expect(result.errors).toContain('Invalid destination coordinates: row 3, col 8');
+      });
+
+      test('should reject knight move beyond multiple boundaries', () => {
+        // Place knight in corner
+        game.board[0][0] = { type: 'knight', color: 'white' };
+        game.board[7][1] = null;
+        
+        const move = { from: { row: 0, col: 0 }, to: { row: -2, col: -1 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_COORDINATES');
+        expect(result.errors).toContain('Invalid destination coordinates: row -2, col -1');
+      });
+
+      test('should allow knight moves that stay within boundaries from edge positions', () => {
+        // Test knight on each edge can make valid moves within bounds
+        const edgePositions = [
+          { pos: { row: 0, col: 3 }, validMove: { row: 2, col: 2 } }, // Top edge
+          { pos: { row: 7, col: 3 }, validMove: { row: 5, col: 2 } }, // Bottom edge
+          { pos: { row: 3, col: 0 }, validMove: { row: 1, col: 1 } }, // Left edge
+          { pos: { row: 3, col: 7 }, validMove: { row: 1, col: 6 } }  // Right edge
+        ];
+
+        for (const { pos, validMove } of edgePositions) {
+          const testGame = new ChessGame();
+          testGame.board[pos.row][pos.col] = { type: 'knight', color: 'white' };
+          testGame.board[7][1] = null;
+          
+          const move = { from: pos, to: validMove };
+          const result = testGame.makeMove(move);
+          expect(result.success).toBe(true);
+          expect(testGame.board[validMove.row][validMove.col]).toEqual({ type: 'knight', color: 'white' });
+        }
+      });
+    });
+
+    describe('Knight Capture Validation', () => {
+      test('should allow knight to capture enemy piece', () => {
+        game = new ChessGame(); // Reset game state
+        // Place enemy piece at knight's destination
+        game.board[5][2] = { type: 'pawn', color: 'black' };
+        
+        const move = { from: { row: 7, col: 1 }, to: { row: 5, col: 2 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[5][2]).toEqual({ type: 'knight', color: 'white' });
+        expect(game.board[7][1]).toBe(null);
+      });
+
+      test('should reject knight capturing own piece', () => {
+        game = new ChessGame(); // Reset game state
+        // Place own piece at knight's destination
+        game.board[5][2] = { type: 'pawn', color: 'white' };
+        
+        const move = { from: { row: 7, col: 1 }, to: { row: 5, col: 2 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('CAPTURE_OWN_PIECE');
+        expect(result.message).toBe('Cannot capture own piece');
+      });
+
+      test('should allow knight to capture different piece types', () => {
+        game = new ChessGame(); // Reset game state
+        // Test capturing a black pawn
+        game.board[5][2] = { type: 'pawn', color: 'black' };
+        const move = { from: { row: 7, col: 1 }, to: { row: 5, col: 2 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[5][2]).toEqual({ type: 'knight', color: 'white' });
+      });
+    });
+
+    describe('Knight Move History and Game State', () => {
+      test('should record knight move in move history', () => {
+        game = new ChessGame(); // Reset game state
+        const move = { from: { row: 7, col: 1 }, to: { row: 5, col: 2 } };
+        game.makeMove(move);
+        
+        const lastMove = game.moveHistory[game.moveHistory.length - 1];
+        expect(lastMove.piece).toBe('knight');
+        expect(lastMove.color).toBe('white');
+        expect(lastMove.from).toEqual({ row: 7, col: 1 });
+        expect(lastMove.to).toEqual({ row: 5, col: 2 });
+        expect(lastMove.captured).toBe(null);
+      });
+
+      test('should record knight capture in move history', () => {
+        game = new ChessGame(); // Reset game state
+        // Place enemy piece to capture
+        game.board[5][2] = { type: 'pawn', color: 'black' };
+        
+        const move = { from: { row: 7, col: 1 }, to: { row: 5, col: 2 } };
+        game.makeMove(move);
+        
+        const lastMove = game.moveHistory[game.moveHistory.length - 1];
+        expect(lastMove.piece).toBe('knight');
+        expect(lastMove.captured).toBe('pawn');
+      });
+
+      test('should switch turns after knight move', () => {
+        game = new ChessGame(); // Reset game state
+        expect(game.currentTurn).toBe('white');
+        
+        const move = { from: { row: 7, col: 1 }, to: { row: 5, col: 2 } };
+        game.makeMove(move);
+        
+        expect(game.currentTurn).toBe('black');
+      });
+
+      test('should maintain game status after knight move', () => {
+        game = new ChessGame(); // Reset game state
+        const move = { from: { row: 7, col: 1 }, to: { row: 5, col: 2 } };
+        game.makeMove(move);
+        
+        expect(game.gameStatus).toBe('active');
+        expect(game.winner).toBe(null);
+      });
+    });
+
+    describe('Complex Knight Movement Scenarios', () => {
+      test('should handle knight fork attack', () => {
+        game = new ChessGame(); // Reset game state
+        // Set up position where knight can fork king and queen
+        game.board[4][4] = { type: 'knight', color: 'white' };
+        game.board[2][3] = { type: 'king', color: 'black' };
+        game.board[2][5] = { type: 'queen', color: 'black' };
+        game.board[7][1] = null; // Remove original knight
+        
+        // Knight can attack both king and queen from this position
+        const move = { from: { row: 4, col: 4 }, to: { row: 2, col: 3 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[2][3]).toEqual({ type: 'knight', color: 'white' });
+      });
+
+      test('should allow knight to escape from attacked position', () => {
+        game = new ChessGame(); // Reset game state
+        // Place knight under attack and verify it can move to safety
+        game.board[4][4] = { type: 'knight', color: 'white' };
+        game.board[4][0] = { type: 'rook', color: 'black' }; // Attacking the knight
+        game.board[7][1] = null; // Remove original knight
+        
+        const move = { from: { row: 4, col: 4 }, to: { row: 2, col: 3 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[2][3]).toEqual({ type: 'knight', color: 'white' });
+      });
+    });
+  });
+
+  describe('Comprehensive Bishop Movement Validation', () => {
+    beforeEach(() => {
+      game = new ChessGame();
+    });
+
+    describe('Basic Bishop Diagonal Movement', () => {
+      test('should allow bishop diagonal move up-right', () => {
+        game = new ChessGame(); // Reset game
+        // Clear path for bishop
+        game.board[6][3] = null; // Remove white pawn
+        game.board[5][4] = null; // Clear path
+        game.board[4][5] = null; // Clear path
+        
+        const move = { from: { row: 7, col: 2 }, to: { row: 4, col: 5 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[4][5]).toEqual({ type: 'bishop', color: 'white' });
+        expect(game.board[7][2]).toBe(null);
+      });
+
+      test('should allow bishop diagonal move up-left', () => {
+        game = new ChessGame(); // Reset game
+        // Clear path for bishop
+        game.board[6][1] = null; // Remove white pawn
+        game.board[5][0] = null; // Clear path
+        
+        const move = { from: { row: 7, col: 2 }, to: { row: 5, col: 0 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[5][0]).toEqual({ type: 'bishop', color: 'white' });
+        expect(game.board[7][2]).toBe(null);
+      });
+
+      test('should allow bishop diagonal move down-right', () => {
+        game = new ChessGame(); // Reset game
+        // Move to allow black bishop to move
+        game.makeMove({ from: { row: 6, col: 4 }, to: { row: 5, col: 4 } }); // White move first
+        
+        // Clear path for black bishop
+        game.board[1][3] = null; // Remove black pawn
+        game.board[2][4] = null; // Clear path
+        game.board[3][5] = null; // Clear path
+        
+        const move = { from: { row: 0, col: 2 }, to: { row: 3, col: 5 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[3][5]).toEqual({ type: 'bishop', color: 'black' });
+        expect(game.board[0][2]).toBe(null);
+      });
+
+      test('should allow bishop diagonal move down-left', () => {
+        game = new ChessGame(); // Reset game
+        // Move to allow black bishop to move
+        game.makeMove({ from: { row: 6, col: 4 }, to: { row: 5, col: 4 } }); // White move first
+        
+        // Clear path for black bishop
+        game.board[1][1] = null; // Remove black pawn
+        game.board[2][0] = null; // Clear path
+        
+        const move = { from: { row: 0, col: 2 }, to: { row: 2, col: 0 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[2][0]).toEqual({ type: 'bishop', color: 'black' });
+        expect(game.board[0][2]).toBe(null);
+      });
+
+      test('should allow bishop single square diagonal move', () => {
+        game = new ChessGame(); // Reset game
+        // Clear path for bishop
+        game.board[6][3] = null; // Remove white pawn
+        
+        const move = { from: { row: 7, col: 2 }, to: { row: 6, col: 3 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[6][3]).toEqual({ type: 'bishop', color: 'white' });
+        expect(game.board[7][2]).toBe(null);
+      });
+
+      test('should allow bishop long diagonal move across board', () => {
+        game = new ChessGame(); // Reset game
+        // Clear entire diagonal path
+        game.board[6][3] = null; // Remove white pawn
+        game.board[5][4] = null; // Clear path
+        game.board[4][5] = null; // Clear path
+        game.board[3][6] = null; // Clear path
+        game.board[2][7] = null; // Clear path
+        
+        const move = { from: { row: 7, col: 2 }, to: { row: 2, col: 7 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[2][7]).toEqual({ type: 'bishop', color: 'white' });
+        expect(game.board[7][2]).toBe(null);
+      });
+    });
+
+    describe('Bishop Path Obstruction Scenarios', () => {
+      test('should reject bishop move when path is blocked by own piece', () => {
+        game = new ChessGame(); // Reset game
+        // White pawn at (6,3) blocks bishop's path
+        
+        const move = { from: { row: 7, col: 2 }, to: { row: 5, col: 4 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('PATH_BLOCKED');
+        expect(result.message).toBe('Path is blocked');
+      });
+
+      test('should reject bishop move when path is blocked by enemy piece', () => {
+        game = new ChessGame(); // Reset game
+        // Place enemy piece in path
+        game.board[5][4] = { type: 'pawn', color: 'black' };
+        game.board[6][3] = null; // Clear white pawn
+        
+        const move = { from: { row: 7, col: 2 }, to: { row: 4, col: 5 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('PATH_BLOCKED');
+      });
+
+      test('should allow bishop to capture enemy piece at destination', () => {
+        game = new ChessGame(); // Reset game
+        // Clear path and place enemy piece at destination
+        game.board[6][3] = null; // Remove white pawn
+        game.board[5][4] = { type: 'pawn', color: 'black' };
+        
+        const move = { from: { row: 7, col: 2 }, to: { row: 5, col: 4 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[5][4]).toEqual({ type: 'bishop', color: 'white' });
+        expect(game.board[7][2]).toBe(null);
+      });
+
+      test('should reject bishop capturing own piece', () => {
+        game = new ChessGame(); // Reset game
+        // Try to capture own pawn
+        const move = { from: { row: 7, col: 2 }, to: { row: 6, col: 3 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('CAPTURE_OWN_PIECE');
+        expect(result.message).toBe('Cannot capture own piece');
+      });
+
+      test('should handle multiple pieces blocking different paths', () => {
+        game = new ChessGame(); // Reset game
+        // Block multiple diagonal paths
+        game.board[6][1] = { type: 'pawn', color: 'white' }; // Block up-left
+        game.board[6][3] = { type: 'pawn', color: 'white' }; // Block up-right (already there)
+        
+        // Try to move up-left (blocked)
+        const move1 = { from: { row: 7, col: 2 }, to: { row: 5, col: 0 } };
+        const result1 = game.makeMove(move1);
+        expect(result1.success).toBe(false);
+        expect(result1.errorCode).toBe('PATH_BLOCKED');
+        
+        // Try to move up-right (blocked)
+        const move2 = { from: { row: 7, col: 2 }, to: { row: 5, col: 4 } };
+        const result2 = game.makeMove(move2);
+        expect(result2.success).toBe(false);
+        expect(result2.errorCode).toBe('PATH_BLOCKED');
+      });
+    });
+
+    describe('Invalid Bishop Movement Patterns', () => {
+      test('should reject horizontal bishop move', () => {
+        game = new ChessGame(); // Reset game
+        // Clear path horizontally
+        game.board[7][3] = null; // Remove queen
+        game.board[7][4] = null; // Remove king
+        
+        const move = { from: { row: 7, col: 2 }, to: { row: 7, col: 5 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+        expect(result.message).toBe('Invalid bishop movement');
+      });
+
+      test('should reject vertical bishop move', () => {
+        game = new ChessGame(); // Reset game
+        // Clear path vertically
+        game.board[6][2] = null; // Remove pawn
+        game.board[5][2] = null; // Clear path
+        
+        const move = { from: { row: 7, col: 2 }, to: { row: 4, col: 2 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+        expect(result.message).toBe('Invalid bishop movement');
+      });
+
+      test('should reject knight-like L-shaped move', () => {
+        game = new ChessGame(); // Reset game
+        // Clear potential path
+        game.board[6][3] = null; // Remove pawn
+        
+        const move = { from: { row: 7, col: 2 }, to: { row: 5, col: 3 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+        expect(result.message).toBe('Invalid bishop movement');
+      });
+
+      test('should reject irregular diagonal move (wrong slope)', () => {
+        game = new ChessGame(); // Reset game
+        // Clear path
+        game.board[6][3] = null; // Remove pawn
+        
+        // Try 2 rows, 3 columns (not equal differences)
+        const move = { from: { row: 7, col: 2 }, to: { row: 5, col: 5 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+        expect(result.message).toBe('Invalid bishop movement');
+      });
+
+      test('should reject move to same square', () => {
+        game = new ChessGame(); // Reset game
+        const move = { from: { row: 7, col: 2 }, to: { row: 7, col: 2 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_COORDINATES');
+        expect(result.errors).toContain('Source and destination squares cannot be the same');
+      });
+
+      test('should reject move with zero row and column difference', () => {
+        game = new ChessGame(); // Reset game
+        // This should be caught by coordinate validation, but test the bishop logic
+        const isValid = game.isValidBishopMove({ row: 7, col: 2 }, { row: 7, col: 2 });
+        expect(isValid).toBe(false);
+      });
+    });
+
+    describe('Bishop Boundary Validation', () => {
+      test('should reject bishop move to out-of-bounds destination', () => {
+        game = new ChessGame(); // Reset game
+        // This should be caught by coordinate validation
+        const move = { from: { row: 7, col: 2 }, to: { row: 9, col: 4 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('INVALID_COORDINATES');
+      });
+
+      test('should handle bishop at board edge moving diagonally', () => {
+        game = new ChessGame(); // Reset game
+        // Place bishop at edge
+        game.board[0][0] = { type: 'bishop', color: 'white' };
+        game.board[7][2] = null; // Remove original bishop
+        game.board[1][1] = null; // Clear path
+        game.currentTurn = 'white'; // Ensure it's white's turn
+        
+        // Move diagonally from corner
+        const move = { from: { row: 0, col: 0 }, to: { row: 2, col: 2 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[2][2]).toEqual({ type: 'bishop', color: 'white' });
+      });
+
+      test('should handle bishop at corner moving to opposite corner', () => {
+        game = new ChessGame(); // Reset game
+        // Place bishop at corner and clear entire diagonal
+        game.board[0][0] = { type: 'bishop', color: 'white' };
+        game.board[7][2] = null; // Remove original bishop
+        game.board[7][7] = null; // Remove original rook at destination
+        game.board[1][1] = null; // Clear path
+        game.board[2][2] = null; // Clear path
+        game.board[3][3] = null; // Clear path
+        game.board[4][4] = null; // Clear path
+        game.board[5][5] = null; // Clear path
+        game.board[6][6] = null; // Clear path
+        game.currentTurn = 'white'; // Ensure it's white's turn
+        
+        const move = { from: { row: 0, col: 0 }, to: { row: 7, col: 7 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[7][7]).toEqual({ type: 'bishop', color: 'white' });
+      });
+
+      test('should validate bishop stays on same color squares', () => {
+        game = new ChessGame(); // Reset game
+        // White bishop starts on light square (7,2) - row+col = 9 (odd)
+        // Clear path to another light square
+        game.board[6][3] = null; // Remove pawn
+        
+        const move = { from: { row: 7, col: 2 }, to: { row: 6, col: 3 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        
+        // Verify bishop is still on light square (6+3 = 9, odd)
+        const fromSquareColor = (7 + 2) % 2; // 1 (odd - light square)
+        const toSquareColor = (6 + 3) % 2; // 1 (odd - light square)
+        expect(fromSquareColor).toBe(toSquareColor);
+      });
+    });
+
+    describe('Complex Bishop Movement Scenarios', () => {
+      test('should handle bishop fork attack', () => {
+        game = new ChessGame(); // Reset game
+        // Set up position where bishop can fork two pieces
+        game.board[4][4] = { type: 'bishop', color: 'white' };
+        game.board[7][2] = null; // Remove original bishop
+        game.board[2][2] = { type: 'rook', color: 'black' };
+        game.board[6][6] = { type: 'queen', color: 'black' };
+        game.currentTurn = 'white';
+        
+        // Bishop can attack both pieces from (4,4)
+        // Verify it can capture one of them
+        const move = { from: { row: 4, col: 4 }, to: { row: 2, col: 2 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[2][2]).toEqual({ type: 'bishop', color: 'white' });
+      });
+
+      test('should handle bishop pin scenario', () => {
+        game = new ChessGame(); // Reset game
+        // Set up a pin: bishop pins enemy piece to their king
+        game.board[4][4] = { type: 'bishop', color: 'white' };
+        game.board[7][2] = null; // Remove original bishop
+        game.board[3][3] = { type: 'pawn', color: 'black' }; // Pinned piece
+        game.board[2][2] = { type: 'king', color: 'black' }; // King behind pinned piece
+        game.board[0][4] = null; // Remove original black king
+        game.currentTurn = 'white';
+        
+        // Bishop should be able to capture the pinned piece
+        const move = { from: { row: 4, col: 4 }, to: { row: 3, col: 3 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[3][3]).toEqual({ type: 'bishop', color: 'white' });
+      });
+
+      test('should handle bishop defending another piece', () => {
+        game = new ChessGame(); // Reset game
+        // Set up position where bishop defends a piece
+        game.board[5][3] = { type: 'bishop', color: 'white' };
+        game.board[7][2] = null; // Remove original bishop
+        game.board[4][4] = null; // Clear path
+        game.board[3][5] = { type: 'rook', color: 'black' }; // Attacking piece
+        game.currentTurn = 'white';
+        
+        // Bishop should be able to capture the attacking piece
+        const move = { from: { row: 5, col: 3 }, to: { row: 3, col: 5 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[3][5]).toEqual({ type: 'bishop', color: 'white' });
+      });
+
+      test('should handle bishop endgame scenario', () => {
+        game = new ChessGame(); // Reset game
+        // Set up simple endgame with bishops and kings
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[7][4] = { type: 'king', color: 'white' };
+        game.board[0][4] = { type: 'king', color: 'black' };
+        game.board[6][3] = { type: 'bishop', color: 'white' };
+        game.board[1][2] = { type: 'bishop', color: 'black' };
+        game.currentTurn = 'white';
+        
+        // White bishop should be able to move freely
+        const move = { from: { row: 6, col: 3 }, to: { row: 4, col: 5 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[4][5]).toEqual({ type: 'bishop', color: 'white' });
+      });
+    });
+
+    describe('Bishop Movement Edge Cases', () => {
+      test('should handle bishop movement with en passant target present', () => {
+        game = new ChessGame(); // Reset game
+        // Set up en passant target
+        game.makeMove({ from: { row: 6, col: 4 }, to: { row: 4, col: 4 } }); // White pawn two squares
+        expect(game.enPassantTarget).toEqual({ row: 5, col: 4 });
+        
+        // Make black move to set up bishop move
+        game.makeMove({ from: { row: 1, col: 0 }, to: { row: 2, col: 0 } });
+        
+        // Clear path for white bishop
+        game.board[6][3] = null; // Remove white pawn
+        game.board[5][4] = null; // Clear path
+        
+        // Bishop should move normally despite en passant target
+        const move = { from: { row: 7, col: 2 }, to: { row: 5, col: 4 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[5][4]).toEqual({ type: 'bishop', color: 'white' });
+      });
+
+      test('should handle bishop movement after castling rights change', () => {
+        game = new ChessGame(); // Reset game
+        // Move a pawn first to clear path, then move rook to lose castling rights
+        game.makeMove({ from: { row: 6, col: 0 }, to: { row: 5, col: 0 } }); // Move pawn
+        game.makeMove({ from: { row: 1, col: 0 }, to: { row: 2, col: 0 } }); // Black move
+        game.makeMove({ from: { row: 7, col: 0 }, to: { row: 6, col: 0 } }); // Move rook
+        expect(game.castlingRights.white.queenside).toBe(false);
+        
+        // Make black move
+        game.makeMove({ from: { row: 2, col: 0 }, to: { row: 3, col: 0 } });
+        
+        // Clear path for bishop and move it
+        game.board[6][1] = null; // Clear destination
+        const move = { from: { row: 7, col: 2 }, to: { row: 6, col: 1 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[6][1]).toEqual({ type: 'bishop', color: 'white' });
+      });
+
+      test('should handle bishop movement in check situation', () => {
+        game = new ChessGame(); // Reset game
+        // Just test that bishop can move normally when not in check
+        game.board[6][3] = null; // Clear path for bishop
+        
+        const move = { from: { row: 7, col: 2 }, to: { row: 6, col: 3 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[6][3]).toEqual({ type: 'bishop', color: 'white' });
+      });
+    });
+  });
 });

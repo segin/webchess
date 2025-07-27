@@ -17,7 +17,7 @@
   - Write unit tests for invalid pawn moves including backward moves, sideways moves, and invalid captures
   - _Requirements: 1.2, 2.8, 1.1_
 
-- [ ] 3. Implement knight movement validation with L-shape pattern enforcement
+- [x] 3. Implement knight movement validation with L-shape pattern enforcement
   - Code knight movement validation ensuring strict L-shaped pattern (2+1 or 1+2 squares) compliance
   - Implement knight jump validation that ignores path obstructions (knights can jump over pieces)
   - Add boundary checking for knight moves to prevent out-of-bounds destinations
@@ -26,7 +26,7 @@
   - Write unit tests for invalid knight moves including straight lines, diagonal moves, and out-of-bounds attempts
   - _Requirements: 1.3, 1.1_
 
-- [ ] 4. Implement rook movement validation with path clearing
+- [x] 4. Implement rook movement validation with path clearing
   - Code rook movement validation for horizontal and vertical moves only
   - Implement path clearing validation to ensure no pieces block the rook's movement path
   - Add capture validation for rook moves targeting enemy pieces
@@ -35,7 +35,7 @@
   - Write unit tests for blocked rook moves and invalid diagonal attempts
   - _Requirements: 1.4, 1.1_
 
-- [ ] 5. Implement bishop movement validation with diagonal path enforcement
+- [x] 5. Implement bishop movement validation with diagonal path enforcement
   - Code bishop movement validation for diagonal moves only with proper slope calculation
   - Implement diagonal path clearing validation to ensure no pieces obstruct the bishop's path
   - Add boundary validation for diagonal moves to prevent out-of-bounds destinations
