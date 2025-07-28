@@ -53,7 +53,7 @@
   - Write unit tests for invalid queen moves and complex path obstruction scenarios
   - _Requirements: 1.6, 1.1_
 
-- [ ] 7. Implement king movement validation with single-square restriction
+- [x] 7. Implement king movement validation with single-square restriction
   - Code king movement validation for single-square moves in all eight directions
   - Implement king safety validation to prevent moves into check
   - Add boundary validation for king moves to prevent out-of-bounds destinations

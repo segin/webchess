@@ -763,20 +763,43 @@ class ChessGame {
     return isValidRookPattern || isValidBishopPattern;
   }
 
+  /**
+   * Enhanced FIDE-compliant king movement validation
+   * Kings move one square in any of the eight directions (horizontal, vertical, diagonal)
+   * Kings cannot move into check or out of bounds
+   * @param {Object} from - Source square
+   * @param {Object} to - Destination square
+   * @param {Object} piece - The king piece
+   * @returns {boolean} True if the move pattern is valid
+   */
   isValidKingMove(from, to, piece) {
+    // Validate coordinates are within bounds (should already be validated, but double-check)
+    if (!this.isValidSquare(from) || !this.isValidSquare(to)) {
+      return false;
+    }
+    
     const rowDiff = Math.abs(to.row - from.row);
     const colDiff = Math.abs(to.col - from.col);
     
-    // Normal king move
-    if (rowDiff <= 1 && colDiff <= 1) {
-      return true;
-    }
-    
-    // Castling
+    // Castling move (king moves 2 squares horizontally)
     if (rowDiff === 0 && colDiff === 2) {
       return this.canCastle(from, to, piece.color);
     }
     
+    // Normal king move - single square in any of the 8 directions
+    // King can move one square horizontally, vertically, or diagonally
+    if (rowDiff <= 1 && colDiff <= 1) {
+      // Prevent zero movement (should already be caught by coordinate validation)
+      if (rowDiff === 0 && colDiff === 0) {
+        return false;
+      }
+      
+      // King safety validation is handled separately in validateCheckConstraints
+      // This method only validates the movement pattern
+      return true;
+    }
+    
+    // Invalid king move - more than one square in any direction
     return false;
   }
 
@@ -984,20 +1007,119 @@ class ChessGame {
     return null;
   }
 
+  /**
+   * Enhanced square attack detection for king safety validation
+   * Determines if a square is under attack by the opposing color
+   * @param {number} row - Row of the square to check
+   * @param {number} col - Column of the square to check
+   * @param {string} defendingColor - Color of the defending side
+   * @returns {boolean} True if the square is under attack
+   */
   isSquareUnderAttack(row, col, defendingColor) {
+    // Validate input parameters
+    if (!this.isValidSquare({ row, col }) || !defendingColor) {
+      return false;
+    }
+    
     const attackingColor = defendingColor === 'white' ? 'black' : 'white';
     
+    // Check all squares for attacking pieces
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
         const piece = this.board[r][c];
-        if (piece && piece.color === attackingColor) {
-          if (this.isValidMove({ row: r, col: c }, { row, col }, piece)) {
-            return true;
-          }
+        
+        // Skip empty squares and pieces of the defending color
+        if (!piece || piece.color !== attackingColor) {
+          continue;
+        }
+        
+        // Check if this piece can attack the target square
+        // Use basic movement validation without check constraints to avoid infinite recursion
+        if (this.canPieceAttackSquare({ row: r, col: c }, { row, col }, piece)) {
+          return true;
         }
       }
     }
+    
     return false;
+  }
+
+  /**
+   * Check if a piece can attack a specific square (used for king safety)
+   * This is similar to isValidMove but without check constraints to avoid recursion
+   * @param {Object} from - Source square
+   * @param {Object} to - Target square
+   * @param {Object} piece - The attacking piece
+   * @returns {boolean} True if the piece can attack the square
+   */
+  canPieceAttackSquare(from, to, piece) {
+    // Basic coordinate validation
+    if (!this.isValidSquare(from) || !this.isValidSquare(to)) {
+      return false;
+    }
+    
+    // Cannot attack own square
+    if (from.row === to.row && from.col === to.col) {
+      return false;
+    }
+    
+    // Check piece-specific movement patterns
+    let canAttack = false;
+    
+    switch (piece.type) {
+      case 'pawn':
+        canAttack = this.canPawnAttackSquare(from, to, piece);
+        break;
+      case 'rook':
+        canAttack = this.isValidRookMove(from, to) && this.isPathClear(from, to);
+        break;
+      case 'knight':
+        canAttack = this.isValidKnightMove(from, to);
+        break;
+      case 'bishop':
+        canAttack = this.isValidBishopMove(from, to) && this.isPathClear(from, to);
+        break;
+      case 'queen':
+        canAttack = this.isValidQueenMove(from, to) && this.isPathClear(from, to);
+        break;
+      case 'king':
+        canAttack = this.canKingAttackSquare(from, to);
+        break;
+      default:
+        canAttack = false;
+    }
+    
+    return canAttack;
+  }
+
+  /**
+   * Check if a pawn can attack a specific square
+   * @param {Object} from - Source square
+   * @param {Object} to - Target square
+   * @param {Object} piece - The pawn piece
+   * @returns {boolean} True if the pawn can attack the square
+   */
+  canPawnAttackSquare(from, to, piece) {
+    const direction = piece.color === 'white' ? -1 : 1;
+    const rowDiff = to.row - from.row;
+    const colDiff = Math.abs(to.col - from.col);
+    
+    // Pawn attacks diagonally one square forward
+    return rowDiff === direction && colDiff === 1;
+  }
+
+  /**
+   * Check if a king can attack a specific square (for attack detection)
+   * @param {Object} from - Source square
+   * @param {Object} to - Target square
+   * @returns {boolean} True if the king can attack the square
+   */
+  canKingAttackSquare(from, to) {
+    const rowDiff = Math.abs(to.row - from.row);
+    const colDiff = Math.abs(to.col - from.col);
+    
+    // King attacks one square in any direction
+    return rowDiff <= 1 && colDiff <= 1 && !(rowDiff === 0 && colDiff === 0);
   }
 
   wouldBeInCheck(from, to, color) {

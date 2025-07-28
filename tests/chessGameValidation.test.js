@@ -3356,6 +3356,438 @@ be('Comprehensive Queen Movement Validation', () => {
     });
   });
 
+  describe('King Movement Validation with Single-Square Restriction', () => {
+    beforeEach(() => {
+      game = new ChessGame();
+    });
+
+    describe('Single-Square Movement in All Eight Directions', () => {
+      test('should allow king to move one square horizontally right', () => {
+        // Clear path and place king in center
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 4, col: 5 } };
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(true);
+      });
+
+      test('should allow king to move one square horizontally left', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 4, col: 3 } };
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(true);
+      });
+
+      test('should allow king to move one square vertically up', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } };
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(true);
+      });
+
+      test('should allow king to move one square vertically down', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 5, col: 4 } };
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(true);
+      });
+
+      test('should allow king to move one square diagonally up-right', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 3, col: 5 } };
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(true);
+      });
+
+      test('should allow king to move one square diagonally up-left', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 3, col: 3 } };
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(true);
+      });
+
+      test('should allow king to move one square diagonally down-right', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 5, col: 5 } };
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(true);
+      });
+
+      test('should allow king to move one square diagonally down-left', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 5, col: 3 } };
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(true);
+      });
+
+      test('should allow king to capture enemy piece one square away', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.board[4][5] = { type: 'pawn', color: 'black' };
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 4, col: 5 } };
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(true);
+      });
+    });
+
+    describe('King Safety Validation - Preventing Moves into Check', () => {
+      test('should prevent king from moving into check from enemy rook', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.board[3][6] = { type: 'rook', color: 'black' }; // Rook attacking row 3
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } }; // Moving into rook's line of attack
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(false);
+        expect(result.errorCode).toBe('KING_IN_CHECK');
+        expect(result.message).toBe('Move would put king in check');
+      });
+
+      test('should prevent king from moving into check from enemy bishop', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.board[1][1] = { type: 'bishop', color: 'black' }; // Bishop on diagonal
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 3, col: 3 } }; // Moving into bishop's diagonal
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(false);
+        expect(result.errorCode).toBe('KING_IN_CHECK');
+      });
+
+      test('should prevent king from moving into check from enemy queen', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.board[2][4] = { type: 'queen', color: 'black' }; // Queen attacking vertically
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } }; // Moving into queen's attack
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(false);
+        expect(result.errorCode).toBe('KING_IN_CHECK');
+      });
+
+      test('should prevent king from moving into check from enemy knight', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.board[1][3] = { type: 'knight', color: 'black' }; // Knight that can attack (3,5)
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 3, col: 5 } }; // Moving into knight's attack
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(false);
+        expect(result.errorCode).toBe('KING_IN_CHECK');
+      });
+
+      test('should prevent king from moving into check from enemy pawn', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.board[2][3] = { type: 'pawn', color: 'black' }; // Black pawn attacks diagonally down
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } }; // Moving into pawn's diagonal attack
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(false);
+        expect(result.errorCode).toBe('KING_IN_CHECK');
+      });
+
+      test('should prevent king from moving into check from enemy king', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.board[2][4] = { type: 'king', color: 'black' }; // Enemy king
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } }; // Moving adjacent to enemy king
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(false);
+        expect(result.errorCode).toBe('KING_IN_CHECK');
+      });
+
+      test('should allow king to move to safe square', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.board[3][6] = { type: 'rook', color: 'black' }; // Rook attacking row 3
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 5, col: 4 } }; // Moving to safe square
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(true);
+      });
+
+      test('should allow king to capture attacking piece', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.board[3][4] = { type: 'pawn', color: 'black' }; // Enemy pawn adjacent to king
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } }; // Capturing the pawn
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(true);
+      });
+    });
+
+    describe('Boundary Validation - Preventing Out-of-Bounds Moves', () => {
+      test('should prevent king from moving beyond top edge of board', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[0][4] = { type: 'king', color: 'white' };
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 0, col: 4 }, to: { row: -1, col: 4 } };
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(false);
+        expect(result.errorCode).toBe('INVALID_COORDINATES');
+      });
+
+      test('should prevent king from moving beyond bottom edge of board', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[7][4] = { type: 'king', color: 'white' };
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 7, col: 4 }, to: { row: 8, col: 4 } };
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(false);
+        expect(result.errorCode).toBe('INVALID_COORDINATES');
+      });
+
+      test('should prevent king from moving beyond left edge of board', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][0] = { type: 'king', color: 'white' };
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 0 }, to: { row: 4, col: -1 } };
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(false);
+        expect(result.errorCode).toBe('INVALID_COORDINATES');
+      });
+
+      test('should prevent king from moving beyond right edge of board', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][7] = { type: 'king', color: 'white' };
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 7 }, to: { row: 4, col: 8 } };
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(false);
+        expect(result.errorCode).toBe('INVALID_COORDINATES');
+      });
+
+      test('should allow king to move to edge squares when valid', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[1][1] = { type: 'king', color: 'white' };
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 1, col: 1 }, to: { row: 0, col: 0 } }; // Moving to corner
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(true);
+      });
+    });
+
+    describe('Invalid King Moves - Multi-Square and Invalid Patterns', () => {
+      test('should reject king move of two squares horizontally (non-castling)', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.currentTurn = 'white';
+        // Disable castling rights to ensure this isn't treated as castling
+        game.castlingRights.white.kingside = false;
+        game.castlingRights.white.queenside = false;
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 4, col: 6 } };
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(false);
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+      });
+
+      test('should reject king move of two squares vertically', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 2, col: 4 } };
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(false);
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+      });
+
+      test('should reject king move of two squares diagonally', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 2, col: 2 } };
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(false);
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+      });
+
+      test('should reject king move of three squares in any direction', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 4, col: 7 } };
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(false);
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+      });
+
+      test('should reject king knight-like move', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 2, col: 5 } }; // Knight L-shape
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(false);
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+      });
+
+      test('should reject king move to same square', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 4, col: 4 } };
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(false);
+        expect(result.errorCode).toBe('INVALID_COORDINATES');
+      });
+
+      test('should reject king move to capture own piece', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.board[4][5] = { type: 'pawn', color: 'white' }; // Own piece
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 4, col: 5 } };
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(false);
+        expect(result.errorCode).toBe('CAPTURE_OWN_PIECE');
+      });
+    });
+
+    describe('Complex King Safety Scenarios', () => {
+      test('should handle multiple attacking pieces correctly', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.board[3][6] = { type: 'rook', color: 'black' }; // Attacks row 3
+        game.board[1][1] = { type: 'bishop', color: 'black' }; // Attacks diagonal
+        game.currentTurn = 'white';
+
+        // Try to move to square attacked by rook
+        const move1 = { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } };
+        const result1 = game.validateMove(move1);
+        expect(result1.isValid).toBe(false);
+
+        // Try to move to square attacked by bishop
+        const move2 = { from: { row: 4, col: 4 }, to: { row: 3, col: 3 } };
+        const result2 = game.validateMove(move2);
+        expect(result2.isValid).toBe(false);
+
+        // Move to safe square
+        const move3 = { from: { row: 4, col: 4 }, to: { row: 5, col: 5 } };
+        const result3 = game.validateMove(move3);
+        expect(result3.isValid).toBe(true);
+      });
+
+      test('should allow king to move when not in check initially', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.board[6][6] = { type: 'rook', color: 'black' }; // Far away, not attacking
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } };
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(true);
+      });
+
+      test('should prevent king from moving into discovered check', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.board[4][5] = { type: 'pawn', color: 'white' }; // Blocking piece
+        game.board[4][7] = { type: 'rook', color: 'black' }; // Would attack if pawn moves
+        game.currentTurn = 'white';
+
+        // King tries to move, but this would expose itself to the rook
+        const move = { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } };
+        // This should be valid since the king isn't moving into the rook's line
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(true);
+      });
+    });
+
+    describe('Edge Cases and Error Conditions', () => {
+      test('should handle invalid piece data gracefully', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.currentTurn = 'white';
+
+        // Test with malformed move object
+        const move = { from: { row: 4, col: 4 }, to: null };
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(false);
+        expect(result.errorCode).toBe('INVALID_FORMAT');
+      });
+
+      test('should validate king movement with proper error messages', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[4][4] = { type: 'king', color: 'white' };
+        game.currentTurn = 'white';
+
+        const move = { from: { row: 4, col: 4 }, to: { row: 2, col: 4 } }; // Invalid 2-square move
+        const result = game.validateMove(move);
+        expect(result.isValid).toBe(false);
+        expect(result.message).toBe('Invalid king movement');
+        expect(result.errors.length).toBeGreaterThan(0);
+      });
+
+      test('should handle board edge cases correctly', () => {
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[0][0] = { type: 'king', color: 'white' }; // Corner position
+        game.currentTurn = 'white';
+
+        // Valid moves from corner
+        const validMoves = [
+          { from: { row: 0, col: 0 }, to: { row: 0, col: 1 } },
+          { from: { row: 0, col: 0 }, to: { row: 1, col: 0 } },
+          { from: { row: 0, col: 0 }, to: { row: 1, col: 1 } }
+        ];
+
+        validMoves.forEach(move => {
+          const result = game.validateMove(move);
+          expect(result.isValid).toBe(true);
+        });
+      });
+    });
+  });
+
+});
+
 // Run the tests if this file is executed directly
 if (require.main === module) {
   console.log('Running Chess Game Validation Tests...');
