@@ -71,6 +71,9 @@ class ChessGame {
     // Store original piece for game state update
     const originalPiece = { ...piece };
 
+    // Update castling rights BEFORE executing the move (so we can check captured pieces)
+    this.updateCastlingRights(from, to, originalPiece);
+    
     // Execute the move
     this.executeMoveOnBoard(from, to, piece, promotion);
     
@@ -129,18 +132,21 @@ class ChessGame {
       return movementValidation;
     }
 
-    // Step 7: Path validation (except for knights)
-    if (piece.type !== 'knight') {
+    // Step 7: Path validation (except for knights and castling)
+    const isCastlingAttempt = piece.type === 'king' && Math.abs(to.col - from.col) === 2;
+    if (piece.type !== 'knight' && !isCastlingAttempt) {
       const pathValidation = this.validatePath(from, to);
       if (!pathValidation.isValid) {
         return pathValidation;
       }
     }
 
-    // Step 8: Capture validation
-    const captureValidation = this.validateCapture(from, to, piece);
-    if (!captureValidation.isValid) {
-      return captureValidation;
+    // Step 8: Capture validation (except for castling)
+    if (!isCastlingAttempt) {
+      const captureValidation = this.validateCapture(from, to, piece);
+      if (!captureValidation.isValid) {
+        return captureValidation;
+      }
     }
 
     // Step 9: Special move validation
@@ -461,12 +467,13 @@ class ChessGame {
   validateSpecialMoves(from, to, piece, promotion) {
     // Castling validation
     if (piece.type === 'king' && Math.abs(to.col - from.col) === 2) {
-      if (!this.canCastle(from, to, piece.color)) {
+      const castlingValidation = this.validateCastling(from, to, piece.color);
+      if (!castlingValidation.isValid) {
         return {
           isValid: false,
-          message: 'Invalid castling',
+          message: castlingValidation.message,
           errorCode: 'INVALID_CASTLING',
-          errors: ['Castling conditions not met'],
+          errors: castlingValidation.errors,
           details: { specialRulesValid: false }
         };
       }
@@ -782,8 +789,10 @@ class ChessGame {
     const colDiff = Math.abs(to.col - from.col);
     
     // Castling move (king moves 2 squares horizontally)
+    // Always allow castling attempts to proceed to special moves validation
+    // where detailed castling validation and error reporting occurs
     if (rowDiff === 0 && colDiff === 2) {
-      return this.canCastle(from, to, piece.color);
+      return true; // Let special moves validation handle the detailed castling checks
     }
     
     // Normal king move - single square in any of the 8 directions
@@ -821,36 +830,169 @@ class ChessGame {
     return true;
   }
 
+  /**
+   * Comprehensive FIDE-compliant castling validation
+   * Validates all castling requirements including rights, path clearing, and check constraints
+   * @param {Object} from - King's source square
+   * @param {Object} to - King's destination square
+   * @param {string} color - Color of the king attempting to castle
+   * @returns {boolean} True if castling is valid
+   */
   canCastle(from, to, color) {
+    // Validate basic parameters
+    if (!this.isValidSquare(from) || !this.isValidSquare(to) || !color) {
+      return false;
+    }
+    
     const row = color === 'white' ? 7 : 0;
     const kingside = to.col > from.col;
     
-    // Check castling rights
+    // Validate king is on correct starting square
+    if (from.row !== row || from.col !== 4) {
+      return false;
+    }
+    
+    // Validate king destination is correct for castling
+    const expectedKingDestination = kingside ? 6 : 2;
+    if (to.row !== row || to.col !== expectedKingDestination) {
+      return false;
+    }
+    
+    // Check castling rights - king and rook must not have moved
     if (!this.castlingRights[color][kingside ? 'kingside' : 'queenside']) {
       return false;
     }
     
-    // Check if king is in check
+    // Verify rook is still in correct position
+    const rookCol = kingside ? 7 : 0;
+    const rook = this.board[row][rookCol];
+    if (!rook || rook.type !== 'rook' || rook.color !== color) {
+      return false;
+    }
+    
+    // Check if king is currently in check (cannot castle while in check)
     if (this.isInCheck(color)) {
       return false;
     }
     
-    // Check if path is clear and squares are not under attack
-    const rookCol = kingside ? 7 : 0;
+    // Check if path between king and rook is clear
     const step = kingside ? 1 : -1;
+    const pathStart = from.col + step;
+    const pathEnd = rookCol;
     
-    for (let col = from.col + step; col !== rookCol; col += step) {
-      if (this.board[row][col] || this.isSquareUnderAttack(row, col, color)) {
-        return false;
+    for (let col = pathStart; col !== pathEnd; col += step) {
+      if (this.board[row][col]) {
+        return false; // Path is blocked
       }
     }
     
-    // Check if king's destination is under attack
-    if (this.isSquareUnderAttack(to.row, to.col, color)) {
-      return false;
+    // Check if king passes through or ends up in check
+    // King must not pass through check or end up in check
+    const squaresToCheck = kingside ? [5, 6] : [2, 3]; // Squares king passes through/ends on
+    
+    for (const col of squaresToCheck) {
+      if (this.isSquareUnderAttack(row, col, color)) {
+        return false; // King would pass through or end up in check
+      }
     }
     
     return true;
+  }
+
+  /**
+   * Enhanced castling validation with detailed error reporting
+   * Provides specific reasons why castling is invalid
+   * @param {Object} from - King's source square
+   * @param {Object} to - King's destination square
+   * @param {string} color - Color of the king attempting to castle
+   * @returns {Object} Detailed validation result
+   */
+  validateCastling(from, to, color) {
+    const errors = [];
+    
+    // Validate basic parameters
+    if (!this.isValidSquare(from) || !this.isValidSquare(to) || !color) {
+      return {
+        isValid: false,
+        message: 'Invalid castling parameters',
+        errors: ['Invalid coordinates or color for castling']
+      };
+    }
+    
+    const row = color === 'white' ? 7 : 0;
+    const kingside = to.col > from.col;
+    const castlingSide = kingside ? 'kingside' : 'queenside';
+    
+    // Validate king is on correct starting square
+    if (from.row !== row || from.col !== 4) {
+      errors.push(`King must be on starting square (row ${row}, col 4) to castle`);
+    }
+    
+    // Validate king destination is correct for castling
+    const expectedKingDestination = kingside ? 6 : 2;
+    if (to.row !== row || to.col !== expectedKingDestination) {
+      errors.push(`Invalid king destination for ${castlingSide} castling`);
+    }
+    
+    // Check castling rights
+    if (!this.castlingRights[color][castlingSide]) {
+      if (castlingSide === 'kingside') {
+        errors.push('Kingside castling rights lost (king or kingside rook has moved)');
+      } else {
+        errors.push('Queenside castling rights lost (king or queenside rook has moved)');
+      }
+    }
+    
+    // Verify rook is still in correct position
+    const rookCol = kingside ? 7 : 0;
+    const rook = this.board[row][rookCol];
+    if (!rook || rook.type !== 'rook' || rook.color !== color) {
+      errors.push(`${castlingSide} rook is missing or has been moved`);
+    }
+    
+    // Check if king is currently in check
+    if (this.isInCheck(color)) {
+      errors.push('Cannot castle while in check');
+    }
+    
+    // Check if path between king and rook is clear
+    const step = kingside ? 1 : -1;
+    const pathStart = from.col + step;
+    const pathEnd = rookCol;
+    
+    for (let col = pathStart; col !== pathEnd; col += step) {
+      if (this.board[row][col]) {
+        errors.push(`Path blocked by piece at row ${row}, col ${col}`);
+        break; // Only report first blocking piece
+      }
+    }
+    
+    // Check if king passes through or ends up in check
+    const squaresToCheck = kingside ? [5, 6] : [2, 3];
+    
+    for (const col of squaresToCheck) {
+      if (this.isSquareUnderAttack(row, col, color)) {
+        if (col === to.col) {
+          errors.push(`King would be in check at destination square (row ${row}, col ${col})`);
+        } else {
+          errors.push(`King would pass through check at square (row ${row}, col ${col})`);
+        }
+      }
+    }
+    
+    if (errors.length > 0) {
+      return {
+        isValid: false,
+        message: `Invalid ${castlingSide} castling`,
+        errors: errors
+      };
+    }
+    
+    return {
+      isValid: true,
+      message: `Valid ${castlingSide} castling`,
+      errors: []
+    };
   }
 
   /**
@@ -928,6 +1070,56 @@ class ChessGame {
   }
 
   /**
+   * Comprehensive castling rights management system
+   * Updates castling rights when king or rooks move, or when rooks are captured
+   * @param {Object} from - Source square
+   * @param {Object} to - Destination square
+   * @param {Object} piece - The piece that moved
+   */
+  updateCastlingRights(from, to, piece) {
+    // Check if a rook was captured BEFORE the move (affects opponent's castling rights)
+    const capturedPiece = this.board[to.row][to.col];
+    if (capturedPiece && capturedPiece.type === 'rook') {
+      const capturedColor = capturedPiece.color;
+      const rookStartingRow = capturedColor === 'white' ? 7 : 0;
+      
+      // Check if captured rook was on its starting square
+      if (to.row === rookStartingRow) {
+        if (to.col === 0) {
+          // Queenside rook captured
+          this.castlingRights[capturedColor].queenside = false;
+        } else if (to.col === 7) {
+          // Kingside rook captured
+          this.castlingRights[capturedColor].kingside = false;
+        }
+      }
+    }
+    
+    // If king moves, lose all castling rights for that color
+    if (piece.type === 'king') {
+      this.castlingRights[piece.color].kingside = false;
+      this.castlingRights[piece.color].queenside = false;
+      return;
+    }
+    
+    // If rook moves from starting position, lose castling rights for that side
+    if (piece.type === 'rook') {
+      const startingRow = piece.color === 'white' ? 7 : 0;
+      
+      // Check if rook is moving from its starting position
+      if (from.row === startingRow) {
+        if (from.col === 0) {
+          // Queenside rook moved
+          this.castlingRights[piece.color].queenside = false;
+        } else if (from.col === 7) {
+          // Kingside rook moved
+          this.castlingRights[piece.color].kingside = false;
+        }
+      }
+    }
+  }
+
+  /**
    * Update game state after a move
    * @param {Object} from - Source square
    * @param {Object} to - Destination square
@@ -946,19 +1138,7 @@ class ChessGame {
       this.enPassantTarget = null;
     }
     
-    // Update castling rights
-    if (piece.type === 'king') {
-      this.castlingRights[piece.color].kingside = false;
-      this.castlingRights[piece.color].queenside = false;
-    }
-    
-    if (piece.type === 'rook') {
-      if (from.col === 0) {
-        this.castlingRights[piece.color].queenside = false;
-      } else if (from.col === 7) {
-        this.castlingRights[piece.color].kingside = false;
-      }
-    }
+    // Castling rights are now updated before move execution in makeMove
     
     // Update half-move clock (for 50-move rule)
     if (piece.type === 'pawn' || this.board[to.row][to.col]) {

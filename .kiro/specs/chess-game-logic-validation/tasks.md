@@ -62,7 +62,7 @@
   - Write unit tests for invalid king moves including multi-square moves and out-of-bounds attempts
   - _Requirements: 1.7, 3.2, 1.1_
 
-- [ ] 8. Implement comprehensive castling validation
+- [x] 8. Implement comprehensive castling validation
   - Code kingside and queenside castling validation with all FIDE requirements
   - Implement castling rights tracking that updates when king or rooks move
   - Add castling path validation ensuring no pieces block castling and no squares are under attack
