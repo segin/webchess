@@ -71,7 +71,7 @@
   - Write unit tests for invalid castling scenarios: king moved, rook moved, path blocked, through check, while in check
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
 
-- [ ] 9. Implement enhanced check detection system
+- [x] 9. Implement enhanced check detection system
   - Code comprehensive check detection that identifies when any king is under attack
   - Implement check resolution validation ensuring moves either block, capture attacker, or move king to safety
   - Add check status tracking in game state with clear indicators

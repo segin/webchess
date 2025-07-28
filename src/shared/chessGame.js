@@ -12,6 +12,8 @@ class ChessGame {
     this.enPassantTarget = null;
     this.halfMoveClock = 0;
     this.fullMoveNumber = 1;
+    this.inCheck = false; // Track check status
+    this.checkDetails = null; // Store detailed check information
   }
 
   initializeBoard() {
@@ -543,13 +545,25 @@ class ChessGame {
   }
 
   /**
-   * Validate move doesn't put own king in check
+   * Enhanced check constraint validation with check resolution validation
    * @param {Object} from - Source square
    * @param {Object} to - Destination square
    * @param {Object} piece - The piece being moved
    * @returns {Object} Validation result
    */
   validateCheckConstraints(from, to, piece) {
+    const currentlyInCheck = this.isInCheck(piece.color);
+    
+    // If currently in check, validate that the move resolves the check FIRST
+    // This handles special cases like double check before general check validation
+    if (currentlyInCheck) {
+      const resolutionValidation = this.validateCheckResolution(from, to, piece);
+      if (!resolutionValidation.isValid) {
+        return resolutionValidation;
+      }
+    }
+    
+    // Check if move would put own king in check
     if (this.wouldBeInCheck(from, to, piece.color)) {
       return {
         isValid: false,
@@ -561,6 +575,115 @@ class ChessGame {
     }
 
     return { isValid: true };
+  }
+
+  /**
+   * Validate that a move resolves check through blocking, capturing, or king movement
+   * @param {Object} from - Source square
+   * @param {Object} to - Destination square
+   * @param {Object} piece - The piece being moved
+   * @returns {Object} Validation result
+   */
+  validateCheckResolution(from, to, piece) {
+    if (!this.checkDetails) {
+      return { isValid: true }; // No check to resolve
+    }
+    
+    const { attackingPieces, isDoubleCheck } = this.checkDetails;
+    
+    // In double check, only king moves are allowed
+    if (isDoubleCheck && piece.type !== 'king') {
+      return {
+        isValid: false,
+        message: 'Only king can move in double check',
+        errorCode: 'DOUBLE_CHECK_KING_ONLY',
+        errors: ['In double check, only the king can move'],
+        details: { checkValid: false }
+      };
+    }
+    
+    // For single check, validate resolution method
+    if (!isDoubleCheck && attackingPieces.length === 1) {
+      const attacker = attackingPieces[0];
+      const resolutionType = this.getCheckResolutionType(from, to, piece, attacker);
+      
+      if (resolutionType === 'invalid') {
+        return {
+          isValid: false,
+          message: 'Move does not resolve check',
+          errorCode: 'CHECK_NOT_RESOLVED',
+          errors: ['This move does not resolve the check by capturing, blocking, or moving the king'],
+          details: { checkValid: false }
+        };
+      }
+    }
+    
+    return { isValid: true };
+  }
+
+  /**
+   * Determine how a move resolves check (capture, block, or king move)
+   * @param {Object} from - Source square
+   * @param {Object} to - Destination square
+   * @param {Object} piece - The piece being moved
+   * @param {Object} attacker - The attacking piece details
+   * @returns {string} Type of check resolution
+   */
+  getCheckResolutionType(from, to, piece, attacker) {
+    const kingPos = this.findKing(piece.color);
+    
+    // King move - always valid if it gets out of check
+    if (piece.type === 'king') {
+      return 'king_move';
+    }
+    
+    // Capture attacking piece
+    if (to.row === attacker.position.row && to.col === attacker.position.col) {
+      return 'capture_attacker';
+    }
+    
+    // Block attack (only possible for sliding pieces: rook, bishop, queen)
+    if (['rook', 'bishop', 'queen'].includes(attacker.piece.type)) {
+      if (this.isBlockingSquare(to, attacker.position, kingPos)) {
+        return 'block_attack';
+      }
+    }
+    
+    return 'invalid';
+  }
+
+  /**
+   * Check if a square blocks an attack between attacker and king
+   * @param {Object} blockSquare - Square to check for blocking
+   * @param {Object} attackerPos - Position of attacking piece
+   * @param {Object} kingPos - Position of king
+   * @returns {boolean} True if square blocks the attack
+   */
+  isBlockingSquare(blockSquare, attackerPos, kingPos) {
+    // Get the direction vector from attacker to king
+    const rowDir = kingPos.row - attackerPos.row;
+    const colDir = kingPos.col - attackerPos.col;
+    
+    // Normalize direction (get unit vector)
+    const distance = Math.max(Math.abs(rowDir), Math.abs(colDir));
+    if (distance === 0) return false;
+    
+    const rowStep = rowDir / distance;
+    const colStep = colDir / distance;
+    
+    // Check if block square is on the attack path
+    let currentRow = attackerPos.row + rowStep;
+    let currentCol = attackerPos.col + colStep;
+    
+    while (currentRow !== kingPos.row || currentCol !== kingPos.col) {
+      if (Math.round(currentRow) === blockSquare.row && Math.round(currentCol) === blockSquare.col) {
+        return true;
+      }
+      currentRow += rowStep;
+      currentCol += colStep;
+    }
+    
+    return false;
   }
 
   isValidSquare(pos) {
@@ -1156,23 +1279,67 @@ class ChessGame {
     }
   }
 
+  /**
+   * Enhanced game end detection with comprehensive check status tracking
+   * Updates game status and winner based on check, checkmate, and stalemate conditions
+   */
   checkGameEnd() {
-    const oppositeColor = this.currentTurn;
+    const currentColor = this.currentTurn;
     
-    if (this.isInCheck(oppositeColor)) {
-      if (this.isCheckmate(oppositeColor)) {
+    // Check if current player is in check
+    const inCheck = this.isInCheck(currentColor);
+    
+    // Update check status in game state
+    this.inCheck = inCheck;
+    
+    if (inCheck) {
+      // Player is in check - check for checkmate (without calling isInCheck again)
+      if (this.isCheckmateGivenCheckStatus(currentColor, inCheck)) {
         this.gameStatus = 'checkmate';
-        this.winner = oppositeColor === 'white' ? 'black' : 'white';
+        this.winner = currentColor === 'white' ? 'black' : 'white';
+        return;
       }
-    } else if (this.isStalemate(oppositeColor)) {
-      this.gameStatus = 'stalemate';
-      this.winner = null;
+      // If not checkmate, game continues in check status
+      this.gameStatus = 'check';
+    } else {
+      // Player is not in check - check for stalemate (without calling isInCheck again)
+      if (this.isStalemateGivenCheckStatus(currentColor, inCheck)) {
+        this.gameStatus = 'stalemate';
+        this.winner = null;
+        return;
+      }
+      // Game continues normally
+      this.gameStatus = 'active';
     }
   }
 
+  /**
+   * Enhanced check detection that identifies when any king is under attack
+   * @param {string} color - Color of the king to check
+   * @returns {boolean} True if the king is in check
+   */
   isInCheck(color) {
     const kingPos = this.findKing(color);
-    return kingPos ? this.isSquareUnderAttack(kingPos.row, kingPos.col, color) : false;
+    if (!kingPos) {
+      return false; // No king found (shouldn't happen in normal game)
+    }
+    
+    const attackDetails = this.getAttackDetails(kingPos.row, kingPos.col, color);
+    
+    // Store detailed check information for debugging and UI
+    if (attackDetails.isUnderAttack) {
+      this.checkDetails = {
+        kingPosition: kingPos,
+        attackingPieces: attackDetails.attackingPieces,
+        attackingSquares: attackDetails.attackingSquares,
+        isDoubleCheck: attackDetails.attackingPieces.length > 1,
+        checkType: this.categorizeCheck(attackDetails.attackingPieces)
+      };
+    } else {
+      this.checkDetails = null;
+    }
+    
+    return attackDetails.isUnderAttack;
   }
 
   findKing(color) {
@@ -1185,6 +1352,94 @@ class ChessGame {
       }
     }
     return null;
+  }
+
+  /**
+   * Get detailed attack information for a square
+   * @param {number} row - Row of the square to check
+   * @param {number} col - Column of the square to check
+   * @param {string} defendingColor - Color of the defending side
+   * @returns {Object} Detailed attack information
+   */
+  getAttackDetails(row, col, defendingColor) {
+    const attackingPieces = [];
+    const attackingSquares = [];
+    const attackingColor = defendingColor === 'white' ? 'black' : 'white';
+    
+    // Check all squares for attacking pieces
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const piece = this.board[r][c];
+        
+        // Skip empty squares and pieces of the defending color
+        if (!piece || piece.color !== attackingColor) {
+          continue;
+        }
+        
+        // Check if this piece can attack the target square
+        if (this.canPieceAttackSquare({ row: r, col: c }, { row, col }, piece)) {
+          attackingPieces.push({
+            piece: piece,
+            position: { row: r, col: c },
+            attackType: this.getAttackType(piece, { row: r, col: c }, { row, col })
+          });
+          attackingSquares.push({ row: r, col: c });
+        }
+      }
+    }
+    
+    return {
+      isUnderAttack: attackingPieces.length > 0,
+      attackingPieces: attackingPieces,
+      attackingSquares: attackingSquares,
+      attackCount: attackingPieces.length
+    };
+  }
+
+  /**
+   * Categorize the type of check based on attacking pieces
+   * @param {Array} attackingPieces - Array of attacking piece details
+   * @returns {string} Type of check
+   */
+  categorizeCheck(attackingPieces) {
+    if (attackingPieces.length === 0) {
+      return 'none';
+    } else if (attackingPieces.length === 1) {
+      const piece = attackingPieces[0].piece;
+      return `${piece.type}_check`;
+    } else {
+      return 'double_check';
+    }
+  }
+
+  /**
+   * Get the type of attack a piece is making
+   * @param {Object} piece - The attacking piece
+   * @param {Object} from - Source square
+   * @param {Object} to - Target square
+   * @returns {string} Type of attack
+   */
+  getAttackType(piece, from, to) {
+    switch (piece.type) {
+      case 'pawn':
+        return 'diagonal_attack';
+      case 'rook':
+        return from.row === to.row ? 'horizontal_attack' : 'vertical_attack';
+      case 'bishop':
+        return 'diagonal_attack';
+      case 'queen':
+        if (from.row === to.row || from.col === to.col) {
+          return from.row === to.row ? 'horizontal_attack' : 'vertical_attack';
+        } else {
+          return 'diagonal_attack';
+        }
+      case 'knight':
+        return 'knight_attack';
+      case 'king':
+        return 'adjacent_attack';
+      default:
+        return 'unknown_attack';
+    }
   }
 
   /**
@@ -1303,6 +1558,9 @@ class ChessGame {
   }
 
   wouldBeInCheck(from, to, color) {
+    // Save current check details to restore later
+    const savedCheckDetails = this.checkDetails;
+    
     // Make temporary move
     const originalPiece = this.board[from.row][from.col];
     const capturedPiece = this.board[to.row][to.col];
@@ -1316,6 +1574,9 @@ class ChessGame {
     this.board[from.row][from.col] = originalPiece;
     this.board[to.row][to.col] = capturedPiece;
     
+    // Restore original check details
+    this.checkDetails = savedCheckDetails;
+    
     return inCheck;
   }
 
@@ -1325,6 +1586,26 @@ class ChessGame {
 
   isStalemate(color) {
     return !this.isInCheck(color) && !this.hasValidMoves(color);
+  }
+
+  /**
+   * Check for checkmate without calling isInCheck again (to preserve check details)
+   * @param {string} color - Color to check for checkmate
+   * @param {boolean} inCheck - Whether the color is currently in check
+   * @returns {boolean} True if checkmate
+   */
+  isCheckmateGivenCheckStatus(color, inCheck) {
+    return inCheck && !this.hasValidMoves(color);
+  }
+
+  /**
+   * Check for stalemate without calling isInCheck again (to preserve check details)
+   * @param {string} color - Color to check for stalemate
+   * @param {boolean} inCheck - Whether the color is currently in check
+   * @returns {boolean} True if stalemate
+   */
+  isStalemateGivenCheckStatus(color, inCheck) {
+    return !inCheck && !this.hasValidMoves(color);
   }
 
   hasValidMoves(color) {
@@ -1355,7 +1636,12 @@ class ChessGame {
       status: this.gameStatus,
       winner: this.winner,
       moveHistory: this.moveHistory,
-      inCheck: this.isInCheck(this.currentTurn)
+      inCheck: this.inCheck,
+      checkDetails: this.checkDetails,
+      castlingRights: this.castlingRights,
+      enPassantTarget: this.enPassantTarget,
+      halfMoveClock: this.halfMoveClock,
+      fullMoveNumber: this.fullMoveNumber
     };
   }
 }
