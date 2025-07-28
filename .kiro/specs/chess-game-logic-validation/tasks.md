@@ -80,7 +80,7 @@
   - Write unit tests for complex check scenarios including discovered checks and double checks
   - _Requirements: 3.1, 3.7, 1.1_
 
-- [ ] 10. Implement move legality validation preventing self-check
+- [x] 10. Implement move legality validation preventing self-check
   - Code validation system that prevents any move that would put the player's own king in check
   - Implement temporary move simulation to test for resulting check conditions
   - Add comprehensive validation for pinned pieces that cannot move without exposing king
@@ -89,7 +89,7 @@
   - Write unit tests for complex scenarios involving multiple attacking pieces and limited legal moves
   - _Requirements: 3.2, 1.1_
 
-- [ ] 11. Implement checkmate detection system
+- [x] 11. Implement checkmate detection system
   - Code checkmate detection that identifies when a king is in check with no legal escape moves
   - Implement comprehensive legal move generation for checkmate validation
   - Add game ending logic that properly declares winner when checkmate is detected
@@ -107,7 +107,7 @@
   - Write unit tests for positions that appear to be stalemate but have hidden legal moves
   - _Requirements: 3.5, 3.6, 1.1_
 
-- [ ] 13. Implement comprehensive game state management
+- [x] 13. Implement comprehensive game state management
   - Code enhanced game state tracking with complete move history and metadata
   - Implement turn alternation validation ensuring proper white/black turn sequence
   - Add game status management with accurate status updates (active, check, checkmate, stalemate, draw)

@@ -55,6 +55,11 @@
 - Use `beforeEach` for test setup
 - Test both success and failure cases
 
+### Test Execution
+- **All testing should be done via `npm test`** - This runs the complete test suite
+- Tests are automatically discovered and run by Jest
+- Use `npm run test:watch` for development with auto-rerun on file changes
+
 ### Test Coverage Requirements
 - All public methods must have unit tests
 - Edge cases and error conditions must be tested
@@ -85,16 +90,22 @@
 
 ### Directory Structure
 - **src/server/**: Server-side Node.js code
-- **src/shared/**: Code shared between client and server
+- **src/shared/**: Modular shared game logic components
 - **public/**: Static frontend assets
-- **tests/**: All test files
+- **tests/**: All test files (run via `npm test`)
 - **deployment/**: System deployment scripts
+
+### Module Design Principles
+- **Single Responsibility**: Each module should have one clear purpose
+- **Clear Interfaces**: Export classes and functions with well-defined APIs
+- **Minimal Dependencies**: Shared modules should avoid external dependencies
+- **Testability**: Design modules to be easily testable in isolation
 
 ### Module Exports
 - Use `module.exports` for Node.js modules
 - Export classes and functions with clear interfaces
-- Keep modules focused on single responsibilities
 - Document public APIs with JSDoc comments
+- Follow consistent naming conventions across modules
 
 ## Performance Guidelines
 

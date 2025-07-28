@@ -18,17 +18,22 @@ npm install
 # Start development server
 npm run dev
 
-# Run tests
+# Run all tests
 npm test
-npm run test:browser
 ```
 
 ### Development Commands
 - `npm start` - Start production server
 - `npm run dev` - Start development server with auto-reload
-- `npm test` - Run Node.js test suite
-- `npm run test:comprehensive` - Run comprehensive test suite
-- `npm run test:browser` - Instructions for browser testing
+- `npm test` - Run complete test suite (unit + integration + comprehensive)
+- `npm run test:watch` - Run tests in watch mode during development
+
+### Testing Standards
+- **All testing should be done via `npm test`** - This runs the complete test suite
+- Tests are automatically discovered and run by Jest
+- No need for separate browser test runners - all tests run in Node.js environment
+- Test files should be placed in the `tests/` directory
+- Use descriptive test names and follow the existing test patterns
 
 ## Feature Development Process
 
@@ -67,18 +72,21 @@ src/
 │   ├── index.js          # Main server entry point
 │   ├── gameManager.js    # Game session management
 │   └── utils/            # Server utilities
-├── shared/
-│   ├── chessGame.js      # Core chess logic
+├── shared/               # Modular shared game logic
+│   ├── chessGame.js      # Core game orchestration
+│   ├── gameState.js      # State management and validation
 │   ├── chessAI.js        # AI implementation
-│   └── constants.js      # Shared constants
+│   └── [future modules] # Additional focused modules
 └── client/               # Future client-side modules
 ```
 
 ### Module Dependencies
 - **Server modules** can import from `shared/`
 - **Client code** (in `public/`) should be self-contained
+- **Shared modules** should be focused and modular with clear responsibilities
 - **Shared modules** should have no external dependencies beyond Node.js built-ins
 - **Test files** can import from any module for testing
+- **New modules** should follow single responsibility principle
 
 ## Chess Rule Implementation Workflow
 
@@ -133,16 +141,15 @@ isValidMove(from, to, piece) {
 - **Game Flow Tests**: Full games from start to end
 - **Edge Case Tests**: Boundary conditions and error scenarios
 
-### Test Execution Order
+### Test Execution
 ```bash
-# Quick validation
+# Run all tests (recommended)
 npm test
 
-# Comprehensive testing
-npm run test:comprehensive
+# Run tests in watch mode during development
+npm run test:watch
 
-# Browser testing (manual)
-open tests/run_tests.html
+# All tests run automatically via Jest - no manual browser testing needed
 ```
 
 ## Debugging Guidelines

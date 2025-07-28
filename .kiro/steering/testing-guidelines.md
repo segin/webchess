@@ -189,37 +189,42 @@ const TestSequences = {
 - High-frequency move validation
 - Server resource utilization
 
-## Browser Testing
+## Modular Testing Approach
 
-### Cross-Browser Compatibility
-- Test in Chrome, Firefox, Safari, Edge
-- Mobile browser testing (iOS Safari, Chrome Mobile)
-- WebSocket connection stability across browsers
+### Module-Specific Testing
+- **ChessGame**: Core game orchestration and move execution
+- **GameStateManager**: State tracking, validation, and consistency
+- **Move Validators**: Piece-specific movement validation
+- **Check Detection**: King safety and check/checkmate logic
+- **Special Moves**: Castling, en passant, and pawn promotion
 
-### UI Interaction Testing
-- Chess piece drag and drop
-- Touch interactions on mobile
-- Responsive design validation
-- Chat functionality
+### Integration Testing
+- Module interaction testing
+- Complete game flow validation
+- State consistency across modules
+- Error propagation between components
 
-### Client-Side Game Logic
-- Validate client-side move validation matches server
-- Test offline practice mode functionality
-- AI opponent behavior validation
+## Test Execution
 
-## Test Automation
+### Standard Testing Command
+- **All testing should be done via `npm test`** - This runs the complete test suite
+- Tests are automatically discovered and run by Jest
+- Use `npm run test:watch` for development with auto-rerun on file changes
+- No manual browser testing needed - all tests run in Node.js environment
 
-### Continuous Integration
+### Test Automation
+
+#### Continuous Integration
 - Run all tests on every commit
 - Fail builds on test failures
 - Generate test coverage reports
 - Performance regression detection
 
-### Test Categories
-- **Fast Tests**: Unit tests that run quickly
-- **Slow Tests**: Integration and browser tests
-- **Critical Tests**: Must pass for deployment
-- **Optional Tests**: Performance and extended validation
+#### Test Categories
+- **Unit Tests**: Individual module and function testing
+- **Integration Tests**: Component interaction testing
+- **Game Flow Tests**: Complete chess game scenarios
+- **State Management Tests**: Game state consistency validation
 
 ## Test Documentation
 
