@@ -241,6 +241,15 @@ class GameStateManager {
    * @returns {Object} Validation result
    */
   validateStatusTransition(fromStatus, toStatus) {
+    // Allow same status (no change)
+    if (fromStatus === toStatus) {
+      return {
+        success: true,
+        message: `Status remains ${fromStatus}`,
+        details: { fromStatus, toStatus }
+      };
+    }
+
     const validTransitions = {
       'active': ['check', 'checkmate', 'stalemate', 'draw'],
       'check': ['active', 'checkmate', 'stalemate', 'draw'],

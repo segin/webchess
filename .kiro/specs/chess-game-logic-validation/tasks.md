@@ -144,7 +144,7 @@
   - Merge the testsuites invoked with `npm test` and `npm run test:jest`
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 
-- [ ] 17. Implement comprehensive test suite for piece movement patterns
+- [x] 17. Implement comprehensive test suite for piece movement patterns
   - Create exhaustive test coverage for all piece types with every possible movement scenario
   - Implement boundary testing for all pieces at board edges and corners
   - Add performance testing for move validation timing and efficiency
@@ -153,7 +153,7 @@
   - Write performance tests ensuring move validation completes within acceptable time limits
   - _Requirements: 6.1, 6.4, 1.1_
 
-- [ ] 18. Implement comprehensive test suite for special moves
+- [x] 18. Implement comprehensive test suite for special moves
   - Create complete test coverage for castling, en passant, and pawn promotion scenarios
   - Implement complex scenario testing with multiple special moves in sequence
   - Add edge case testing for special move interactions and conflicts
@@ -162,7 +162,7 @@
   - Write unit tests for all pawn promotion scenarios with different promotion pieces
   - _Requirements: 6.2, 2.1, 2.8_
 
-- [ ] 19. Implement comprehensive test suite for check and checkmate scenarios
+- [x] 19. Implement comprehensive test suite for check and checkmate scenarios
   - Create exhaustive test coverage for all check, checkmate, and stalemate scenarios
   - Implement complex game ending scenario testing with various piece combinations
   - Add test coverage for check resolution and escape move validation
@@ -171,7 +171,7 @@
   - Write unit tests for stalemate detection and draw condition validation
   - _Requirements: 6.3, 3.1, 3.3, 3.5_
 
-- [ ] 20. Implement final integration testing and performance optimization
+- [x] 20. Implement final integration testing and performance optimization
   - Create comprehensive integration tests validating entire game flow from start to finish
   - Implement performance optimization for move validation and game state updates
   - Add final validation testing to ensure 95% code coverage target is achieved

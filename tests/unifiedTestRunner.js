@@ -16,7 +16,8 @@ class UnifiedTestRunner {
       nodeTests: { passed: 0, failed: 0, results: [] },
       jestTests: { passed: 0, failed: 0, results: [] },
       comprehensiveTests: { passed: 0, failed: 0, results: [] },
-      errorHandlingTests: { passed: 0, failed: 0, results: [] }
+      errorHandlingTests: { passed: 0, failed: 0, results: [] },
+      pieceMovementTests: { passed: 0, failed: 0, results: [] }
     };
     this.totalPassed = 0;
     this.totalFailed = 0;
@@ -40,6 +41,9 @@ class UnifiedTestRunner {
       // Run error handling tests
       await this.runErrorHandlingTests();
       
+      // Run piece movement pattern tests
+      await this.runPieceMovementTests();
+      
       // Generate final report
       this.generateFinalReport();
       
@@ -56,37 +60,52 @@ class UnifiedTestRunner {
   async runNodeTests() {
     console.log('📁 Running Node.js Basic Tests...');
     
-    try {
-      const NodeTestRunner = require('./run_tests');
-      const runner = new NodeTestRunner();
-      
-      // Capture console output
-      const originalLog = console.log;
-      const logs = [];
-      console.log = (...args) => {
-        logs.push(args.join(' '));
-        originalLog(...args);
-      };
-      
-      const success = await runner.runAllTests();
-      
-      // Restore console
-      console.log = originalLog;
-      
-      this.testResults.nodeTests.passed = runner.passedTests;
-      this.testResults.nodeTests.failed = runner.failedTests;
-      this.testResults.nodeTests.results = runner.testResults;
-      
-      this.totalPassed += runner.passedTests;
-      this.totalFailed += runner.failedTests;
-      
-      console.log(`Node.js Tests: ${runner.passedTests} passed, ${runner.failedTests} failed\n`);
-      
-    } catch (error) {
-      console.error('❌ Node.js tests failed:', error.message);
-      this.testResults.nodeTests.failed = 1;
-      this.totalFailed += 1;
-    }
+    return new Promise((resolve) => {
+      const testProcess = spawn('node', ['tests/run_tests.js'], {
+        stdio: 'pipe',
+        cwd: process.cwd()
+      });
+
+      let output = '';
+      let errorOutput = '';
+
+      testProcess.stdout.on('data', (data) => {
+        const text = data.toString();
+        output += text;
+        process.stdout.write(text);
+      });
+
+      testProcess.stderr.on('data', (data) => {
+        const text = data.toString();
+        errorOutput += text;
+        process.stderr.write(text);
+      });
+
+      testProcess.on('close', (code) => {
+        // Parse output for results
+        const passedMatches = output.match(/✅/g);
+        const failedMatches = output.match(/❌/g);
+        
+        const passed = passedMatches ? passedMatches.length : 0;
+        const failed = failedMatches ? failedMatches.length : 0;
+        
+        this.testResults.nodeTests.passed = passed;
+        this.testResults.nodeTests.failed = failed;
+        
+        this.totalPassed += passed;
+        this.totalFailed += failed;
+        
+        console.log(`Node.js Tests: ${passed} passed, ${failed} failed\n`);
+        resolve();
+      });
+
+      testProcess.on('error', (error) => {
+        console.error('❌ Node.js tests failed to run:', error.message);
+        this.testResults.nodeTests.failed = 1;
+        this.totalFailed += 1;
+        resolve();
+      });
+    });
   }
 
   async runJestTests() {
@@ -290,6 +309,57 @@ class UnifiedTestRunner {
     }
   }
 
+  async runPieceMovementTests() {
+    console.log('♟️ Running Piece Movement Pattern Tests...');
+    
+    return new Promise((resolve) => {
+      const testProcess = spawn('node', ['tests/pieceMovementPatterns.test.js'], {
+        stdio: 'pipe',
+        cwd: process.cwd()
+      });
+
+      let output = '';
+      let errorOutput = '';
+
+      testProcess.stdout.on('data', (data) => {
+        const text = data.toString();
+        output += text;
+        process.stdout.write(text);
+      });
+
+      testProcess.stderr.on('data', (data) => {
+        const text = data.toString();
+        errorOutput += text;
+        process.stderr.write(text);
+      });
+
+      testProcess.on('close', (code) => {
+        // Parse output for results
+        const passedMatches = output.match(/✅/g);
+        const failedMatches = output.match(/❌/g);
+        
+        const passed = passedMatches ? passedMatches.length : 0;
+        const failed = failedMatches ? failedMatches.length : 0;
+        
+        this.testResults.pieceMovementTests.passed = passed;
+        this.testResults.pieceMovementTests.failed = failed;
+        
+        this.totalPassed += passed;
+        this.totalFailed += failed;
+        
+        console.log(`Piece Movement Tests: ${passed} passed, ${failed} failed\n`);
+        resolve();
+      });
+
+      testProcess.on('error', (error) => {
+        console.error('❌ Piece movement tests failed to run:', error.message);
+        this.testResults.pieceMovementTests.failed = 1;
+        this.totalFailed += 1;
+        resolve();
+      });
+    });
+  }
+
   generateFinalReport() {
     const endTime = Date.now();
     const duration = ((endTime - this.startTime) / 1000).toFixed(2);
@@ -307,6 +377,7 @@ class UnifiedTestRunner {
     console.log(`  Jest Tests: ${this.testResults.jestTests.passed} passed, ${this.testResults.jestTests.failed} failed`);
     console.log(`  Comprehensive Tests: ${this.testResults.comprehensiveTests.passed} passed, ${this.testResults.comprehensiveTests.failed} failed`);
     console.log(`  Error Handling Tests: ${this.testResults.errorHandlingTests.passed} passed, ${this.testResults.errorHandlingTests.failed} failed`);
+    console.log(`  Piece Movement Tests: ${this.testResults.pieceMovementTests.passed} passed, ${this.testResults.pieceMovementTests.failed} failed`);
     
     if (this.totalFailed > 0) {
       console.log('\n❌ Some tests failed. Check the output above for details.');

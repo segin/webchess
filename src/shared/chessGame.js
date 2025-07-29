@@ -2130,11 +2130,8 @@ class ChessGame {
               continue;
             }
             
-            // Check if this move is valid using the comprehensive validation
-            const move = { from, to };
-            const validation = this.validateMove(move);
-            
-            if (validation.isValid) {
+            // Use a simplified validation that doesn't trigger game end checking
+            if (this.isValidMoveSimple(from, to, piece)) {
               return true; // Found at least one valid move
             }
           }
@@ -2143,6 +2140,70 @@ class ChessGame {
     }
     
     return false; // No valid moves found
+  }
+
+  /**
+   * Simplified move validation for hasValidMoves to prevent infinite recursion
+   * This version doesn't call checkGameEnd or other functions that might call hasValidMoves
+   * @param {Object} from - Source square
+   * @param {Object} to - Destination square  
+   * @param {Object} piece - Piece being moved
+   * @returns {boolean} True if move is valid
+   */
+  isValidMoveSimple(from, to, piece) {
+    // Basic coordinate validation
+    if (!this.isValidSquare(from) || !this.isValidSquare(to)) {
+      return false;
+    }
+    
+    // Can't move to same square
+    if (from.row === to.row && from.col === to.col) {
+      return false;
+    }
+    
+    // Check piece-specific movement patterns
+    let isValidMovement = false;
+    switch (piece.type) {
+      case 'pawn':
+        isValidMovement = this.isValidPawnMove(from, to, piece);
+        break;
+      case 'rook':
+        isValidMovement = this.isValidRookMove(from, to) && this.isPathClear(from, to);
+        break;
+      case 'knight':
+        isValidMovement = this.isValidKnightMove(from, to);
+        break;
+      case 'bishop':
+        isValidMovement = this.isValidBishopMove(from, to) && this.isPathClear(from, to);
+        break;
+      case 'queen':
+        isValidMovement = this.isValidQueenMove(from, to) && this.isPathClear(from, to);
+        break;
+      case 'king':
+        // For king, check both regular moves and castling
+        if (Math.abs(to.col - from.col) === 2) {
+          // Castling attempt - simplified check
+          isValidMovement = this.canCastle(from, to, piece.color);
+        } else {
+          isValidMovement = this.isValidKingMove(from, to, piece);
+        }
+        break;
+      default:
+        return false;
+    }
+    
+    if (!isValidMovement) {
+      return false;
+    }
+    
+    // Check if destination square can be captured or is empty
+    const targetPiece = this.board[to.row][to.col];
+    if (targetPiece && targetPiece.color === piece.color) {
+      return false; // Can't capture own piece
+    }
+    
+    // Check if move would put own king in check (this is the critical check)
+    return !this.wouldBeInCheck(from, to, piece.color, piece);
   }
 
   /**
@@ -2710,6 +2771,245 @@ class ChessGame {
 
 
   /**
+   * Get all valid moves for a given color
+   * @param {string} color - Color to get moves for ('white' or 'black')
+   * @returns {Array} Array of valid move objects
+   */
+  getAllValidMoves(color) {
+    const validMoves = [];
+    
+    // Iterate through all squares on the board
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = this.board[row][col];
+        
+        // Skip if no piece or wrong color
+        if (!piece || piece.color !== color) continue;
+        
+        const from = { row, col };
+        
+        // Generate all possible moves for this piece
+        const possibleMoves = this.generatePossibleMoves(from, piece);
+        
+        // Validate each possible move
+        for (const to of possibleMoves) {
+          const move = { from, to };
+          const validation = this.validateMove(move);
+          
+          if (validation.isValid) {
+            validMoves.push(move);
+          }
+        }
+      }
+    }
+    
+    return validMoves;
+  }
+
+  /**
+   * Generate all possible moves for a piece (before validation)
+   * @param {Object} from - Source square
+   * @param {Object} piece - Piece to generate moves for
+   * @returns {Array} Array of possible destination squares
+   */
+  generatePossibleMoves(from, piece) {
+    const moves = [];
+    
+    switch (piece.type) {
+      case 'pawn':
+        moves.push(...this.generatePawnMoves(from, piece));
+        break;
+      case 'rook':
+        moves.push(...this.generateRookMoves(from));
+        break;
+      case 'knight':
+        moves.push(...this.generateKnightMoves(from));
+        break;
+      case 'bishop':
+        moves.push(...this.generateBishopMoves(from));
+        break;
+      case 'queen':
+        moves.push(...this.generateQueenMoves(from));
+        break;
+      case 'king':
+        moves.push(...this.generateKingMoves(from));
+        break;
+    }
+    
+    return moves;
+  }
+
+  /**
+   * Generate possible pawn moves
+   * @param {Object} from - Source square
+   * @param {Object} piece - Pawn piece
+   * @returns {Array} Array of possible moves
+   */
+  generatePawnMoves(from, piece) {
+    const moves = [];
+    const direction = piece.color === 'white' ? -1 : 1;
+    const startRow = piece.color === 'white' ? 6 : 1;
+    
+    // Forward moves
+    const oneForward = { row: from.row + direction, col: from.col };
+    if (this.isValidSquare(oneForward)) {
+      moves.push(oneForward);
+      
+      // Two squares forward from starting position
+      if (from.row === startRow) {
+        const twoForward = { row: from.row + 2 * direction, col: from.col };
+        if (this.isValidSquare(twoForward)) {
+          moves.push(twoForward);
+        }
+      }
+    }
+    
+    // Diagonal captures
+    const captureLeft = { row: from.row + direction, col: from.col - 1 };
+    const captureRight = { row: from.row + direction, col: from.col + 1 };
+    
+    if (this.isValidSquare(captureLeft)) moves.push(captureLeft);
+    if (this.isValidSquare(captureRight)) moves.push(captureRight);
+    
+    return moves;
+  }
+
+  /**
+   * Generate possible rook moves
+   * @param {Object} from - Source square
+   * @returns {Array} Array of possible moves
+   */
+  generateRookMoves(from) {
+    const moves = [];
+    const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+    
+    for (const [rowDir, colDir] of directions) {
+      for (let i = 1; i < 8; i++) {
+        const to = { row: from.row + i * rowDir, col: from.col + i * colDir };
+        if (!this.isValidSquare(to)) break;
+        moves.push(to);
+      }
+    }
+    
+    return moves;
+  }
+
+  /**
+   * Generate possible knight moves
+   * @param {Object} from - Source square
+   * @returns {Array} Array of possible moves
+   */
+  generateKnightMoves(from) {
+    const moves = [];
+    const knightMoves = [
+      [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+      [1, -2], [1, 2], [2, -1], [2, 1]
+    ];
+    
+    for (const [rowOffset, colOffset] of knightMoves) {
+      const to = { row: from.row + rowOffset, col: from.col + colOffset };
+      if (this.isValidSquare(to)) {
+        moves.push(to);
+      }
+    }
+    
+    return moves;
+  }
+
+  /**
+   * Generate possible bishop moves
+   * @param {Object} from - Source square
+   * @returns {Array} Array of possible moves
+   */
+  generateBishopMoves(from) {
+    const moves = [];
+    const directions = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+    
+    for (const [rowDir, colDir] of directions) {
+      for (let i = 1; i < 8; i++) {
+        const to = { row: from.row + i * rowDir, col: from.col + i * colDir };
+        if (!this.isValidSquare(to)) break;
+        moves.push(to);
+      }
+    }
+    
+    return moves;
+  }
+
+  /**
+   * Generate possible queen moves
+   * @param {Object} from - Source square
+   * @returns {Array} Array of possible moves
+   */
+  generateQueenMoves(from) {
+    return [
+      ...this.generateRookMoves(from),
+      ...this.generateBishopMoves(from)
+    ];
+  }
+
+  /**
+   * Generate possible king moves
+   * @param {Object} from - Source square
+   * @returns {Array} Array of possible moves
+   */
+  generateKingMoves(from) {
+    const moves = [];
+    const directions = [
+      [-1, -1], [-1, 0], [-1, 1],
+      [0, -1],           [0, 1],
+      [1, -1],  [1, 0],  [1, 1]
+    ];
+    
+    for (const [rowDir, colDir] of directions) {
+      const to = { row: from.row + rowDir, col: from.col + colDir };
+      if (this.isValidSquare(to)) {
+        moves.push(to);
+      }
+    }
+    
+    // Add castling moves
+    if (from.row === (this.currentTurn === 'white' ? 7 : 0) && from.col === 4) {
+      // Kingside castling
+      moves.push({ row: from.row, col: 6 });
+      // Queenside castling
+      moves.push({ row: from.row, col: 2 });
+    }
+    
+    return moves;
+  }
+
+  /**
+   * Reset the game to initial state
+   */
+  resetGame() {
+    this.board = this.initializeBoard();
+    this.currentTurn = 'white';
+    this.gameStatus = 'active';
+    this.winner = null;
+    this.moveHistory = [];
+    this.castlingRights = {
+      white: { kingside: true, queenside: true },
+      black: { kingside: true, queenside: true }
+    };
+    this.enPassantTarget = null;
+    this.halfMoveClock = 0;
+    this.fullMoveNumber = 1;
+    this.inCheck = false;
+    this.checkDetails = null;
+    
+    // Reset state manager
+    this.stateManager = new GameStateManager();
+    this.gameMetadata = this.stateManager.gameMetadata;
+    this.positionHistory = this.stateManager.positionHistory;
+    this.positionHistory.push(this.stateManager.getFENPosition(
+      this.board, this.currentTurn, this.castlingRights, this.enPassantTarget
+    ));
+    this.stateVersion = this.stateManager.stateVersion;
+    this.lastValidatedState = null;
+  }
+
+  /**
    * Get comprehensive game state with enhanced tracking and metadata
    * @returns {Object} Complete game state information
    */
@@ -2720,7 +3020,7 @@ class ChessGame {
       // Core game state
       board: this.board,
       currentTurn: this.currentTurn,
-      status: this.gameStatus,
+      gameStatus: this.gameStatus,
       winner: this.winner,
       moveHistory: this.moveHistory,
       
