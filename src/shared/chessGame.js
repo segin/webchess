@@ -1270,52 +1270,199 @@ class ChessGame {
    * @param {Object} to - Destination square
    * @param {Object} piece - The piece that moved
    */
+  /**
+   * Enhanced castling rights management system with comprehensive tracking
+   * Updates castling rights automatically when king or rooks move or are captured
+   * @param {Object} from - Source square
+   * @param {Object} to - Destination square
+   * @param {Object} piece - The piece that moved
+   */
   updateCastlingRights(from, to, piece) {
+    // Store original rights for comparison
+    const originalRights = JSON.parse(JSON.stringify(this.castlingRights));
+    
     // Check if a rook was captured BEFORE the move (affects opponent's castling rights)
     const capturedPiece = this.board[to.row][to.col];
     if (capturedPiece && capturedPiece.type === 'rook') {
-      const capturedColor = capturedPiece.color;
-      const rookStartingRow = capturedColor === 'white' ? 7 : 0;
-      
-      // Check if captured rook was on its starting square
-      if (to.row === rookStartingRow) {
-        if (to.col === 0) {
-          // Queenside rook captured
-          this.castlingRights[capturedColor].queenside = false;
-        } else if (to.col === 7) {
-          // Kingside rook captured
-          this.castlingRights[capturedColor].kingside = false;
-        }
-      }
+      this.updateCastlingRightsForCapturedRook(to, capturedPiece);
     }
     
     // If king moves, lose all castling rights for that color
     if (piece.type === 'king') {
-      this.castlingRights[piece.color].kingside = false;
-      this.castlingRights[piece.color].queenside = false;
+      this.updateCastlingRightsForKingMove(piece.color);
       return;
     }
     
     // If rook moves from starting position, lose castling rights for that side
     if (piece.type === 'rook') {
-      const startingRow = piece.color === 'white' ? 7 : 0;
-      
-      // Check if rook is moving from its starting position
-      if (from.row === startingRow) {
-        if (from.col === 0) {
-          // Queenside rook moved
-          this.castlingRights[piece.color].queenside = false;
-        } else if (from.col === 7) {
-          // Kingside rook moved
-          this.castlingRights[piece.color].kingside = false;
-        }
+      this.updateCastlingRightsForRookMove(from, piece);
+    }
+    
+    // Track castling rights changes for debugging and validation
+    this.trackCastlingRightsChanges(originalRights, this.castlingRights, { from, to, piece });
+  }
+
+  /**
+   * Update castling rights when a rook is captured
+   * @param {Object} captureSquare - Square where rook was captured
+   * @param {Object} capturedRook - The captured rook piece
+   */
+  updateCastlingRightsForCapturedRook(captureSquare, capturedRook) {
+    const capturedColor = capturedRook.color;
+    const rookStartingRow = capturedColor === 'white' ? 7 : 0;
+    
+    // Only lose castling rights if rook was captured on its starting square
+    if (captureSquare.row === rookStartingRow) {
+      if (captureSquare.col === 0) {
+        // Queenside rook captured
+        this.castlingRights[capturedColor].queenside = false;
+      } else if (captureSquare.col === 7) {
+        // Kingside rook captured
+        this.castlingRights[capturedColor].kingside = false;
       }
     }
   }
 
   /**
+   * Update castling rights when king moves
+   * @param {string} color - Color of the king that moved
+   */
+  updateCastlingRightsForKingMove(color) {
+    // King moving loses all castling rights for that color
+    this.castlingRights[color].kingside = false;
+    this.castlingRights[color].queenside = false;
+  }
+
+  /**
+   * Update castling rights when rook moves
+   * @param {Object} from - Source square of rook move
+   * @param {Object} rook - The rook piece that moved
+   */
+  updateCastlingRightsForRookMove(from, rook) {
+    const startingRow = rook.color === 'white' ? 7 : 0;
+    
+    // Only lose castling rights if rook is moving FROM its starting position
+    if (from.row === startingRow) {
+      if (from.col === 0) {
+        // Queenside rook moved from starting position
+        this.castlingRights[rook.color].queenside = false;
+      } else if (from.col === 7) {
+        // Kingside rook moved from starting position
+        this.castlingRights[rook.color].kingside = false;
+      }
+    }
+  }
+
+  /**
+   * Track castling rights changes for debugging and validation
+   * @param {Object} originalRights - Rights before the move
+   * @param {Object} newRights - Rights after the move
+   * @param {Object} moveInfo - Information about the move
+   */
+  trackCastlingRightsChanges(originalRights, newRights, moveInfo) {
+    // Only log if there were actual changes
+    const hasChanges = JSON.stringify(originalRights) !== JSON.stringify(newRights);
+    
+    if (hasChanges && this.debugMode) {
+      console.log('Castling rights updated:', {
+        move: moveInfo,
+        before: originalRights,
+        after: newRights
+      });
+    }
+  }
+
+  /**
+   * Validate castling rights for both kingside and queenside castling
+   * @param {string} color - Color to validate castling rights for
+   * @param {string} side - 'kingside' or 'queenside'
+   * @returns {Object} Validation result with detailed information
+   */
+  validateCastlingRightsForSide(color, side) {
+    if (!['kingside', 'queenside'].includes(side)) {
+      return {
+        isValid: false,
+        message: 'Invalid castling side',
+        errors: [`Side must be 'kingside' or 'queenside', got: ${side}`]
+      };
+    }
+
+    if (!['white', 'black'].includes(color)) {
+      return {
+        isValid: false,
+        message: 'Invalid color',
+        errors: [`Color must be 'white' or 'black', got: ${color}`]
+      };
+    }
+
+    const hasRights = this.castlingRights[color][side];
+    const errors = [];
+    
+    if (!hasRights) {
+      errors.push(`${color} has lost ${side} castling rights`);
+    }
+
+    // Validate that king and rook are in correct positions
+    const row = color === 'white' ? 7 : 0;
+    const king = this.board[row][4];
+    
+    if (!king || king.type !== 'king' || king.color !== color) {
+      errors.push(`${color} king is not on starting square`);
+    }
+
+    const rookCol = side === 'kingside' ? 7 : 0;
+    const rook = this.board[row][rookCol];
+    
+    if (!rook || rook.type !== 'rook' || rook.color !== color) {
+      errors.push(`${color} ${side} rook is not on starting square`);
+    }
+
+    return {
+      isValid: errors.length === 0,
+      message: errors.length === 0 ? `${color} ${side} castling rights are valid` : `${color} ${side} castling rights validation failed`,
+      errors: errors,
+      hasRights: hasRights,
+      kingInPosition: king && king.type === 'king' && king.color === color,
+      rookInPosition: rook && rook.type === 'rook' && rook.color === color
+    };
+  }
+
+  /**
+   * Get comprehensive castling rights status for both colors
+   * @returns {Object} Complete castling rights information
+   */
+  getCastlingRightsStatus() {
+    return {
+      white: {
+        kingside: {
+          hasRights: this.castlingRights.white.kingside,
+          validation: this.validateCastlingRightsForSide('white', 'kingside')
+        },
+        queenside: {
+          hasRights: this.castlingRights.white.queenside,
+          validation: this.validateCastlingRightsForSide('white', 'queenside')
+        }
+      },
+      black: {
+        kingside: {
+          hasRights: this.castlingRights.black.kingside,
+          validation: this.validateCastlingRightsForSide('black', 'kingside')
+        },
+        queenside: {
+          hasRights: this.castlingRights.black.queenside,
+          validation: this.validateCastlingRightsForSide('black', 'queenside')
+        }
+      }
+    };
+  }
+
+  /**
    * Get current game state for snapshot purposes
    * @returns {Object} Game state snapshot
+   */
+  /**
+   * Get current game state for snapshot purposes with proper serialization
+   * @returns {Object} Game state snapshot with castling rights persistence
    */
   getGameStateForSnapshot() {
     return {
@@ -1325,11 +1472,28 @@ class ChessGame {
       winner: this.winner,
       inCheck: this.inCheck,
       checkDetails: this.checkDetails,
-      castlingRights: this.castlingRights,
+      castlingRights: this.serializeCastlingRights(),
       enPassantTarget: this.enPassantTarget,
       halfMoveClock: this.halfMoveClock,
       fullMoveNumber: this.fullMoveNumber,
       moveHistory: this.moveHistory
+    };
+  }
+
+  /**
+   * Serialize castling rights with proper structure for persistence
+   * @returns {Object} Serialized castling rights
+   */
+  serializeCastlingRights() {
+    return {
+      white: {
+        kingside: Boolean(this.castlingRights.white.kingside),
+        queenside: Boolean(this.castlingRights.white.queenside)
+      },
+      black: {
+        kingside: Boolean(this.castlingRights.black.kingside),
+        queenside: Boolean(this.castlingRights.black.queenside)
+      }
     };
   }
 

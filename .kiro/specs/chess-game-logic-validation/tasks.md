@@ -98,7 +98,7 @@
   - Write unit tests for near-checkmate scenarios that should not trigger checkmate detection
   - _Requirements: 3.3, 3.4, 1.1_
 
-- [ ] 12. Implement stalemate detection system
+- [x] 12. Implement stalemate detection system
   - Code stalemate detection that identifies when a player has no legal moves but is not in check
   - Implement comprehensive legal move validation for stalemate scenarios
   - Add draw declaration logic when stalemate conditions are met
@@ -116,7 +116,7 @@
   - Write unit tests for game state consistency and data integrity validation
   - _Requirements: 5.1, 5.2, 5.3, 5.6, 5.7_
 
-- [ ] 14. Implement castling rights management system
+- [x] 14. Implement castling rights management system
   - Code castling rights tracking that updates automatically when king or rooks move
   - Implement castling rights validation for both kingside and queenside castling
   - Add castling rights persistence in game state with proper serialization
