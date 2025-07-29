@@ -125,7 +125,7 @@
   - Write unit tests for castling rights validation in various game scenarios
   - _Requirements: 5.4, 2.2, 2.3_
 
-- [ ] 15. Implement en passant target management
+- [x] 15. Implement en passant target management
   - Code en passant target tracking that updates when pawns make two-square initial moves
   - Implement en passant target validation and cleanup after each move
   - Add en passant capture mechanics with proper pawn removal
@@ -134,13 +134,14 @@
   - Write unit tests for en passant edge cases and invalid en passant attempts
   - _Requirements: 5.5, 2.8_
 
-- [ ] 16. Implement comprehensive error handling system
+- [x] 16. Implement comprehensive error handling system
   - Code graceful error handling for all validation failures with appropriate error messages
   - Implement error categorization system with specific error codes and user-friendly messages
   - Add error recovery mechanisms where possible to maintain game stability
   - Write unit tests for all error scenarios including invalid coordinates, wrong piece colors, and malformed inputs
   - Write unit tests for error message accuracy and error code consistency
   - Write unit tests for error recovery and system stability under error conditions
+  - Merge the testsuites invoked with `npm test` and `npm run test:jest`
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 
 - [ ] 17. Implement comprehensive test suite for piece movement patterns

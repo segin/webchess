@@ -1,4 +1,5 @@
 const GameStateManager = require('./gameState');
+const ChessErrorHandler = require('./errorHandler');
 
 class ChessGame {
   constructor() {
@@ -19,6 +20,9 @@ class ChessGame {
     
     // Initialize game state manager
     this.stateManager = new GameStateManager();
+    
+    // Initialize error handler
+    this.errorHandler = new ChessErrorHandler();
     
     // Enhanced game state tracking with metadata
     this.gameMetadata = this.stateManager.gameMetadata;
@@ -76,13 +80,7 @@ class ChessGame {
     // Enhanced validation with detailed error reporting
     const validation = this.validateMove(move);
     if (!validation.isValid) {
-      return {
-        success: false,
-        message: validation.message,
-        errorCode: validation.errorCode,
-        errors: validation.errors,
-        details: validation.details
-      };
+      return validation; // Return the full error structure from error handler
     }
 
     const { from, to, promotion } = move;
@@ -207,53 +205,63 @@ class ChessGame {
    * @returns {Object} Validation result
    */
   validateMoveFormat(move) {
-    const errors = [];
+    try {
+      const errors = [];
 
-    if (!move || typeof move !== 'object') {
-      return {
-        isValid: false,
-        message: 'Move must be an object',
-        errorCode: 'MALFORMED_MOVE',
-        errors: ['Move parameter is null, undefined, or not an object'],
-        details: { formatValid: false }
-      };
+      if (!move || typeof move !== 'object') {
+        return this.errorHandler.createError(
+          'MALFORMED_MOVE',
+          null,
+          ['Move parameter is null, undefined, or not an object'],
+          { formatValid: false },
+          { move: move }
+        );
+      }
+
+      if (!move.from || typeof move.from !== 'object') {
+        errors.push('Move must have a valid "from" square object');
+      }
+
+      if (!move.to || typeof move.to !== 'object') {
+        errors.push('Move must have a valid "to" square object');
+      }
+
+      if (move.from && (typeof move.from.row !== 'number' || typeof move.from.col !== 'number')) {
+        errors.push('From square must have numeric row and col properties');
+      }
+
+      if (move.to && (typeof move.to.row !== 'number' || typeof move.to.col !== 'number')) {
+        errors.push('To square must have numeric row and col properties');
+      }
+
+      if (move.promotion && typeof move.promotion !== 'string') {
+        errors.push('Promotion must be a string if provided');
+      }
+
+      if (move.promotion && !['queen', 'rook', 'bishop', 'knight'].includes(move.promotion)) {
+        errors.push('Promotion must be one of: queen, rook, bishop, knight');
+      }
+
+      if (errors.length > 0) {
+        return this.errorHandler.createError(
+          'INVALID_FORMAT',
+          null,
+          errors,
+          { formatValid: false },
+          { move: move }
+        );
+      }
+
+      return this.errorHandler.createSuccess('Move format is valid', {}, { formatValid: true });
+    } catch (error) {
+      return this.errorHandler.createError(
+        'SYSTEM_ERROR',
+        'Error during move format validation: ' + error.message,
+        [error.message],
+        { formatValid: false },
+        { move: move, error: error.stack }
+      );
     }
-
-    if (!move.from || typeof move.from !== 'object') {
-      errors.push('Move must have a valid "from" square object');
-    }
-
-    if (!move.to || typeof move.to !== 'object') {
-      errors.push('Move must have a valid "to" square object');
-    }
-
-    if (move.from && (typeof move.from.row !== 'number' || typeof move.from.col !== 'number')) {
-      errors.push('From square must have numeric row and col properties');
-    }
-
-    if (move.to && (typeof move.to.row !== 'number' || typeof move.to.col !== 'number')) {
-      errors.push('To square must have numeric row and col properties');
-    }
-
-    if (move.promotion && typeof move.promotion !== 'string') {
-      errors.push('Promotion must be a string if provided');
-    }
-
-    if (move.promotion && !['queen', 'rook', 'bishop', 'knight'].includes(move.promotion)) {
-      errors.push('Promotion must be one of: queen, rook, bishop, knight');
-    }
-
-    if (errors.length > 0) {
-      return {
-        isValid: false,
-        message: 'Invalid move format',
-        errorCode: 'INVALID_FORMAT',
-        errors: errors,
-        details: { formatValid: false }
-      };
-    }
-
-    return { isValid: true };
   }
 
   /**
@@ -263,31 +271,41 @@ class ChessGame {
    * @returns {Object} Validation result
    */
   validateCoordinates(from, to) {
-    const errors = [];
+    try {
+      const errors = [];
 
-    if (!this.isValidSquare(from)) {
-      errors.push(`Invalid source coordinates: row ${from.row}, col ${from.col}`);
+      if (!this.isValidSquare(from)) {
+        errors.push(`Invalid source coordinates: row ${from.row}, col ${from.col}`);
+      }
+
+      if (!this.isValidSquare(to)) {
+        errors.push(`Invalid destination coordinates: row ${to.row}, col ${to.col}`);
+      }
+
+      if (from.row === to.row && from.col === to.col) {
+        errors.push('Source and destination squares cannot be the same');
+      }
+
+      if (errors.length > 0) {
+        return this.errorHandler.createError(
+          'INVALID_COORDINATES',
+          null,
+          errors,
+          { coordinatesValid: false },
+          { from: from, to: to }
+        );
+      }
+
+      return this.errorHandler.createSuccess('Coordinates are valid', {}, { coordinatesValid: true });
+    } catch (error) {
+      return this.errorHandler.createError(
+        'SYSTEM_ERROR',
+        'Error during coordinate validation: ' + error.message,
+        [error.message],
+        { coordinatesValid: false },
+        { from: from, to: to, error: error.stack }
+      );
     }
-
-    if (!this.isValidSquare(to)) {
-      errors.push(`Invalid destination coordinates: row ${to.row}, col ${to.col}`);
-    }
-
-    if (from.row === to.row && from.col === to.col) {
-      errors.push('Source and destination squares cannot be the same');
-    }
-
-    if (errors.length > 0) {
-      return {
-        isValid: false,
-        message: 'Invalid coordinates',
-        errorCode: 'INVALID_COORDINATES',
-        errors: errors,
-        details: { coordinatesValid: false }
-      };
-    }
-
-    return { isValid: true };
   }
 
   /**
@@ -295,17 +313,27 @@ class ChessGame {
    * @returns {Object} Validation result
    */
   validateGameState() {
-    if (this.gameStatus !== 'active') {
-      return {
-        isValid: false,
-        message: 'Game is not active',
-        errorCode: 'GAME_NOT_ACTIVE',
-        errors: [`Game status is ${this.gameStatus}, moves are not allowed`],
-        details: { gameStateValid: false }
-      };
-    }
+    try {
+      if (this.gameStatus !== 'active') {
+        return this.errorHandler.createError(
+          'GAME_NOT_ACTIVE',
+          null,
+          [`Game status is ${this.gameStatus}, moves are not allowed`],
+          { gameStateValid: false },
+          { currentStatus: this.gameStatus }
+        );
+      }
 
-    return { isValid: true };
+      return this.errorHandler.createSuccess('Game state is valid', {}, { gameStateValid: true });
+    } catch (error) {
+      return this.errorHandler.createError(
+        'SYSTEM_ERROR',
+        'Error during game state validation: ' + error.message,
+        [error.message],
+        { gameStateValid: false },
+        { gameStatus: this.gameStatus, error: error.stack }
+      );
+    }
   }
 
   /**
@@ -314,52 +342,86 @@ class ChessGame {
    * @returns {Object} Validation result
    */
   validatePieceAtSquare(from) {
-    const piece = this.board[from.row][from.col];
+    try {
+      const piece = this.board[from.row][from.col];
 
-    if (!piece) {
-      return {
-        isValid: false,
-        message: 'No piece at source square',
-        errorCode: 'NO_PIECE',
-        errors: [`No piece found at square row ${from.row}, col ${from.col}`],
-        details: { pieceValid: false }
-      };
+      if (!piece) {
+        return this.errorHandler.createError(
+          'NO_PIECE',
+          null,
+          [`No piece found at square row ${from.row}, col ${from.col}`],
+          { pieceValid: false },
+          { from: from, boardSquare: piece }
+        );
+      }
+
+      if (!piece.type || !piece.color) {
+        // Attempt recovery for corrupted piece data
+        const recoveryResult = this.errorHandler.attemptRecovery('INVALID_PIECE', {
+          piece: piece,
+          position: from
+        });
+
+        if (recoveryResult.success) {
+          // Apply recovered piece data
+          this.board[from.row][from.col] = recoveryResult.recoveredData;
+          console.log('Recovered piece data:', recoveryResult.recoveredData);
+        }
+
+        return this.errorHandler.createError(
+          'INVALID_PIECE',
+          null,
+          ['Piece missing type or color information'],
+          { pieceValid: false, recovery: recoveryResult },
+          { from: from, piece: piece }
+        );
+      }
+
+      const validTypes = ['pawn', 'rook', 'knight', 'bishop', 'queen', 'king'];
+      const validColors = ['white', 'black'];
+
+      if (!validTypes.includes(piece.type)) {
+        // Attempt recovery for invalid piece type
+        const recoveryResult = this.errorHandler.attemptRecovery('INVALID_PIECE_TYPE', {
+          piece: piece,
+          position: from
+        });
+
+        return this.errorHandler.createError(
+          'INVALID_PIECE_TYPE',
+          null,
+          [`Invalid piece type: ${piece.type}`],
+          { pieceValid: false, recovery: recoveryResult },
+          { from: from, piece: piece, validTypes: validTypes }
+        );
+      }
+
+      if (!validColors.includes(piece.color)) {
+        // Attempt recovery for invalid piece color
+        const recoveryResult = this.errorHandler.attemptRecovery('INVALID_PIECE_COLOR', {
+          piece: piece,
+          position: from
+        });
+
+        return this.errorHandler.createError(
+          'INVALID_PIECE_COLOR',
+          null,
+          [`Invalid piece color: ${piece.color}`],
+          { pieceValid: false, recovery: recoveryResult },
+          { from: from, piece: piece, validColors: validColors }
+        );
+      }
+
+      return this.errorHandler.createSuccess('Piece is valid', { piece: piece }, { pieceValid: true });
+    } catch (error) {
+      return this.errorHandler.createError(
+        'SYSTEM_ERROR',
+        'Error during piece validation: ' + error.message,
+        [error.message],
+        { pieceValid: false },
+        { from: from, error: error.stack }
+      );
     }
-
-    if (!piece.type || !piece.color) {
-      return {
-        isValid: false,
-        message: 'Invalid piece data',
-        errorCode: 'INVALID_PIECE',
-        errors: ['Piece missing type or color information'],
-        details: { pieceValid: false }
-      };
-    }
-
-    const validTypes = ['pawn', 'rook', 'knight', 'bishop', 'queen', 'king'];
-    const validColors = ['white', 'black'];
-
-    if (!validTypes.includes(piece.type)) {
-      return {
-        isValid: false,
-        message: 'Invalid piece type',
-        errorCode: 'INVALID_PIECE_TYPE',
-        errors: [`Invalid piece type: ${piece.type}`],
-        details: { pieceValid: false }
-      };
-    }
-
-    if (!validColors.includes(piece.color)) {
-      return {
-        isValid: false,
-        message: 'Invalid piece color',
-        errorCode: 'INVALID_PIECE_COLOR',
-        errors: [`Invalid piece color: ${piece.color}`],
-        details: { pieceValid: false }
-      };
-    }
-
-    return { isValid: true };
   }
 
   /**
@@ -368,17 +430,31 @@ class ChessGame {
    * @returns {Object} Validation result
    */
   validateTurn(piece) {
-    if (piece.color !== this.currentTurn) {
-      return {
-        isValid: false,
-        message: 'Not your turn',
-        errorCode: 'WRONG_TURN',
-        errors: [`It's ${this.currentTurn}'s turn, cannot move ${piece.color} piece`],
-        details: { turnValid: false }
-      };
-    }
+    try {
+      if (piece.color !== this.currentTurn) {
+        return this.errorHandler.createError(
+          'WRONG_TURN',
+          null,
+          [`It's ${this.currentTurn}'s turn, cannot move ${piece.color} piece`],
+          { turnValid: false },
+          { 
+            pieceColor: piece.color, 
+            currentTurn: this.currentTurn,
+            moveHistory: this.moveHistory.length 
+          }
+        );
+      }
 
-    return { isValid: true };
+      return this.errorHandler.createSuccess('Turn is valid', {}, { turnValid: true });
+    } catch (error) {
+      return this.errorHandler.createError(
+        'SYSTEM_ERROR',
+        'Error during turn validation: ' + error.message,
+        [error.message],
+        { turnValid: false },
+        { piece: piece, currentTurn: this.currentTurn, error: error.stack }
+      );
+    }
   }
 
   /**
@@ -1511,11 +1587,18 @@ class ChessGame {
 
     // Update en passant target
     if (piece.type === 'pawn' && Math.abs(to.row - from.row) === 2) {
-      // Pawn moved two squares, set en passant target
-      this.enPassantTarget = {
-        row: from.row + (to.row - from.row) / 2,
-        col: from.col
-      };
+      // Check if pawn moved two squares from starting position
+      const startingRow = piece.color === 'white' ? 6 : 1;
+      if (from.row === startingRow) {
+        // Pawn moved two squares from starting position, set en passant target
+        this.enPassantTarget = {
+          row: from.row + (to.row - from.row) / 2,
+          col: from.col
+        };
+      } else {
+        // Pawn moved two squares but not from starting position, clear target
+        this.enPassantTarget = null;
+      }
     } else {
       // Clear en passant target after any other move
       this.enPassantTarget = null;
