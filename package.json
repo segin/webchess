@@ -6,13 +6,11 @@
   "scripts": {
     "start": "node src/server/index.js",
     "dev": "nodemon src/server/index.js",
-    "test": "node tests/unifiedTestRunner.js",
-    "test:basic": "node tests/run_tests.js",
-    "test:comprehensive": "node tests/run_comprehensive_tests.js",
-    "test:browser": "echo 'Open tests/run_tests.html in your browser to run comprehensive tests'",
-    "test:jest": "jest",
-    "test:errors": "node tests/errorHandling.test.js",
+    "test": "jest",
     "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:verbose": "jest --verbose",
+    "test:browser": "echo 'Open public/test-runner.html in your browser to run browser-specific tests'",
     "install:production": "npm install --production",
     "daemon:install": "sudo cp deployment/webchess.service /etc/systemd/system/ && sudo systemctl daemon-reload",
     "daemon:enable": "sudo systemctl enable webchess",
@@ -33,12 +31,5 @@
   "devDependencies": {
     "jest": "^30.0.5",
     "nodemon": "^3.0.1"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "collectCoverageFrom": [
-      "src/**/*.js",
-      "!src/client/**"
-    ]
   }
 }

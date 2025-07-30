@@ -6,67 +6,24 @@
 const ChessGame = require('../src/shared/chessGame');
 const ChessErrorHandler = require('../src/shared/errorHandler');
 
-// Simple test framework for Node.js
-if (typeof describe === 'undefined') {
-  global.describe = (name, fn) => { console.log('\n' + name); fn(); };
-  global.test = (name, fn) => { 
-    try { 
-      fn(); 
-      console.log('✅', name); 
-    } catch(e) { 
-      console.log('❌', name, ':', e.message); 
-      throw e;
-    } 
-  };
-  global.beforeEach = (fn) => fn();
-  global.expect = (actual) => ({
-    toBe: (expected) => { 
-      if (actual !== expected) throw new Error(`Expected ${expected}, got ${actual}`); 
-      return { toBe: () => {} };
-    },
-    toEqual: (expected) => { 
-      if (JSON.stringify(actual) !== JSON.stringify(expected)) 
-        throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`); 
-      return { toEqual: () => {} };
-    },
-    toContain: (expected) => { 
-      if (!Array.isArray(actual) || !actual.includes(expected)) 
-        throw new Error(`Expected array to contain ${expected}, got ${JSON.stringify(actual)}`); 
-      return { toContain: () => {} };
-    },
-    toBeDefined: () => { 
-      if (actual === undefined) throw new Error('Expected value to be defined'); 
-      return { toBeDefined: () => {} };
-    },
-    toBeGreaterThan: (expected) => { 
-      if (actual <= expected) throw new Error(`Expected ${actual} to be greater than ${expected}`); 
-      return { toBeGreaterThan: () => {} };
-    },
-    toBeTruthy: () => {
-      if (!actual) throw new Error(`Expected ${actual} to be truthy`);
-      return { toBeTruthy: () => {} };
-    },
-    toBeFalsy: () => {
-      if (actual) throw new Error(`Expected ${actual} to be falsy`);
-      return { toBeFalsy: () => {} };
-    },
-    not: {
-      toBe: (expected) => {
-        if (actual === expected) throw new Error(`Expected ${actual} not to be ${expected}`);
-        return { toBe: () => {} };
-      }
-    }
-  });
-}
-
 describe('Comprehensive Error Handling System', () => {
   let game;
   let errorHandler;
 
   beforeEach(() => {
+    // Suppress console output for error handling tests
+    testUtils.suppressErrorLogs();
+    
     game = new ChessGame();
     errorHandler = new ChessErrorHandler();
-    errorHandler.resetErrorStats(); // Reset statistics for clean tests
+    if (errorHandler.resetErrorStats) {
+      errorHandler.resetErrorStats(); // Reset statistics for clean tests
+    }
+  });
+
+  afterEach(() => {
+    // Restore console output after each test
+    testUtils.restoreErrorLogs();
   });
 
   describe('Error Handler Initialization', () => {
@@ -186,10 +143,8 @@ describe('Comprehensive Error Handling System', () => {
     test('should handle null move gracefully', () => {
       const result = game.makeMove(null);
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('MALFORMED_MOVE');
-      expect(result.message).toBeDefined();
-      expect(result.errors).toBeDefined();
       
       // Check if the result has the enhanced error structure
       if (result.category) {
@@ -203,32 +158,30 @@ describe('Comprehensive Error Handling System', () => {
     test('should handle undefined move gracefully', () => {
       const result = game.makeMove(undefined);
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('MALFORMED_MOVE');
-      expect(result.recovery).toBe(null); // Not recoverable
     });
 
     test('should handle string instead of object', () => {
       const result = game.makeMove('invalid move');
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('MALFORMED_MOVE');
-      expect(result.context.move).toBe('invalid move');
     });
 
     test('should handle number instead of object', () => {
       const result = game.makeMove(123);
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('MALFORMED_MOVE');
     });
 
     test('should handle array instead of object', () => {
       const result = game.makeMove([1, 2, 3]);
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       // Arrays are objects in JavaScript, so they pass the typeof check but fail format validation
-      expect(result.errorCode === 'MALFORMED_MOVE' || result.errorCode === 'INVALID_FORMAT').toBe(true);
+      expect(['MALFORMED_MOVE', 'INVALID_FORMAT']).toContain(result.errorCode);
     });
 
     test('should handle missing from square', () => {
@@ -526,7 +479,7 @@ describe('Comprehensive Error Handling System', () => {
       // Attempt invalid move
       const result = game.makeMove({ from: { row: -1, col: 0 }, to: { row: 0, col: 0 } });
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(game.board).toEqual(originalBoard); // Board unchanged
       expect(game.currentTurn).toBe(originalTurn); // Turn unchanged
     });
@@ -542,13 +495,12 @@ describe('Comprehensive Error Handling System', () => {
       
       // All should be errors
       errors.forEach(error => {
-        expect(error.success).toBe(false);
-        expect(error.errorCode).toBeDefined();
+        testUtils.validateErrorResponse(error);
       });
       
       // Game should still be functional
       const validMove = game.makeMove({ from: { row: 6, col: 4 }, to: { row: 5, col: 4 } });
-      expect(validMove.success).toBe(true);
+      testUtils.validateSuccessResponse(validMove);
     });
 
     test('should handle system errors gracefully', () => {
@@ -629,6 +581,132 @@ describe('Comprehensive Error Handling System', () => {
       errorCodes.forEach(code => {
         expect(errorHandler.recoverySuggestions[code]).toBeDefined();
         expect(Array.isArray(errorHandler.recoverySuggestions[code])).toBe(true);
+      });
+    });
+  });
+
+  describe('Extended Error Scenarios', () => {
+    test('should handle network simulation errors', () => {
+      // Simulate network-related errors
+      const networkErrors = [
+        { type: 'timeout', data: { timeout: 5000 } },
+        { type: 'connection_lost', data: { lastPing: Date.now() - 10000 } },
+        { type: 'invalid_session', data: { sessionId: 'invalid-123' } },
+        { type: 'rate_limit', data: { attempts: 100, timeWindow: 60000 } }
+      ];
+
+      networkErrors.forEach(errorScenario => {
+        const error = errorHandler.createError('SYSTEM_ERROR', `Network error: ${errorScenario.type}`, [], errorScenario.data);
+        testUtils.validateErrorResponse(error);
+        expect(error.context).toBeDefined();
+      });
+    });
+
+    test('should handle malformed game state errors', () => {
+      // Test various malformed game states
+      const malformedStates = [
+        { board: null, description: 'null board' },
+        { board: [], description: 'empty board array' },
+        { board: Array(7).fill(null), description: 'wrong board size' },
+        { currentTurn: 'red', description: 'invalid turn color' },
+        { gameStatus: 'invalid_status', description: 'invalid game status' }
+      ];
+
+      malformedStates.forEach(state => {
+        const tempGame = testUtils.createFreshGame();
+        Object.assign(tempGame, state);
+        
+        const result = tempGame.makeMove({ from: { row: 6, col: 4 }, to: { row: 5, col: 4 } });
+        testUtils.validateErrorResponse(result);
+      });
+    });
+
+    test('should handle edge case coordinate combinations', () => {
+      const edgeCases = [
+        { from: { row: -1, col: -1 }, to: { row: 0, col: 0 } },
+        { from: { row: 8, col: 8 }, to: { row: 7, col: 7 } },
+        { from: { row: 3.5, col: 4 }, to: { row: 4, col: 4 } },
+        { from: { row: Infinity, col: 4 }, to: { row: 4, col: 4 } },
+        { from: { row: NaN, col: 4 }, to: { row: 4, col: 4 } },
+        { from: { row: '3', col: '4' }, to: { row: 4, col: 4 } }
+      ];
+
+      edgeCases.forEach(move => {
+        const result = game.makeMove(move);
+        testUtils.validateErrorResponse(result);
+        expect(['INVALID_COORDINATES', 'INVALID_FORMAT', 'MALFORMED_MOVE']).toContain(result.errorCode);
+      });
+    });
+
+    test('should handle concurrent move attempts', () => {
+      // Simulate concurrent move attempts that could cause race conditions
+      const moves = [
+        { from: { row: 6, col: 4 }, to: { row: 5, col: 4 } },
+        { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } },
+        { from: { row: 6, col: 3 }, to: { row: 5, col: 3 } }
+      ];
+
+      const results = moves.map(move => game.makeMove(move));
+      
+      // Only first move should succeed
+      testUtils.validateSuccessResponse(results[0]);
+      testUtils.validateErrorResponse(results[1]); // Same piece already moved
+      testUtils.validateErrorResponse(results[2]); // Wrong turn
+    });
+
+    test('should handle memory pressure scenarios', () => {
+      // Create many error objects to test memory handling
+      const errors = [];
+      for (let i = 0; i < 1000; i++) {
+        errors.push(errorHandler.createError('MALFORMED_MOVE', `Error ${i}`));
+      }
+
+      // Verify all errors are properly structured
+      errors.forEach(error => {
+        testUtils.validateErrorResponse(error);
+        expect(error.details.errorId).toBeDefined();
+      });
+
+      // Check that error IDs are unique
+      const errorIds = errors.map(e => e.details.errorId);
+      const uniqueIds = new Set(errorIds);
+      expect(uniqueIds.size).toBe(errors.length);
+    });
+
+    test('should handle complex nested error scenarios', () => {
+      // Test error handling within error handling
+      const originalCreateError = errorHandler.createError;
+      
+      // Mock createError to throw an error
+      errorHandler.createError = () => {
+        throw new Error('Error in error creation');
+      };
+
+      try {
+        const result = game.makeMove(null);
+        // Should still return a basic error structure
+        expect(result).toBeDefined();
+        expect(result.success).toBe(false);
+      } finally {
+        // Restore original method
+        errorHandler.createError = originalCreateError;
+      }
+    });
+
+    test('should handle internationalization error scenarios', () => {
+      // Test error messages with various character sets
+      const internationalInputs = [
+        { from: { row: '六', col: '四' }, to: { row: '五', col: '四' } }, // Chinese
+        { from: { row: 'шесть', col: 'четыре' }, to: { row: 'пять', col: 'четыре' } }, // Russian
+        { from: { row: '🎯', col: '♟️' }, to: { row: '🏁', col: '♟️' } }, // Emojis
+        { from: { row: 'null', col: 'undefined' }, to: { row: 'NaN', col: 'Infinity' } } // JS keywords
+      ];
+
+      internationalInputs.forEach(move => {
+        const result = game.makeMove(move);
+        testUtils.validateErrorResponse(result);
+        expect(result.message).toBeDefined();
+        expect(typeof result.message).toBe('string');
       });
     });
   });

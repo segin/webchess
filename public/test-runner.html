@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WebChess Unified Test Suite</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #00ccff;
+            text-align: center;
+            border-bottom: 2px solid #00ccff;
+            padding-bottom: 10px;
+        }
+        
+        .test-section {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .test-results {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 3px;
+            padding: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-size: 14px;
+        }
+        
+        .run-button {
+            background: #00aa00;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        
+        .run-button:hover {
+            background: #00cc00;
+        }
+        
+        .run-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        
+        .status.running {
+            background: #ffaa00;
+            color: #000;
+        }
+        
+        .status.passed {
+            background: #00aa00;
+            color: #fff;
+        }
+        
+        .status.failed {
+            background: #aa0000;
+            color: #fff;
+        }
+        
+        .info-box {
+            background: #003366;
+            border: 1px solid #0066cc;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .migration-notice {
+            background: #004400;
+            border: 1px solid #008800;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        /* Mobile test styles */
+        .mobile-only {
+            display: none;
+        }
+        
+        @media (max-width: 480px) {
+            .mobile-only {
+                display: block;
+            }
+        }
+        
+        .mobile-chat-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+        }
+        
+        .mobile-chat-card {
+            background: white;
+            border-radius: 15px 15px 0 0;
+        }
+        
+        .mobile-chat-header {
+            padding: 15px;
+        }
+        
+        input {
+            font-size: 16px;
+            padding: 12px;
+        }
+        
+        .btn {
+            min-height: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 WebChess Unified Test Suite</h1>
+        
+        <div class="migration-notice">
+            <h3>✅ Test Migration Complete</h3>
+            <p>All legacy test systems have been migrated to Jest. This browser test runner now uses the same test logic as the Jest suite for consistency.</p>
+            <p><strong>Primary Testing:</strong> Use <code>npm test</code> for comprehensive testing</p>
+            <p><strong>Browser Testing:</strong> This page validates browser-specific functionality</p>
+        </div>
+        
+        <div class="info-box">
+            <h3>📊 Test Coverage Information</h3>
+            <p>Run <code>npm test</code> in your terminal for complete test results with coverage reporting.</p>
+            <p>This browser interface tests DOM manipulation and client-side functionality that requires a browser environment.</p>
+        </div>
+        
+        <div class="test-section">
+            <h2>🌐 Browser Environment Tests</h2>
+            <div id="browser-status" class="status">Ready to run</div>
+            <button id="run-browser-tests" class="run-button">Run Browser Tests</button>
+            <div id="browser-results" class="test-results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📱 Mobile Compatibility Tests</h2>
+            <div id="mobile-status" class="status">Ready to run</div>
+            <button id="run-mobile-tests" class="run-button">Run Mobile Tests</button>
+            <div id="mobile-results" class="test-results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎮 Game Integration Tests</h2>
+            <div id="integration-status" class="status">Ready to run</div>
+            <button id="run-integration-tests" class="run-button">Run Integration Tests</button>
+            <div id="integration-results" class="test-results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📊 Overall Results</h2>
+            <button id="run-all-tests" class="run-button">Run All Browser Tests</button>
+            <div id="overall-results" class="test-results"></div>
+        </div>
+    </div>
+
+    <!-- Hidden DOM elements for testing -->
+    <div style="display: none;">
+        <!-- Main menu elements -->
+        <button id="host-btn">Host Game</button>
+        <button id="join-btn">Join Game</button>
+        <button id="practice-btn">Practice</button>
+        <div id="resume-section" class="resume-section">
+            <button id="resume-btn">Resume Game</button>
+            <p id="resume-info">Resume info</p>
+        </div>
+        <div id="main-menu" class="screen"></div>
+        
+        <!-- Game screen elements -->
+        <div id="game-screen" class="screen"></div>
+        <div id="chess-board"></div>
+        <button id="resign-btn">Resign</button>
+        <button id="leave-game-btn">Leave Game</button>
+        
+        <!-- Practice elements -->
+        <div id="practice-screen" class="screen"></div>
+        <button id="practice-self-btn">Self</button>
+        <button id="practice-ai-white-btn">AI White</button>
+        <button id="practice-ai-black-btn">AI Black</button>
+        <button id="practice-ai-vs-ai-btn">AI vs AI</button>
+        <select id="difficulty-select">
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+        </select>
+        
+        <!-- Chat elements -->
+        <div id="chat-section"></div>
+        <div id="chat-messages"></div>
+        <input id="chat-input" maxlength="200">
+        <button id="send-chat-btn">Send</button>
+        
+        <!-- Mobile chat elements -->
+        <div id="mobile-chat-overlay" class="mobile-chat-overlay">
+            <div class="mobile-chat-card">
+                <div class="mobile-chat-header">
+                    <h3>Chat</h3>
+                    <button id="mobile-chat-close">×</button>
+                </div>
+                <div id="mobile-chat-messages"></div>
+            </div>
+        </div>
+        <input id="mobile-chat-input" maxlength="200">
+        <button id="mobile-send-chat-btn">Send</button>
+        
+        <!-- Mobile elements -->
+        <button id="mobile-chat-toggle" class="mobile-only">Chat</button>
+        <button id="fullscreen-btn" class="mobile-only">Fullscreen</button>
+    </div>
+
+    <!-- Load the main WebChess files for testing -->
+    <script src="script.js"></script>
+    
+    <script>
+        // Unified Test Runner - Browser Compatible
+        class UnifiedTestRunner {
+            constructor() {
+                this.testResults = [];
+                this.setupEventListeners();
+            }
+            
+            setupEventListeners() {
+                document.getElementById('run-browser-tests').addEventListener('click', () => {
+                    this.runBrowserTests();
+                });
+                
+                document.getElementById('run-mobile-tests').addEventListener('click', () => {
+                    this.runMobileTests();
+                });
+                
+                document.getElementById('run-integration-tests').addEventListener('click', () => {
+                    this.runIntegrationTests();
+                });
+                
+                document.getElementById('run-all-tests').addEventListener('click', () => {
+                    this.runAllTests();
+                });
+            }
+            
+            async runTest(testName, testFunction, category = 'General') {
+                try {
+                    await testFunction();
+                    this.testResults.push({ name: testName, status: 'PASS', error: null, category });
+                    return { success: true, name: testName };
+                } catch (error) {
+                    this.testResults.push({ name: testName, status: 'FAIL', error: error.message, category });
+                    return { success: false, name: testName, error: error.message };
+                }
+            }
+            
+            async runBrowserTests() {
+                const button = document.getElementById('run-browser-tests');
+                const status = document.getElementById('browser-status');
+                const results = document.getElementById('browser-results');
+                
+                button.disabled = true;
+                status.textContent = 'Running...';
+                status.className = 'status running';
+                results.textContent = 'Running browser environment tests...\n\n';
+                
+                let passed = 0;
+                let failed = 0;
+                
+                // DOM Element Tests
+                const domTests = [
+                    {
+                        name: 'Main menu elements exist',
+                        test: () => {
+                            const requiredElements = ['main-menu', 'host-btn', 'join-btn', 'practice-btn', 'resume-btn'];
+                            requiredElements.forEach(id => {
+                                if (!document.getElementById(id)) {
+                                    throw new Error(`Element ${id} not found`);
+                                }
+                            });
+                        }
+                    },
+                    {
+                        name: 'Game screen elements exist',
+                        test: () => {
+                            const requiredElements = ['game-screen', 'chess-board', 'resign-btn', 'leave-game-btn'];
+                            requiredElements.forEach(id => {
+                                if (!document.getElementById(id)) {
+                                    throw new Error(`Element ${id} not found`);
+                                }
+                            });
+                        }
+                    },
+                    {
+                        name: 'Chat elements exist',
+                        test: () => {
+                            const requiredElements = ['chat-section', 'chat-messages', 'chat-input', 'send-chat-btn'];
+                            requiredElements.forEach(id => {
+                                if (!document.getElementById(id)) {
+                                    throw new Error(`Element ${id} not found`);
+                                }
+                            });
+                        }
+                    },
+                    {
+                        name: 'LocalStorage functionality',
+                        test: () => {
+                            const testData = { test: 'data' };
+                            localStorage.setItem('webchess-test', JSON.stringify(testData));
+                            const retrieved = JSON.parse(localStorage.getItem('webchess-test'));
+                            
+                            if (retrieved.test !== 'data') {
+                                throw new Error('LocalStorage test failed');
+                            }
+                            
+                            localStorage.removeItem('webchess-test');
+                        }
+                    },
+                    {
+                        name: 'CSS media queries available',
+                        test: () => {
+                            const hasMediaQueries = Array.from(document.styleSheets).some(sheet => {
+                                try {
+                                    return Array.from(sheet.cssRules || sheet.rules || []).some(rule => 
+                                        rule.type === CSSRule.MEDIA_RULE
+                                    );
+                                } catch (e) {
+                                    return false; // Cross-origin stylesheets
+                                }
+                            });
+                            
+                            if (!hasMediaQueries) {
+                                console.warn('No media queries detected (may be due to cross-origin restrictions)');
+                            }
+                        }
+                    }
+                ];
+                
+                for (const test of domTests) {
+                    const result = await this.runTest(test.name, test.test, 'Browser');
+                    if (result.success) {
+                        results.textContent += `✅ ${result.name}\n`;
+                        passed++;
+                    } else {
+                        results.textContent += `❌ ${result.name}: ${result.error}\n`;
+                        failed++;
+                    }
+                }
+                
+                results.textContent += `\nBrowser Tests: ${passed} passed, ${failed} failed\n`;
+                
+                const success = failed === 0;
+                status.textContent = success ? 'All tests passed!' : 'Some tests failed';
+                status.className = success ? 'status passed' : 'status failed';
+                
+                button.disabled = false;
+                return success;
+            }
+            
+            async runMobileTests() {
+                const button = document.getElementById('run-mobile-tests');
+                const status = document.getElementById('mobile-status');
+                const results = document.getElementById('mobile-results');
+                
+                button.disabled = true;
+                status.textContent = 'Running...';
+                status.className = 'status running';
+                results.textContent = 'Running mobile compatibility tests...\n\n';
+                
+                let passed = 0;
+                let failed = 0;
+                
+                const mobileTests = [
+                    {
+                        name: 'Mobile chat elements exist',
+                        test: () => {
+                            const requiredElements = [
+                                'mobile-chat-toggle', 'mobile-chat-overlay', 'mobile-chat-close',
+                                'mobile-chat-messages', 'mobile-chat-input', 'mobile-send-chat-btn'
+                            ];
+                            requiredElements.forEach(id => {
+                                if (!document.getElementById(id)) {
+                                    throw new Error(`Mobile element ${id} not found`);
+                                }
+                            });
+                        }
+                    },
+                    {
+                        name: 'Fullscreen button exists',
+                        test: () => {
+                            if (!document.getElementById('fullscreen-btn')) {
+                                throw new Error('Fullscreen button not found');
+                            }
+                        }
+                    },
+                    {
+                        name: 'Mobile input validation',
+                        test: () => {
+                            const mobileInput = document.getElementById('mobile-chat-input');
+                            if (!mobileInput || mobileInput.maxLength !== 200) {
+                                throw new Error('Mobile chat input validation failed');
+                            }
+                        }
+                    },
+                    {
+                        name: 'Viewport meta tag exists',
+                        test: () => {
+                            const viewportMeta = document.querySelector('meta[name="viewport"]');
+                            if (!viewportMeta) {
+                                throw new Error('Viewport meta tag not found');
+                            }
+                            
+                            const content = viewportMeta.getAttribute('content');
+                            if (!content.includes('width=device-width')) {
+                                throw new Error('Viewport meta tag missing device-width');
+                            }
+                        }
+                    },
+                    {
+                        name: 'Fullscreen API availability',
+                        test: () => {
+                            if (!document.documentElement.requestFullscreen) {
+                                console.warn('Fullscreen API not available in this browser');
+                            }
+                            // This is not a failure, just a browser capability check
+                        }
+                    }
+                ];
+                
+                for (const test of mobileTests) {
+                    const result = await this.runTest(test.name, test.test, 'Mobile');
+                    if (result.success) {
+                        results.textContent += `✅ ${result.name}\n`;
+                        passed++;
+                    } else {
+                        results.textContent += `❌ ${result.name}: ${result.error}\n`;
+                        failed++;
+                    }
+                }
+                
+                results.textContent += `\nMobile Tests: ${passed} passed, ${failed} failed\n`;
+                
+                const success = failed === 0;
+                status.textContent = success ? 'All tests passed!' : 'Some tests failed';
+                status.className = success ? 'status passed' : 'status failed';
+                
+                button.disabled = false;
+                return success;
+            }
+            
+            async runIntegrationTests() {
+                const button = document.getElementById('run-integration-tests');
+                const status = document.getElementById('integration-status');
+                const results = document.getElementById('integration-results');
+                
+                button.disabled = true;
+                status.textContent = 'Running...';
+                status.className = 'status running';
+                results.textContent = 'Running game integration tests...\n\n';
+                
+                let passed = 0;
+                let failed = 0;
+                
+                const integrationTests = [
+                    {
+                        name: 'WebChessClient class availability',
+                        test: () => {
+                            if (typeof WebChessClient === 'undefined') {
+                                throw new Error('WebChessClient class not available');
+                            }
+                        }
+                    },
+                    {
+                        name: 'ChessAI class availability',
+                        test: () => {
+                            if (typeof ChessAI === 'undefined') {
+                                throw new Error('ChessAI class not available');
+                            }
+                        }
+                    },
+                    {
+                        name: 'Practice mode options functional',
+                        test: () => {
+                            const modes = ['practice-self-btn', 'practice-ai-white-btn', 'practice-ai-black-btn', 'practice-ai-vs-ai-btn'];
+                            modes.forEach(mode => {
+                                const element = document.getElementById(mode);
+                                if (!element) {
+                                    throw new Error(`Practice mode ${mode} not found`);
+                                }
+                            });
+                        }
+                    },
+                    {
+                        name: 'Difficulty selector functional',
+                        test: () => {
+                            const difficultySelect = document.getElementById('difficulty-select');
+                            if (!difficultySelect || difficultySelect.options.length !== 3) {
+                                throw new Error('Difficulty selector not properly configured');
+                            }
+                        }
+                    },
+                    {
+                        name: 'Chat message structure',
+                        test: () => {
+                            const testDiv = document.createElement('div');
+                            testDiv.className = 'chat-message own-message';
+                            testDiv.innerHTML = `
+                                <div class="chat-sender">Test User</div>
+                                <div class="chat-text">Test message</div>
+                            `;
+                            
+                            if (!testDiv.querySelector('.chat-sender') || !testDiv.querySelector('.chat-text')) {
+                                throw new Error('Chat message structure invalid');
+                            }
+                        }
+                    }
+                ];
+                
+                for (const test of integrationTests) {
+                    const result = await this.runTest(test.name, test.test, 'Integration');
+                    if (result.success) {
+                        results.textContent += `✅ ${result.name}\n`;
+                        passed++;
+                    } else {
+                        results.textContent += `❌ ${result.name}: ${result.error}\n`;
+                        failed++;
+                    }
+                }
+                
+                results.textContent += `\nIntegration Tests: ${passed} passed, ${failed} failed\n`;
+                
+                const success = failed === 0;
+                status.textContent = success ? 'All tests passed!' : 'Some tests failed';
+                status.className = success ? 'status passed' : 'status failed';
+                
+                button.disabled = false;
+                return success;
+            }
+            
+            async runAllTests() {
+                const button = document.getElementById('run-all-tests');
+                const results = document.getElementById('overall-results');
+                
+                button.disabled = true;
+                results.textContent = 'Running comprehensive browser test suite...\n\n';
+                
+                const browserSuccess = await this.runBrowserTests();
+                const mobileSuccess = await this.runMobileTests();
+                const integrationSuccess = await this.runIntegrationTests();
+                
+                const allPassed = browserSuccess && mobileSuccess && integrationSuccess;
+                
+                results.textContent += `\n📊 OVERALL BROWSER TEST RESULTS\n`;
+                results.textContent += `================================\n`;
+                results.textContent += `Browser Tests: ${browserSuccess ? 'PASSED' : 'FAILED'}\n`;
+                results.textContent += `Mobile Tests: ${mobileSuccess ? 'PASSED' : 'FAILED'}\n`;
+                results.textContent += `Integration Tests: ${integrationSuccess ? 'PASSED' : 'FAILED'}\n\n`;
+                
+                if (allPassed) {
+                    results.textContent += `🎉 ALL BROWSER TESTS PASSED! 🎉\n`;
+                    results.textContent += `Browser environment is fully compatible.\n\n`;
+                } else {
+                    results.textContent += `⚠️ SOME BROWSER TESTS FAILED ⚠️\n`;
+                    results.textContent += `Please review and fix failing tests.\n\n`;
+                }
+                
+                results.textContent += `💡 For complete testing including server-side logic:\n`;
+                results.textContent += `   Run 'npm test' in your terminal\n`;
+                
+                button.disabled = false;
+            }
+        }
+        
+        // Initialize test runner when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new UnifiedTestRunner();
+        });
+    </script>
+</body>
+</html>

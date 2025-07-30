@@ -77,31 +77,48 @@ class ChessGame {
   }
 
   makeMove(move) {
-    // Enhanced validation with detailed error reporting
-    const validation = this.validateMove(move);
-    if (!validation.isValid) {
-      return validation; // Return the full error structure from error handler
+    try {
+      // Enhanced validation with detailed error reporting
+      const validation = this.validateMove(move);
+      if (!validation.isValid) {
+        return validation; // Return the full error structure from error handler
+      }
+
+      const { from, to, promotion } = move;
+      const piece = this.board[from.row][from.col];
+
+      // Store original piece for game state update
+      const originalPiece = { ...piece };
+
+      // Update castling rights BEFORE executing the move (so we can check captured pieces)
+      this.updateCastlingRights(from, to, originalPiece);
+      
+      // Execute the move
+      this.executeMoveOnBoard(from, to, piece, promotion);
+      
+      // Update game state (pass original piece since board has changed)
+      this.updateGameState(from, to, originalPiece);
+      
+      // Check for game end conditions
+      this.checkGameEnd();
+      
+      // Return success response using error handler
+      return this.errorHandler.createSuccess('Move executed successfully', {
+        from,
+        to,
+        piece: originalPiece,
+        promotion,
+        gameStatus: this.gameStatus,
+        currentTurn: this.currentTurn
+      });
+    } catch (error) {
+      // Handle any unexpected errors
+      return this.errorHandler.createError('SYSTEM_ERROR', 
+        'An unexpected error occurred while executing the move', 
+        [error.message],
+        { move, error: error.stack }
+      );
     }
-
-    const { from, to, promotion } = move;
-    const piece = this.board[from.row][from.col];
-
-    // Store original piece for game state update
-    const originalPiece = { ...piece };
-
-    // Update castling rights BEFORE executing the move (so we can check captured pieces)
-    this.updateCastlingRights(from, to, originalPiece);
-    
-    // Execute the move
-    this.executeMoveOnBoard(from, to, piece, promotion);
-    
-    // Update game state (pass original piece since board has changed)
-    this.updateGameState(from, to, originalPiece);
-    
-    // Check for game end conditions
-    this.checkGameEnd();
-    
-    return { success: true };
   }
 
   /**
