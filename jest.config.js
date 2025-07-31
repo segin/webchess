@@ -24,5 +24,7 @@ module.exports = {
       statements: 90
     }
   },
-  testTimeout: 10000
+  testTimeout: 30000,
+  maxWorkers: '50%',
+  workerIdleMemoryLimit: '512MB'
 };

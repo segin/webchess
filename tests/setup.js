@@ -3,41 +3,15 @@
  * Global test configuration and utilities
  */
 
-// Suppress console.error during tests to reduce noise from intentional error tests
-const originalConsoleError = console.error;
-const originalConsoleWarn = console.warn;
+// Import error suppression utilities
+const { testUtils: errorSuppressionUtils } = require('./utils/errorSuppression');
 
-// Track if we're in an error handling test
-let suppressErrorLogs = false;
-
-// Custom console.error that can be suppressed
-console.error = (...args) => {
-  if (!suppressErrorLogs) {
-    originalConsoleError(...args);
-  }
-};
-
-console.warn = (...args) => {
-  if (!suppressErrorLogs) {
-    originalConsoleWarn(...args);
-  }
-};
-
-// Global test utilities
+// Global test utilities - merge with error suppression utilities
 global.testUtils = {
-  suppressErrorLogs: () => {
-    suppressErrorLogs = true;
-  },
+  // Error suppression utilities
+  ...errorSuppressionUtils,
   
-  restoreErrorLogs: () => {
-    suppressErrorLogs = false;
-  },
-  
-  // Helper to create a fresh chess game
-  createFreshGame: () => {
-    const ChessGame = require('../src/shared/chessGame');
-    return new ChessGame();
-  },
+  // Additional test utilities (createFreshGame is already in errorSuppressionUtils)
   
   // Helper to create standard test positions
   createTestPosition: (positionName) => {
@@ -82,36 +56,22 @@ global.testUtils = {
     return results;
   },
   
-  // Helper to validate error response structure
-  validateErrorResponse: (response) => {
-    expect(response).toBeDefined();
-    expect(typeof response).toBe('object');
-    expect(response.success).toBe(false);
-    expect(response.errorCode).toBeDefined();
-    expect(response.message).toBeDefined();
-    expect(typeof response.message).toBe('string');
-    expect(response.message.length).toBeGreaterThan(0);
-  },
-  
-  // Helper to validate success response structure
-  validateSuccessResponse: (response) => {
-    expect(response).toBeDefined();
-    expect(typeof response).toBe('object');
-    expect(response.success).toBe(true);
-  }
+  // validateErrorResponse and validateSuccessResponse are already in errorSuppressionUtils
 };
 
 // Setup and teardown for each test
 beforeEach(() => {
-  suppressErrorLogs = false;
+  // Clear any previous error suppression
+  global.testUtils.clearSuppressedHistory();
 });
 
 afterEach(() => {
-  suppressErrorLogs = false;
+  // Restore console functions after each test
+  global.testUtils.restoreErrorLogs();
 });
 
 // Global teardown
 afterAll(() => {
-  console.error = originalConsoleError;
-  console.warn = originalConsoleWarn;
+  // Ensure console functions are restored
+  global.testUtils.restoreErrorLogs();
 });

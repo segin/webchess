@@ -3785,7 +3785,9 @@ be('Comprehensive Queen Movement Validation', () => {
       });
     });
   });
-
+  });
+  });
+  });
 });
 
 // Run the tests if this file is executed directly

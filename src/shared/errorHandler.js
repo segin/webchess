@@ -74,19 +74,19 @@ class ChessErrorHandler {
     };
 
     this.userFriendlyMessages = {
-      MALFORMED_MOVE: "Invalid move format. Please provide a valid move object.",
+      MALFORMED_MOVE: "Move must be an object",
       INVALID_FORMAT: "Move format is incorrect. Check your move structure.",
       MISSING_REQUIRED_FIELD: "Required move information is missing.",
       
-      INVALID_COORDINATES: "Invalid board coordinates. Coordinates must be between 0-7.",
+      INVALID_COORDINATES: "Invalid coordinates",
       OUT_OF_BOUNDS: "Move goes outside the chess board.",
       SAME_SQUARE: "Source and destination squares cannot be the same.",
       
-      NO_PIECE: "No piece found at the source square.",
+      NO_PIECE: "No piece at source square",
       INVALID_PIECE: "Invalid piece data detected.",
       INVALID_PIECE_TYPE: "Unknown piece type.",
       INVALID_PIECE_COLOR: "Invalid piece color.",
-      WRONG_TURN: "It's not your turn to move.",
+      WRONG_TURN: "Not your turn",
       
       INVALID_MOVEMENT: "This piece cannot move in that pattern.",
       UNKNOWN_PIECE_TYPE: "Unknown piece type encountered.",
@@ -105,7 +105,7 @@ class ChessErrorHandler {
       DOUBLE_CHECK_KING_ONLY: "In double check, only the king can move.",
       CHECK_NOT_RESOLVED: "This move does not resolve the check.",
       
-      GAME_NOT_ACTIVE: "The game has ended. No more moves allowed.",
+      GAME_NOT_ACTIVE: "Game is not active",
       INVALID_STATUS: "Invalid game status.",
       INVALID_STATUS_TRANSITION: "Invalid game status change.",
       MISSING_WINNER: "Winner must be specified for this game ending.",

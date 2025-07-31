@@ -196,12 +196,10 @@ class ChessGame {
       return checkValidation;
     }
 
-    return {
-      isValid: true,
-      message: 'Valid move',
-      errorCode: null,
-      errors: [],
-      details: {
+    return this.errorHandler.createSuccess(
+      'Valid move',
+      {},
+      {
         formatValid: true,
         coordinatesValid: true,
         gameStateValid: true,
@@ -213,7 +211,7 @@ class ChessGame {
         specialRulesValid: true,
         checkValid: true
       }
-    };
+    );
   }
 
   /**
@@ -504,26 +502,24 @@ class ChessGame {
         isValidMovement = this.isValidKingMove(from, to, piece);
         break;
       default:
-        return {
-          isValid: false,
-          message: 'Unknown piece type',
-          errorCode: 'UNKNOWN_PIECE_TYPE',
-          errors: [`Unknown piece type: ${piece.type}`],
-          details: { movementValid: false }
-        };
+        return this.errorHandler.createError(
+          'UNKNOWN_PIECE_TYPE',
+          'Unknown piece type',
+          [`Unknown piece type: ${piece.type}`],
+          { movementValid: false }
+        );
     }
 
     if (!isValidMovement) {
-      return {
-        isValid: false,
-        message: `Invalid ${piece.type} movement`,
-        errorCode: 'INVALID_MOVEMENT',
-        errors: [`${piece.type} cannot move from row ${from.row}, col ${from.col} to row ${to.row}, col ${to.col}`],
-        details: { movementValid: false }
-      };
+      return this.errorHandler.createError(
+        'INVALID_MOVEMENT',
+        `Invalid ${piece.type} movement`,
+        [`${piece.type} cannot move from row ${from.row}, col ${from.col} to row ${to.row}, col ${to.col}`],
+        { movementValid: false }
+      );
     }
 
-    return { isValid: true };
+    return this.errorHandler.createSuccess('Movement pattern is valid', {}, { movementValid: true });
   }
 
   /**
@@ -534,16 +530,15 @@ class ChessGame {
    */
   validatePath(from, to) {
     if (!this.isPathClear(from, to)) {
-      return {
-        isValid: false,
-        message: 'Path is blocked',
-        errorCode: 'PATH_BLOCKED',
-        errors: ['There are pieces blocking the path between source and destination'],
-        details: { pathValid: false }
-      };
+      return this.errorHandler.createError(
+        'PATH_BLOCKED',
+        'Path is blocked',
+        ['There are pieces blocking the path between source and destination'],
+        { pathValid: false }
+      );
     }
 
-    return { isValid: true };
+    return this.errorHandler.createSuccess('Path is clear', {}, { pathValid: true });
   }
 
   /**
@@ -557,16 +552,15 @@ class ChessGame {
     const target = this.board[to.row][to.col];
 
     if (target && target.color === piece.color) {
-      return {
-        isValid: false,
-        message: 'Cannot capture own piece',
-        errorCode: 'CAPTURE_OWN_PIECE',
-        errors: [`Cannot capture your own ${target.type} at row ${to.row}, col ${to.col}`],
-        details: { captureValid: false }
-      };
+      return this.errorHandler.createError(
+        'CAPTURE_OWN_PIECE',
+        'Cannot capture own piece',
+        [`Cannot capture your own ${target.type} at row ${to.row}, col ${to.col}`],
+        { captureValid: false }
+      );
     }
 
-    return { isValid: true };
+    return this.errorHandler.createSuccess('Capture is valid', {}, { captureValid: true });
   }
 
   /**
@@ -582,13 +576,12 @@ class ChessGame {
     if (piece.type === 'king' && Math.abs(to.col - from.col) === 2) {
       const castlingValidation = this.validateCastling(from, to, piece.color);
       if (!castlingValidation.isValid) {
-        return {
-          isValid: false,
-          message: castlingValidation.message,
-          errorCode: 'INVALID_CASTLING',
-          errors: castlingValidation.errors,
-          details: { specialRulesValid: false }
-        };
+        return this.errorHandler.createError(
+          'INVALID_CASTLING',
+          castlingValidation.message,
+          castlingValidation.errors,
+          { specialRulesValid: false }
+        );
       }
     }
 
@@ -602,13 +595,12 @@ class ChessGame {
           // Validate promotion piece type
           const validPromotions = ['queen', 'rook', 'bishop', 'knight'];
           if (!validPromotions.includes(promotion)) {
-            return {
-              isValid: false,
-              message: 'Invalid promotion piece',
-              errorCode: 'INVALID_PROMOTION',
-              errors: [`Invalid promotion piece: ${promotion}. Must be one of: ${validPromotions.join(', ')}`],
-              details: { specialRulesValid: false }
-            };
+            return this.errorHandler.createError(
+              'INVALID_PROMOTION',
+              'Invalid promotion piece',
+              [`Invalid promotion piece: ${promotion}. Must be one of: ${validPromotions.join(', ')}`],
+              { specialRulesValid: false }
+            );
           }
         }
         // If no promotion specified, it will default to queen in executeMoveOnBoard
@@ -624,13 +616,12 @@ class ChessGame {
         const direction = piece.color === 'white' ? -1 : 1;
         
         if (rowDiff !== direction || colDiff !== 1) {
-          return {
-            isValid: false,
-            message: 'Invalid en passant capture',
-            errorCode: 'INVALID_EN_PASSANT',
-            errors: ['En passant capture must be a diagonal move to the en passant target square'],
-            details: { specialRulesValid: false }
-          };
+          return this.errorHandler.createError(
+            'INVALID_EN_PASSANT',
+            'Invalid en passant capture',
+            ['En passant capture must be a diagonal move to the en passant target square'],
+            { specialRulesValid: false }
+          );
         }
         
         // Verify there's an enemy pawn to capture
@@ -641,18 +632,17 @@ class ChessGame {
         if (!capturedPawn || 
             capturedPawn.type !== 'pawn' || 
             capturedPawn.color === piece.color) {
-          return {
-            isValid: false,
-            message: 'Invalid en passant target',
-            errorCode: 'INVALID_EN_PASSANT_TARGET',
-            errors: ['No valid enemy pawn to capture via en passant'],
-            details: { specialRulesValid: false }
-          };
+          return this.errorHandler.createError(
+            'INVALID_EN_PASSANT_TARGET',
+            'Invalid en passant target',
+            ['No valid enemy pawn to capture via en passant'],
+            { specialRulesValid: false }
+          );
         }
       }
     }
 
-    return { isValid: true };
+    return this.errorHandler.createSuccess('Special move validation passed', {}, { specialRulesValid: true });
   }
 
   /**
@@ -680,21 +670,20 @@ class ChessGame {
     if (pinInfo.isPinned) {
       // Validate that pinned piece move is legal (stays on pin line or captures pinning piece)
       if (!this.isPinnedPieceMoveValid(from, to, pinInfo)) {
-        return {
-          isValid: false,
-          message: 'Pinned piece cannot move without exposing king',
-          errorCode: 'PINNED_PIECE_INVALID_MOVE',
-          errors: [
+        return this.errorHandler.createError(
+          'PINNED_PIECE_INVALID_MOVE',
+          'Pinned piece cannot move without exposing king',
+          [
             `This ${piece.type} is pinned by the enemy ${pinInfo.pinningPiece.type} and cannot move to this square`,
             `Pinned pieces can only move along the pin line or capture the pinning piece`
           ],
-          details: { 
+          { 
             checkValid: false,
             pinned: true,
             pinDirection: pinInfo.pinDirection,
             pinningPiece: pinInfo.pinningPiece
           }
-        };
+        );
       }
     }
     
@@ -702,16 +691,15 @@ class ChessGame {
     // Pass promotion info for pawn promotion moves
     const promotion = this.extractPromotionFromMove(from, to, piece);
     if (this.wouldBeInCheck(from, to, piece.color, piece, promotion)) {
-      return {
-        isValid: false,
-        message: 'Move would put king in check',
-        errorCode: 'KING_IN_CHECK',
-        errors: ['This move would put your king in check'],
-        details: { checkValid: false }
-      };
+      return this.errorHandler.createError(
+        'KING_IN_CHECK',
+        'Move would put king in check',
+        ['This move would put your king in check'],
+        { checkValid: false }
+      );
     }
 
-    return { isValid: true };
+    return this.errorHandler.createSuccess('Check constraints satisfied', {}, { checkValid: true });
   }
 
   /**
@@ -742,20 +730,19 @@ class ChessGame {
    */
   validateCheckResolution(from, to, piece) {
     if (!this.checkDetails) {
-      return { isValid: true }; // No check to resolve
+      return this.errorHandler.createSuccess('No check to resolve', {}, { checkValid: true }); // No check to resolve
     }
     
     const { attackingPieces, isDoubleCheck } = this.checkDetails;
     
     // In double check, only king moves are allowed
     if (isDoubleCheck && piece.type !== 'king') {
-      return {
-        isValid: false,
-        message: 'Only king can move in double check',
-        errorCode: 'DOUBLE_CHECK_KING_ONLY',
-        errors: ['In double check, only the king can move'],
-        details: { checkValid: false }
-      };
+      return this.errorHandler.createError(
+        'DOUBLE_CHECK_KING_ONLY',
+        'Only king can move in double check',
+        ['In double check, only the king can move'],
+        { checkValid: false }
+      );
     }
     
     // For single check, validate resolution method
@@ -764,17 +751,16 @@ class ChessGame {
       const resolutionType = this.getCheckResolutionType(from, to, piece, attacker);
       
       if (resolutionType === 'invalid') {
-        return {
-          isValid: false,
-          message: 'Move does not resolve check',
-          errorCode: 'CHECK_NOT_RESOLVED',
-          errors: ['This move does not resolve the check by capturing, blocking, or moving the king'],
-          details: { checkValid: false }
-        };
+        return this.errorHandler.createError(
+          'CHECK_NOT_RESOLVED',
+          'Move does not resolve check',
+          ['This move does not resolve the check by capturing, blocking, or moving the king'],
+          { checkValid: false }
+        );
       }
     }
     
-    return { isValid: true };
+    return this.errorHandler.createSuccess('Check resolution is valid', {}, { checkValid: true });
   }
 
   /**
@@ -1191,11 +1177,11 @@ class ChessGame {
     
     // Validate basic parameters
     if (!this.isValidSquare(from) || !this.isValidSquare(to) || !color) {
-      return {
-        isValid: false,
-        message: 'Invalid castling parameters',
-        errors: ['Invalid coordinates or color for castling']
-      };
+      return this.errorHandler.createError(
+        'INVALID_CASTLING',
+        'Invalid castling parameters',
+        ['Invalid coordinates or color for castling']
+      );
     }
     
     const row = color === 'white' ? 7 : 0;
@@ -1260,18 +1246,18 @@ class ChessGame {
     }
     
     if (errors.length > 0) {
-      return {
-        isValid: false,
-        message: `Invalid ${castlingSide} castling`,
-        errors: errors
-      };
+      return this.errorHandler.createError(
+        'INVALID_CASTLING',
+        `Invalid ${castlingSide} castling`,
+        errors
+      );
     }
     
-    return {
-      isValid: true,
-      message: `Valid ${castlingSide} castling`,
-      errors: []
-    };
+    return this.errorHandler.createSuccess(
+      `Valid ${castlingSide} castling`,
+      {},
+      { castlingValid: true, castlingSide: castlingSide }
+    );
   }
 
   /**
@@ -1473,19 +1459,19 @@ class ChessGame {
    */
   validateCastlingRightsForSide(color, side) {
     if (!['kingside', 'queenside'].includes(side)) {
-      return {
-        isValid: false,
-        message: 'Invalid castling side',
-        errors: [`Side must be 'kingside' or 'queenside', got: ${side}`]
-      };
+      return this.errorHandler.createError(
+        'INVALID_CASTLING',
+        'Invalid castling side',
+        [`Side must be 'kingside' or 'queenside', got: ${side}`]
+      );
     }
 
     if (!['white', 'black'].includes(color)) {
-      return {
-        isValid: false,
-        message: 'Invalid color',
-        errors: [`Color must be 'white' or 'black', got: ${color}`]
-      };
+      return this.errorHandler.createError(
+        'INVALID_COLOR',
+        'Invalid color',
+        [`Color must be 'white' or 'black', got: ${color}`]
+      );
     }
 
     const hasRights = this.castlingRights[color][side];
@@ -1510,14 +1496,27 @@ class ChessGame {
       errors.push(`${color} ${side} rook is not on starting square`);
     }
 
-    return {
-      isValid: errors.length === 0,
-      message: errors.length === 0 ? `${color} ${side} castling rights are valid` : `${color} ${side} castling rights validation failed`,
-      errors: errors,
-      hasRights: hasRights,
-      kingInPosition: king && king.type === 'king' && king.color === color,
-      rookInPosition: rook && rook.type === 'rook' && rook.color === color
-    };
+    if (errors.length === 0) {
+      return this.errorHandler.createSuccess(
+        `${color} ${side} castling rights are valid`,
+        {
+          hasRights: hasRights,
+          kingInPosition: king && king.type === 'king' && king.color === color,
+          rookInPosition: rook && rook.type === 'rook' && rook.color === color
+        }
+      );
+    } else {
+      return this.errorHandler.createError(
+        'INVALID_CASTLING',
+        `${color} ${side} castling rights validation failed`,
+        errors,
+        {
+          hasRights: hasRights,
+          kingInPosition: king && king.type === 'king' && king.color === color,
+          rookInPosition: rook && rook.type === 'rook' && rook.color === color
+        }
+      );
+    }
   }
 
   /**
@@ -3037,7 +3036,7 @@ class ChessGame {
       // Core game state
       board: this.board,
       currentTurn: this.currentTurn,
-      gameStatus: this.gameStatus,
+      status: this.gameStatus,
       winner: this.winner,
       moveHistory: this.moveHistory,
       
