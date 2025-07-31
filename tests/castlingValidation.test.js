@@ -1,60 +1,29 @@
+/**
+ * Comprehensive Castling Validation Tests
+ * Tests all aspects of castling rules according to FIDE standards
+ * Covers both kingside and queenside castling for both colors
+ */
+
 const ChessGame = require('../src/shared/chessGame');
 
-// Simple test framework for Node.js
-if (typeof describe === 'undefined') {
-  global.describe = (name, fn) => { console.log('\n' + name); fn(); };
-  global.test = (name, fn) => { 
-    try { 
-      fn(); 
-      console.log('✅', name); 
-    } catch(e) { 
-      console.log('❌', name, ':', e.message); 
-    } 
-  };
-  global.beforeEach = (fn) => fn();
-  global.expect = (actual) => ({
-    toBe: (expected) => { 
-      if (actual !== expected) throw new Error(`Expected ${expected}, got ${actual}`); 
-      return { toBe: () => {} };
-    },
-    toEqual: (expected) => { 
-      if (JSON.stringify(actual) !== JSON.stringify(expected)) 
-        throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`); 
-      return { toEqual: () => {} };
-    },
-    toContain: (expected) => { 
-      if (!Array.isArray(actual) || !actual.includes(expected)) 
-        throw new Error(`Expected array to contain ${expected}, got ${JSON.stringify(actual)}`); 
-      return { toContain: () => {} };
-    },
-    toBeDefined: () => { 
-      if (actual === undefined) throw new Error('Expected value to be defined'); 
-      return { toBeDefined: () => {} };
-    },
-    toBeGreaterThan: (expected) => { 
-      if (actual <= expected) throw new Error(`Expected ${actual} to be greater than ${expected}`); 
-      return { toBeGreaterThan: () => {} };
-    }
-  });
-}
+describe('Castling Validation - Comprehensive Rules Testing', () => {
+  let game;
 
-describe('Comprehensive Castling Validation', () => {
-  describe('Valid Kingside Castling', () => {
-    test('should allow white kingside castling when all conditions are met', () => {
-      const game = new ChessGame();
+  beforeEach(() => {
+    game = testUtils.createFreshGame();
+  });
+
+  describe('Valid Kingside Castling Scenarios', () => {
+    test(testUtils.NamingPatterns.moveValidationTest('king', 'allow white kingside castling with clear path'), () => {
+      game = testUtils.TestPositions.CASTLING_READY_KINGSIDE();
       
-      // Clear path between king and rook
-      game.board[7][5] = null; // Bishop
-      game.board[7][6] = null; // Knight
+      const result = testUtils.ExecutionHelpers.testMove(game, kingsideCastling, true);
       
-      const move = { from: { row: 7, col: 4 }, to: { row: 7, col: 6 } };
-      const result = game.makeMove(move);
-      
-      expect(result.success).toBe(true);
-      expect(game.board[7][6]).toEqual({ type: 'king', color: 'white' });
-      expect(game.board[7][5]).toEqual({ type: 'rook', color: 'white' });
-      expect(game.board[7][4]).toBe(null); // King moved
-      expect(game.board[7][7]).toBe(null); // Rook moved
+      // Validate castling result
+      testUtils.validateBoardPosition(game.board, 7, 6, { type: 'king', color: 'white' });
+      testUtils.validateBoardPosition(game.board, 7, 5, { type: 'rook', color: 'white' });
+      testUtils.validateBoardPosition(game.board, 7, 4, null); // King moved
+      testUtils.validateBoardPosition(game.board, 7, 7, null); // Rook moved
     });
 
     test('should allow black kingside castling when all conditions are met', () => {

@@ -6,54 +6,58 @@
 // Import error suppression utilities
 const { testUtils: errorSuppressionUtils } = require('./utils/errorSuppression');
 
-// Global test utilities - merge with error suppression utilities
+// Import standardized test patterns and data
+const { TestPositions, TestSequences, TestData } = require('./helpers/testData');
+const { 
+  AssertionPatterns, 
+  SetupPatterns, 
+  NamingPatterns, 
+  DataGenerators, 
+  ExecutionHelpers 
+} = require('./helpers/testPatterns');
+
+// Global test utilities - merge with error suppression utilities and standardized patterns
 global.testUtils = {
   // Error suppression utilities
   ...errorSuppressionUtils,
   
-  // Additional test utilities (createFreshGame is already in errorSuppressionUtils)
+  // Standardized test data
+  TestPositions,
+  TestSequences,
+  TestData,
   
-  // Helper to create standard test positions
+  // Standardized assertion patterns
+  ...AssertionPatterns,
+  
+  // Standardized setup patterns
+  SetupPatterns,
+  
+  // Standardized naming patterns
+  NamingPatterns,
+  
+  // Data generators
+  DataGenerators,
+  
+  // Execution helpers
+  ExecutionHelpers,
+  
+  // Legacy compatibility - keep existing methods
   createTestPosition: (positionName) => {
-    const ChessGame = require('../src/shared/chessGame');
-    const game = new ChessGame();
-    
     switch (positionName) {
       case 'empty':
-        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
-        break;
+        return TestPositions.KINGS_ONLY();
       case 'kings-only':
-        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
-        game.board[0][4] = { type: 'king', color: 'black' };
-        game.board[7][4] = { type: 'king', color: 'white' };
-        break;
+        return TestPositions.KINGS_ONLY();
       case 'castling-ready':
-        // Clear path for castling
-        game.board[7][1] = null;
-        game.board[7][2] = null;
-        game.board[7][3] = null;
-        game.board[7][5] = null;
-        game.board[7][6] = null;
-        break;
+        return TestPositions.CASTLING_READY_KINGSIDE();
       default:
-        // Return standard starting position
-        break;
+        return TestPositions.STARTING_POSITION();
     }
-    
-    return game;
   },
   
   // Helper to execute a sequence of moves
-  executeMovesSequence: (game, moves) => {
-    const results = [];
-    for (const move of moves) {
-      const result = game.makeMove(move);
-      results.push(result);
-      if (!result.success) {
-        break;
-      }
-    }
-    return results;
+  executeMovesSequence: (game, moves, expectAllSuccess = true) => {
+    return ExecutionHelpers.executeMovesSequence(game, moves, expectAllSuccess);
   },
   
   // validateErrorResponse and validateSuccessResponse are already in errorSuppressionUtils

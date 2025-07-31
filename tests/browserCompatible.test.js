@@ -17,32 +17,51 @@ const mockBrowserEnvironment = () => {
     };
 
     global.document = {
-      getElementById: jest.fn((id) => ({
-        id,
-        className: '',
-        classList: {
-          contains: jest.fn(),
-          add: jest.fn(),
-          remove: jest.fn(),
-          toggle: jest.fn()
-        },
-        style: {},
-        innerHTML: '',
-        textContent: '',
-        value: '',
-        disabled: false,
-        maxLength: 200,
-        getAttribute: jest.fn(),
-        setAttribute: jest.fn(),
-        appendChild: jest.fn(),
-        removeChild: jest.fn(),
-        querySelector: jest.fn(),
-        querySelectorAll: jest.fn(() => []),
-        addEventListener: jest.fn(),
-        children: [],
-        scrollTop: 0,
-        scrollHeight: 100
-      })),
+      getElementById: jest.fn((id) => {
+        const baseElement = {
+          id,
+          className: '',
+          classList: {
+            contains: jest.fn(),
+            add: jest.fn(),
+            remove: jest.fn(),
+            toggle: jest.fn()
+          },
+          style: {},
+          innerHTML: '',
+          textContent: '',
+          value: '',
+          disabled: false,
+          maxLength: id === 'game-id-input' ? 6 : 200,
+          getAttribute: jest.fn((attr) => {
+            if (attr === 'data-piece' && id.includes('promotion-piece')) {
+              const pieces = ['queen', 'rook', 'bishop', 'knight'];
+              return pieces[0]; // Return first piece for simplicity
+            }
+            return null;
+          }),
+          setAttribute: jest.fn(),
+          appendChild: jest.fn(),
+          removeChild: jest.fn(),
+          querySelector: jest.fn(),
+          querySelectorAll: jest.fn(() => []),
+          addEventListener: jest.fn(),
+          children: [],
+          scrollTop: 0,
+          scrollHeight: 100
+        };
+
+        // Add specific properties for difficulty select
+        if (id === 'difficulty-select') {
+          baseElement.options = [
+            { value: 'easy', text: 'Easy' },
+            { value: 'medium', text: 'Medium' },
+            { value: 'hard', text: 'Hard' }
+          ];
+        }
+
+        return baseElement;
+      }),
       createElement: jest.fn((tagName) => ({
         tagName: tagName.toUpperCase(),
         className: '',
@@ -60,7 +79,17 @@ const mockBrowserEnvironment = () => {
         querySelectorAll: jest.fn(() => [])
       })),
       querySelector: jest.fn(),
-      querySelectorAll: jest.fn(() => []),
+      querySelectorAll: jest.fn((selector) => {
+        if (selector === '.promotion-piece') {
+          return [
+            { classList: { contains: () => true }, getAttribute: () => 'queen' },
+            { classList: { contains: () => true }, getAttribute: () => 'rook' },
+            { classList: { contains: () => true }, getAttribute: () => 'bishop' },
+            { classList: { contains: () => true }, getAttribute: () => 'knight' }
+          ];
+        }
+        return [];
+      }),
       addEventListener: jest.fn(),
       removeEventListener: jest.fn(),
       documentElement: {
@@ -99,7 +128,7 @@ describe('Browser-Compatible Tests', () => {
   describe('DOM Element Tests', () => {
     test('should find main menu elements', () => {
       const requiredElements = [
-        'main-menu', 'host-btn', 'join-btn', 'practice-btn', 'resume-btn'
+        'main-menu', 'host-btn', 'join-btn', 'practice-btn', 'resume-btn', 'resume-section', 'resume-info'
       ];
       
       requiredElements.forEach(id => {
@@ -109,9 +138,21 @@ describe('Browser-Compatible Tests', () => {
       });
     });
 
-    test('should find game screen elements', () => {
+    test('should find host screen elements', () => {
       const requiredElements = [
-        'game-screen', 'chess-board', 'resign-btn', 'leave-game-btn'
+        'host-screen', 'cancel-host-btn', 'game-id-display'
+      ];
+      
+      requiredElements.forEach(id => {
+        const element = document.getElementById(id);
+        expect(element).toBeDefined();
+        expect(element.id).toBe(id);
+      });
+    });
+
+    test('should find join screen elements', () => {
+      const requiredElements = [
+        'join-screen', 'game-id-input', 'join-game-btn', 'cancel-join-btn', 'join-error'
       ];
       
       requiredElements.forEach(id => {
@@ -124,7 +165,44 @@ describe('Browser-Compatible Tests', () => {
     test('should find practice screen elements', () => {
       const requiredElements = [
         'practice-screen', 'practice-self-btn', 'practice-ai-white-btn',
-        'practice-ai-black-btn', 'practice-ai-vs-ai-btn', 'difficulty-select'
+        'practice-ai-black-btn', 'practice-ai-vs-ai-btn', 'cancel-practice-btn', 'difficulty-select'
+      ];
+      
+      requiredElements.forEach(id => {
+        const element = document.getElementById(id);
+        expect(element).toBeDefined();
+        expect(element.id).toBe(id);
+      });
+    });
+
+    test('should find game screen elements', () => {
+      const requiredElements = [
+        'game-screen', 'chess-board', 'resign-btn', 'leave-game-btn', 'debug-dump-btn',
+        'game-id-small', 'player-color', 'turn-indicator', 'check-indicator', 'move-list'
+      ];
+      
+      requiredElements.forEach(id => {
+        const element = document.getElementById(id);
+        expect(element).toBeDefined();
+        expect(element.id).toBe(id);
+      });
+    });
+
+    test('should find AI control elements', () => {
+      const requiredElements = [
+        'ai-controls', 'pause-ai-btn', 'step-ai-btn'
+      ];
+      
+      requiredElements.forEach(id => {
+        const element = document.getElementById(id);
+        expect(element).toBeDefined();
+        expect(element.id).toBe(id);
+      });
+    });
+
+    test('should find game end screen elements', () => {
+      const requiredElements = [
+        'game-end-screen', 'game-end-title', 'game-end-message', 'new-game-btn', 'back-to-menu-btn'
       ];
       
       requiredElements.forEach(id => {
@@ -289,6 +367,45 @@ describe('Browser-Compatible Tests', () => {
       const overlay = document.getElementById('mobile-chat-overlay');
       expect(overlay).toBeDefined();
       expect(overlay.id).toBe('mobile-chat-overlay');
+    });
+  });
+
+  describe('Promotion Modal Tests', () => {
+    test('should find promotion modal elements', () => {
+      const modal = document.getElementById('promotion-modal');
+      expect(modal).toBeDefined();
+      expect(modal.id).toBe('promotion-modal');
+    });
+
+    test('should have promotion piece elements with correct data attributes', () => {
+      const promotionPieces = document.querySelectorAll('.promotion-piece');
+      expect(promotionPieces.length).toBe(4);
+      
+      const expectedPieces = ['queen', 'rook', 'bishop', 'knight'];
+      promotionPieces.forEach((piece, index) => {
+        expect(piece.classList.contains('promotion-piece')).toBe(true);
+        const dataPiece = piece.getAttribute('data-piece');
+        expect(expectedPieces).toContain(dataPiece);
+      });
+    });
+  });
+
+  describe('Game Input Validation Tests', () => {
+    test('should validate game ID input properties', () => {
+      const gameIdInput = document.getElementById('game-id-input');
+      expect(gameIdInput).toBeDefined();
+      expect(gameIdInput.maxLength).toBe(6);
+    });
+
+    test('should validate difficulty selector options', () => {
+      const difficultySelect = document.getElementById('difficulty-select');
+      expect(difficultySelect).toBeDefined();
+      expect(difficultySelect.options.length).toBe(3);
+      
+      const expectedValues = ['easy', 'medium', 'hard'];
+      for (let i = 0; i < expectedValues.length; i++) {
+        expect(difficultySelect.options[i].value).toBe(expectedValues[i]);
+      }
     });
   });
 });

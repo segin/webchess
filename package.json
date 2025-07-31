@@ -10,7 +10,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:verbose": "jest --verbose",
-    "test:browser": "echo 'Open public/test-runner.html in your browser to run browser-specific tests'",
+    "test:browser": "echo '\\n🌐 Browser Testing Instructions:\\n\\n1. Open public/test-runner.html in your web browser\\n2. Click \"Run All Browser Tests\" to execute the complete test suite\\n3. Individual test categories can be run separately:\\n   - Browser Environment Tests: DOM elements and localStorage\\n   - Mobile Compatibility Tests: Mobile-specific functionality\\n   - Game Integration Tests: WebChess game logic integration\\n\\n📊 For complete test coverage including server-side logic, use: npm test\\n'",
     "install:production": "npm install --production",
     "daemon:install": "sudo cp deployment/webchess.service /etc/systemd/system/ && sudo systemctl daemon-reload",
     "daemon:enable": "sudo systemctl enable webchess",

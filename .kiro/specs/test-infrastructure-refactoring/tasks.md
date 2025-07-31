@@ -32,7 +32,7 @@
   - Maintain error validation capabilities while eliminating console spam
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
-- [ ] 5. Calibrate performance test expectations to realistic thresholds
+- [x] 5. Calibrate performance test expectations to realistic thresholds
   - Analyze current performance test failures and adjust timing thresholds for system variability
   - Set realistic move validation performance benchmarks that work across different hardware
   - Update concurrent game performance tests to account for system load and CI/CD environments
@@ -40,7 +40,7 @@
   - Ensure performance tests provide clear guidance when they fail with actionable optimization suggestions
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
 
-- [ ] 6. Standardize test structure and patterns across all test files
+- [x] 6. Standardize test structure and patterns across all test files
   - Implement consistent naming conventions and directory structure for all test files
   - Update all test cases to use standardized describe/test patterns with clear, descriptive names
   - Ensure consistent beforeEach/afterEach patterns for test setup and cleanup across all files
@@ -48,7 +48,7 @@
   - Create consistent test data patterns and helper functions for reusable test scenarios
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6_
 
-- [ ] 7. Validate and maintain browser test runner integration
+- [x] 7. Validate and maintain browser test runner integration
   - Ensure existing `public/test-runner.html` browser test runner continues to work correctly
   - Verify consistency between `tests/browserCompatible.test.js` and browser test runner functionality
   - Test that browser test runner properly displays results after Jest test refactoring

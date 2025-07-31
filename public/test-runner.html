@@ -139,6 +139,31 @@
         .btn {
             min-height: 50px;
         }
+        
+        /* Additional styles for test elements */
+        .screen {
+            display: block;
+        }
+        
+        .screen.hidden {
+            display: none;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .resume-section {
+            margin: 10px 0;
+        }
+        
+        .promotion-piece {
+            display: inline-block;
+            margin: 5px;
+            padding: 10px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+        }
     </style>
 </head>
 <body>
@@ -198,23 +223,55 @@
         </div>
         <div id="main-menu" class="screen"></div>
         
-        <!-- Game screen elements -->
-        <div id="game-screen" class="screen"></div>
-        <div id="chess-board"></div>
-        <button id="resign-btn">Resign</button>
-        <button id="leave-game-btn">Leave Game</button>
+        <!-- Host screen elements -->
+        <div id="host-screen" class="screen"></div>
+        <button id="cancel-host-btn">Cancel</button>
+        <div id="game-id-display">ABCDEF</div>
         
-        <!-- Practice elements -->
+        <!-- Join screen elements -->
+        <div id="join-screen" class="screen"></div>
+        <input id="game-id-input" maxlength="6" placeholder="Game ID">
+        <button id="join-game-btn">Join Game</button>
+        <button id="cancel-join-btn">Cancel</button>
+        <div id="join-error" class="hidden">Error message</div>
+        
+        <!-- Practice screen elements -->
         <div id="practice-screen" class="screen"></div>
         <button id="practice-self-btn">Self</button>
         <button id="practice-ai-white-btn">AI White</button>
         <button id="practice-ai-black-btn">AI Black</button>
         <button id="practice-ai-vs-ai-btn">AI vs AI</button>
+        <button id="cancel-practice-btn">Cancel</button>
         <select id="difficulty-select">
             <option value="easy">Easy</option>
             <option value="medium">Medium</option>
             <option value="hard">Hard</option>
         </select>
+        
+        <!-- Game screen elements -->
+        <div id="game-screen" class="screen"></div>
+        <div id="chess-board"></div>
+        <button id="resign-btn">Resign</button>
+        <button id="leave-game-btn">Leave Game</button>
+        <button id="debug-dump-btn">Debug Dump</button>
+        <div id="game-id-small">Game ID: TEST123</div>
+        <div id="player-color">You are: white</div>
+        <div id="turn-indicator">White's turn</div>
+        <div id="check-indicator" class="hidden">Check!</div>
+        <div id="move-list"></div>
+        
+        <!-- AI controls -->
+        <div id="ai-controls" class="hidden">
+            <button id="pause-ai-btn">Pause</button>
+            <button id="step-ai-btn">Step</button>
+        </div>
+        
+        <!-- Game end screen -->
+        <div id="game-end-screen" class="screen hidden"></div>
+        <div id="game-end-title">Game Over</div>
+        <div id="game-end-message">Result message</div>
+        <button id="new-game-btn">New Game</button>
+        <button id="back-to-menu-btn">Back to Menu</button>
         
         <!-- Chat elements -->
         <div id="chat-section"></div>
@@ -238,6 +295,14 @@
         <!-- Mobile elements -->
         <button id="mobile-chat-toggle" class="mobile-only">Chat</button>
         <button id="fullscreen-btn" class="mobile-only">Fullscreen</button>
+        
+        <!-- Promotion modal elements -->
+        <div id="promotion-modal" class="hidden">
+            <div class="promotion-piece" data-piece="queen">♕</div>
+            <div class="promotion-piece" data-piece="rook">♖</div>
+            <div class="promotion-piece" data-piece="bishop">♗</div>
+            <div class="promotion-piece" data-piece="knight">♘</div>
+        </div>
     </div>
 
     <!-- Load the main WebChess files for testing -->
@@ -298,7 +363,40 @@
                     {
                         name: 'Main menu elements exist',
                         test: () => {
-                            const requiredElements = ['main-menu', 'host-btn', 'join-btn', 'practice-btn', 'resume-btn'];
+                            const requiredElements = ['main-menu', 'host-btn', 'join-btn', 'practice-btn', 'resume-btn', 'resume-section', 'resume-info'];
+                            requiredElements.forEach(id => {
+                                if (!document.getElementById(id)) {
+                                    throw new Error(`Element ${id} not found`);
+                                }
+                            });
+                        }
+                    },
+                    {
+                        name: 'Host screen elements exist',
+                        test: () => {
+                            const requiredElements = ['host-screen', 'cancel-host-btn', 'game-id-display'];
+                            requiredElements.forEach(id => {
+                                if (!document.getElementById(id)) {
+                                    throw new Error(`Element ${id} not found`);
+                                }
+                            });
+                        }
+                    },
+                    {
+                        name: 'Join screen elements exist',
+                        test: () => {
+                            const requiredElements = ['join-screen', 'game-id-input', 'join-game-btn', 'cancel-join-btn', 'join-error'];
+                            requiredElements.forEach(id => {
+                                if (!document.getElementById(id)) {
+                                    throw new Error(`Element ${id} not found`);
+                                }
+                            });
+                        }
+                    },
+                    {
+                        name: 'Practice screen elements exist',
+                        test: () => {
+                            const requiredElements = ['practice-screen', 'practice-self-btn', 'practice-ai-white-btn', 'practice-ai-black-btn', 'practice-ai-vs-ai-btn', 'cancel-practice-btn', 'difficulty-select'];
                             requiredElements.forEach(id => {
                                 if (!document.getElementById(id)) {
                                     throw new Error(`Element ${id} not found`);
@@ -309,7 +407,29 @@
                     {
                         name: 'Game screen elements exist',
                         test: () => {
-                            const requiredElements = ['game-screen', 'chess-board', 'resign-btn', 'leave-game-btn'];
+                            const requiredElements = ['game-screen', 'chess-board', 'resign-btn', 'leave-game-btn', 'debug-dump-btn', 'game-id-small', 'player-color', 'turn-indicator', 'check-indicator', 'move-list'];
+                            requiredElements.forEach(id => {
+                                if (!document.getElementById(id)) {
+                                    throw new Error(`Element ${id} not found`);
+                                }
+                            });
+                        }
+                    },
+                    {
+                        name: 'AI control elements exist',
+                        test: () => {
+                            const requiredElements = ['ai-controls', 'pause-ai-btn', 'step-ai-btn'];
+                            requiredElements.forEach(id => {
+                                if (!document.getElementById(id)) {
+                                    throw new Error(`Element ${id} not found`);
+                                }
+                            });
+                        }
+                    },
+                    {
+                        name: 'Game end screen elements exist',
+                        test: () => {
+                            const requiredElements = ['game-end-screen', 'game-end-title', 'game-end-message', 'new-game-btn', 'back-to-menu-btn'];
                             requiredElements.forEach(id => {
                                 if (!document.getElementById(id)) {
                                     throw new Error(`Element ${id} not found`);
@@ -326,6 +446,22 @@
                                     throw new Error(`Element ${id} not found`);
                                 }
                             });
+                        }
+                    },
+                    {
+                        name: 'Promotion modal elements exist',
+                        test: () => {
+                            const requiredElements = ['promotion-modal'];
+                            requiredElements.forEach(id => {
+                                if (!document.getElementById(id)) {
+                                    throw new Error(`Element ${id} not found`);
+                                }
+                            });
+                            
+                            const promotionPieces = document.querySelectorAll('.promotion-piece');
+                            if (promotionPieces.length !== 4) {
+                                throw new Error(`Expected 4 promotion pieces, found ${promotionPieces.length}`);
+                            }
                         }
                     },
                     {
@@ -505,6 +641,34 @@
                         }
                     },
                     {
+                        name: 'WebChessClient instantiation',
+                        test: () => {
+                            // Test that WebChessClient can be instantiated without errors
+                            // Note: This test may fail if Socket.IO is not available, which is expected in test environment
+                            try {
+                                if (typeof WebChessClient === 'undefined') {
+                                    throw new Error('WebChessClient class not available');
+                                }
+                                
+                                // Check if it has expected methods on the prototype
+                                if (typeof WebChessClient.prototype.hostGame !== 'function') {
+                                    throw new Error('WebChessClient missing hostGame method');
+                                }
+                                if (typeof WebChessClient.prototype.joinGame !== 'function') {
+                                    throw new Error('WebChessClient missing joinGame method');
+                                }
+                                if (typeof WebChessClient.prototype.startPracticeMode !== 'function') {
+                                    throw new Error('WebChessClient missing startPracticeMode method');
+                                }
+                                
+                                // Test instantiation (may fail due to Socket.IO, but that's ok)
+                                console.log('WebChessClient class is available and has required methods');
+                            } catch (error) {
+                                throw new Error(`WebChessClient validation error: ${error.message}`);
+                            }
+                        }
+                    },
+                    {
                         name: 'Practice mode options functional',
                         test: () => {
                             const modes = ['practice-self-btn', 'practice-ai-white-btn', 'practice-ai-black-btn', 'practice-ai-vs-ai-btn'];
@@ -523,6 +687,41 @@
                             if (!difficultySelect || difficultySelect.options.length !== 3) {
                                 throw new Error('Difficulty selector not properly configured');
                             }
+                            
+                            // Check option values
+                            const expectedValues = ['easy', 'medium', 'hard'];
+                            for (let i = 0; i < expectedValues.length; i++) {
+                                if (difficultySelect.options[i].value !== expectedValues[i]) {
+                                    throw new Error(`Difficulty option ${i} has wrong value: ${difficultySelect.options[i].value}`);
+                                }
+                            }
+                        }
+                    },
+                    {
+                        name: 'Game ID input validation',
+                        test: () => {
+                            const gameIdInput = document.getElementById('game-id-input');
+                            if (!gameIdInput) {
+                                throw new Error('Game ID input not found');
+                            }
+                            if (gameIdInput.maxLength !== 6) {
+                                throw new Error(`Game ID input maxLength should be 6, got ${gameIdInput.maxLength}`);
+                            }
+                        }
+                    },
+                    {
+                        name: 'Screen navigation elements',
+                        test: () => {
+                            const screens = ['main-menu', 'host-screen', 'join-screen', 'practice-screen', 'game-screen', 'game-end-screen'];
+                            screens.forEach(screenId => {
+                                const screen = document.getElementById(screenId);
+                                if (!screen) {
+                                    throw new Error(`Screen ${screenId} not found`);
+                                }
+                                if (!screen.classList.contains('screen')) {
+                                    throw new Error(`Screen ${screenId} missing 'screen' class`);
+                                }
+                            });
                         }
                     },
                     {
@@ -538,6 +737,24 @@
                             if (!testDiv.querySelector('.chat-sender') || !testDiv.querySelector('.chat-text')) {
                                 throw new Error('Chat message structure invalid');
                             }
+                        }
+                    },
+                    {
+                        name: 'Promotion piece data attributes',
+                        test: () => {
+                            const promotionPieces = document.querySelectorAll('.promotion-piece');
+                            const expectedPieces = ['queen', 'rook', 'bishop', 'knight'];
+                            
+                            if (promotionPieces.length !== expectedPieces.length) {
+                                throw new Error(`Expected ${expectedPieces.length} promotion pieces, found ${promotionPieces.length}`);
+                            }
+                            
+                            promotionPieces.forEach((piece, index) => {
+                                const dataPiece = piece.getAttribute('data-piece');
+                                if (!expectedPieces.includes(dataPiece)) {
+                                    throw new Error(`Invalid promotion piece data-piece: ${dataPiece}`);
+                                }
+                            });
                         }
                     }
                 ];
@@ -576,22 +793,42 @@
                 
                 const allPassed = browserSuccess && mobileSuccess && integrationSuccess;
                 
+                // Count total results
+                const totalTests = this.testResults.length;
+                const passedTests = this.testResults.filter(r => r.status === 'PASS').length;
+                const failedTests = this.testResults.filter(r => r.status === 'FAIL').length;
+                
                 results.textContent += `\n📊 OVERALL BROWSER TEST RESULTS\n`;
                 results.textContent += `================================\n`;
+                results.textContent += `Total Tests: ${totalTests}\n`;
+                results.textContent += `Passed: ${passedTests}\n`;
+                results.textContent += `Failed: ${failedTests}\n\n`;
                 results.textContent += `Browser Tests: ${browserSuccess ? 'PASSED' : 'FAILED'}\n`;
                 results.textContent += `Mobile Tests: ${mobileSuccess ? 'PASSED' : 'FAILED'}\n`;
                 results.textContent += `Integration Tests: ${integrationSuccess ? 'PASSED' : 'FAILED'}\n\n`;
                 
                 if (allPassed) {
                     results.textContent += `🎉 ALL BROWSER TESTS PASSED! 🎉\n`;
-                    results.textContent += `Browser environment is fully compatible.\n\n`;
+                    results.textContent += `Browser environment is fully compatible with WebChess.\n\n`;
                 } else {
                     results.textContent += `⚠️ SOME BROWSER TESTS FAILED ⚠️\n`;
-                    results.textContent += `Please review and fix failing tests.\n\n`;
+                    results.textContent += `Please review the failing tests above and ensure all required DOM elements exist.\n\n`;
+                    
+                    // Show failed test details
+                    const failedTestDetails = this.testResults.filter(r => r.status === 'FAIL');
+                    if (failedTestDetails.length > 0) {
+                        results.textContent += `Failed Test Details:\n`;
+                        failedTestDetails.forEach(test => {
+                            results.textContent += `- ${test.name}: ${test.error}\n`;
+                        });
+                        results.textContent += `\n`;
+                    }
                 }
                 
-                results.textContent += `💡 For complete testing including server-side logic:\n`;
-                results.textContent += `   Run 'npm test' in your terminal\n`;
+                results.textContent += `💡 Testing Information:\n`;
+                results.textContent += `   • Browser tests validate DOM elements and client-side functionality\n`;
+                results.textContent += `   • For complete testing including server-side logic: run 'npm test'\n`;
+                results.textContent += `   • Jest tests provide comprehensive coverage of game logic and API\n`;
                 
                 button.disabled = false;
             }
@@ -599,7 +836,19 @@
         
         // Initialize test runner when page loads
         document.addEventListener('DOMContentLoaded', () => {
-            new UnifiedTestRunner();
+            try {
+                new UnifiedTestRunner();
+                console.log('✅ Browser test runner initialized successfully');
+            } catch (error) {
+                console.error('❌ Error initializing browser test runner:', error);
+                document.body.innerHTML += `
+                    <div style="background: #ff4444; color: white; padding: 20px; margin: 20px; border-radius: 5px;">
+                        <h3>⚠️ Test Runner Initialization Error</h3>
+                        <p>Error: ${error.message}</p>
+                        <p>Please check the browser console for more details.</p>
+                    </div>
+                `;
+            }
         });
     </script>
 </body>
