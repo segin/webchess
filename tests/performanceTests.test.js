@@ -2,7 +2,7 @@ const ChessGame = require('../src/shared/chessGame');
 const GameStateManager = require('../src/shared/gameState');
 const { testUtils } = require('./utils/errorSuppression');
 
-describe('Performance Tests - Move Validation and Game State Updates', () => {
+describe('Performance Tests - Comprehensive Coverage', () => {
   let game;
   let stateManager;
 
@@ -339,9 +339,268 @@ describe('Performance Tests - Move Validation and Game State Updates', () => {
     });
   });
 
-  describe('Concurrent Performance', () => {
+  describe('Complex Board Position Performance', () => {
+    test('should handle complex tactical positions efficiently', () => {
+      // Set up a complex tactical position with many pieces
+      const complexSetup = [
+        { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } }, // e4
+        { from: { row: 1, col: 4 }, to: { row: 3, col: 4 } }, // e5
+        { from: { row: 7, col: 6 }, to: { row: 5, col: 5 } }, // Nf3
+        { from: { row: 0, col: 1 }, to: { row: 2, col: 2 } }, // Nc6
+        { from: { row: 7, col: 5 }, to: { row: 4, col: 2 } }, // Bc4
+        { from: { row: 0, col: 5 }, to: { row: 1, col: 4 } }, // Be7
+        { from: { row: 7, col: 3 }, to: { row: 5, col: 1 } }, // Qb3
+        { from: { row: 0, col: 6 }, to: { row: 2, col: 5 } }  // Nf6
+      ];
+
+      for (const move of complexSetup) {
+        game.makeMove(move);
+      }
+
+      const runs = 3;
+      const timings = [];
+      
+      for (let run = 0; run < runs; run++) {
+        const startTime = process.hrtime.bigint();
+        
+        // Test move validation on complex position
+        const validMoves = game.getAllValidMoves(game.currentTurn);
+        expect(validMoves.length).toBeGreaterThan(10);
+        
+        // Test multiple move validations
+        for (let i = 0; i < Math.min(5, validMoves.length); i++) {
+          const testMove = validMoves[i];
+          const isValid = game.isValidMove(testMove.from, testMove.to, 
+            game.board[testMove.from.row][testMove.from.col]);
+          expect(typeof isValid).toBe('boolean');
+        }
+        
+        const endTime = process.hrtime.bigint();
+        const durationMs = Number(endTime - startTime) / 1000000;
+        timings.push(durationMs);
+      }
+      
+      const avgDuration = timings.reduce((sum, time) => sum + time, 0) / timings.length;
+      
+      // Complex positions should still be processed quickly
+      expect(avgDuration).toBeLessThan(200); // 200ms threshold
+      
+      if (avgDuration > 100) {
+        console.warn(`Complex Position Warning: Processing took ${avgDuration.toFixed(2)}ms. Consider optimizing move generation for complex positions.`);
+      }
+    });
+
+    test('should handle endgame positions with few pieces efficiently', () => {
+      // Set up a King and Queen vs King endgame
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      game.board[0][0] = { type: 'king', color: 'black' };
+      game.board[7][7] = { type: 'king', color: 'white' };
+      game.board[6][6] = { type: 'queen', color: 'white' };
+      game.currentTurn = 'white';
+
+      const startTime = process.hrtime.bigint();
+      
+      // Test endgame move generation
+      const validMoves = game.getAllValidMoves(game.currentTurn);
+      expect(validMoves.length).toBeGreaterThan(0);
+      
+      // Test check detection in endgame
+      const inCheck = game.isInCheck('black');
+      expect(typeof inCheck).toBe('boolean');
+      
+      const endTime = process.hrtime.bigint();
+      const durationMs = Number(endTime - startTime) / 1000000;
+      
+      // Endgame positions should be very fast
+      expect(durationMs).toBeLessThan(50);
+    });
+
+    test('should handle positions with many possible moves efficiently', () => {
+      // Set up a position with queens that have many possible moves
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      game.board[0][0] = { type: 'king', color: 'black' };
+      game.board[7][7] = { type: 'king', color: 'white' };
+      game.board[4][4] = { type: 'queen', color: 'white' };
+      game.board[3][3] = { type: 'queen', color: 'white' };
+      game.board[5][5] = { type: 'queen', color: 'white' };
+      game.currentTurn = 'white';
+
+      const startTime = process.hrtime.bigint();
+      
+      const validMoves = game.getAllValidMoves(game.currentTurn);
+      expect(validMoves.length).toBeGreaterThan(50); // Many queen moves
+      
+      const endTime = process.hrtime.bigint();
+      const durationMs = Number(endTime - startTime) / 1000000;
+      
+      // Should handle many moves efficiently
+      expect(durationMs).toBeLessThan(100);
+    });
+
+    test('should handle positions requiring deep check analysis', () => {
+      // Set up a position with potential discovered checks
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      game.board[0][4] = { type: 'king', color: 'black' };
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[4][4] = { type: 'bishop', color: 'white' };
+      game.board[2][4] = { type: 'knight', color: 'white' };
+      game.board[0][0] = { type: 'rook', color: 'black' };
+      game.currentTurn = 'white';
+
+      const startTime = process.hrtime.bigint();
+      
+      // Test moves that might create discovered checks
+      const validMoves = game.getAllValidMoves(game.currentTurn);
+      expect(validMoves.length).toBeGreaterThan(0);
+      
+      // Test each move for check prevention
+      for (let i = 0; i < Math.min(10, validMoves.length); i++) {
+        const move = validMoves[i];
+        const piece = game.board[move.from.row][move.from.col];
+        const wouldBeInCheck = game.wouldBeInCheck(move.from, move.to, piece.color);
+        expect(typeof wouldBeInCheck).toBe('boolean');
+      }
+      
+      const endTime = process.hrtime.bigint();
+      const durationMs = Number(endTime - startTime) / 1000000;
+      
+      // Deep check analysis should still be reasonable
+      expect(durationMs).toBeLessThan(300);
+    });
+  });
+
+  describe('Long Game Performance and Memory Usage', () => {
+    test('should maintain performance during long games', () => {
+      const maxMoves = 100;
+      const performanceData = [];
+      
+      for (let moveNum = 0; moveNum < maxMoves && game.gameStatus === 'active'; moveNum++) {
+        const startTime = process.hrtime.bigint();
+        
+        const validMoves = game.getAllValidMoves(game.currentTurn);
+        if (validMoves.length === 0) break;
+        
+        const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+        const result = game.makeMove(randomMove);
+        expect(result.success).toBe(true);
+        
+        const endTime = process.hrtime.bigint();
+        const durationMs = Number(endTime - startTime) / 1000000;
+        performanceData.push(durationMs);
+        
+        // Check performance every 20 moves
+        if (moveNum > 0 && moveNum % 20 === 0) {
+          const recentPerformance = performanceData.slice(-20);
+          const avgRecent = recentPerformance.reduce((sum, time) => sum + time, 0) / recentPerformance.length;
+          
+          // Performance should not degrade significantly over time
+          expect(avgRecent).toBeLessThan(100); // 100ms per move
+        }
+      }
+      
+      expect(performanceData.length).toBeGreaterThan(10);
+      
+      // Overall performance should be consistent
+      const overallAvg = performanceData.reduce((sum, time) => sum + time, 0) / performanceData.length;
+      expect(overallAvg).toBeLessThan(50);
+    });
+
+    test('should handle move history growth efficiently', () => {
+      const initialMemory = process.memoryUsage().heapUsed;
+      const movesToPlay = 50;
+      
+      for (let i = 0; i < movesToPlay && game.gameStatus === 'active'; i++) {
+        const validMoves = game.getAllValidMoves(game.currentTurn);
+        if (validMoves.length === 0) break;
+        
+        const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+        game.makeMove(randomMove);
+        
+        // Verify move history is maintained
+        expect(game.moveHistory.length).toBe(i + 1);
+      }
+      
+      const finalMemory = process.memoryUsage().heapUsed;
+      const memoryIncrease = finalMemory - initialMemory;
+      
+      // Memory growth should be reasonable for move history
+      expect(memoryIncrease).toBeLessThan(10 * 1024 * 1024); // 10MB
+      
+      // Move history should be complete
+      expect(game.moveHistory.length).toBeGreaterThan(10);
+    });
+
+    test('should handle game state serialization for long games', () => {
+      // Play a longer game to build up state
+      for (let i = 0; i < 30 && game.gameStatus === 'active'; i++) {
+        const validMoves = game.getAllValidMoves(game.currentTurn);
+        if (validMoves.length === 0) break;
+        
+        const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+        game.makeMove(randomMove);
+      }
+      
+      const runs = 10;
+      const timings = [];
+      
+      for (let run = 0; run < runs; run++) {
+        const startTime = process.hrtime.bigint();
+        
+        const gameState = game.getGameState();
+        const serialized = JSON.stringify(gameState);
+        const deserialized = JSON.parse(serialized);
+        
+        expect(deserialized.moveHistory.length).toBe(game.moveHistory.length);
+        
+        const endTime = process.hrtime.bigint();
+        const durationMs = Number(endTime - startTime) / 1000000;
+        timings.push(durationMs);
+      }
+      
+      const avgTime = timings.reduce((sum, time) => sum + time, 0) / timings.length;
+      
+      // Serialization should remain fast even for long games
+      expect(avgTime).toBeLessThan(20); // 20ms
+    });
+
+    test('should handle memory cleanup after game completion', () => {
+      const initialMemory = process.memoryUsage().heapUsed;
+      const games = [];
+      
+      // Create and play multiple short games
+      for (let gameNum = 0; gameNum < 10; gameNum++) {
+        const testGame = new ChessGame();
+        games.push(testGame);
+        
+        // Play a short game
+        for (let moveNum = 0; moveNum < 20 && testGame.gameStatus === 'active'; moveNum++) {
+          const validMoves = testGame.getAllValidMoves(testGame.currentTurn);
+          if (validMoves.length === 0) break;
+          
+          const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+          testGame.makeMove(randomMove);
+        }
+      }
+      
+      // Clear references to allow garbage collection
+      games.length = 0;
+      
+      // Force garbage collection if available
+      if (global.gc) {
+        global.gc();
+      }
+      
+      const finalMemory = process.memoryUsage().heapUsed;
+      const memoryIncrease = finalMemory - initialMemory;
+      
+      // Memory should not grow excessively
+      expect(memoryIncrease).toBeLessThan(50 * 1024 * 1024); // 50MB
+    });
+  });
+
+  describe('Concurrent Performance and Resource Management', () => {
     test('should handle multiple simultaneous games efficiently', () => {
-      const numGames = 10; // Reduced for CI/CD stability
+      const numGames = 15; // Increased for better testing
       const games = [];
       
       // Create multiple games
@@ -349,7 +608,7 @@ describe('Performance Tests - Move Validation and Game State Updates', () => {
         games.push(new ChessGame());
       }
       
-      const runs = 2;
+      const runs = 3;
       const timings = [];
       
       for (let run = 0; run < runs; run++) {
@@ -360,8 +619,8 @@ describe('Performance Tests - Move Validation and Game State Updates', () => {
         
         const startTime = process.hrtime.bigint();
         
-        // Make moves in all games simultaneously (reduced moves)
-        for (let moveNum = 0; moveNum < 5; moveNum++) {
+        // Make moves in all games simultaneously
+        for (let moveNum = 0; moveNum < 8; moveNum++) {
           for (let gameIndex = 0; gameIndex < numGames; gameIndex++) {
             const game = games[gameIndex];
             if (game.gameStatus !== 'active') continue;
@@ -382,13 +641,117 @@ describe('Performance Tests - Move Validation and Game State Updates', () => {
       
       const avgDuration = timings.reduce((sum, time) => sum + time, 0) / timings.length;
       
-      // Realistic threshold: 5 seconds for concurrent games (accounts for system load and CI/CD environments)
-      expect(avgDuration).toBeLessThan(5000);
+      // Realistic threshold for concurrent games
+      expect(avgDuration).toBeLessThan(8000); // 8 seconds
       
-      // Performance guidance
-      if (avgDuration > 2000) {
-        console.warn(`Concurrent Performance Warning: Average concurrent game processing time is ${avgDuration.toFixed(0)}ms. Consider optimizing for concurrent load if this consistently exceeds 5000ms.`);
+      if (avgDuration > 4000) {
+        console.warn(`Concurrent Performance Warning: Average concurrent game processing time is ${avgDuration.toFixed(0)}ms. Consider optimizing for concurrent load.`);
       }
+    });
+
+    test('should handle concurrent move validation efficiently', () => {
+      const numConcurrentValidations = 100;
+      const moves = [
+        { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } },
+        { from: { row: 6, col: 3 }, to: { row: 4, col: 3 } },
+        { from: { row: 7, col: 6 }, to: { row: 5, col: 5 } },
+        { from: { row: 7, col: 1 }, to: { row: 5, col: 2 } }
+      ];
+      
+      const startTime = process.hrtime.bigint();
+      
+      // Simulate concurrent move validations
+      for (let i = 0; i < numConcurrentValidations; i++) {
+        const testGame = new ChessGame();
+        const move = moves[i % moves.length];
+        const piece = testGame.board[move.from.row][move.from.col];
+        
+        const isValid = testGame.isValidMove(move.from, move.to, piece);
+        expect(typeof isValid).toBe('boolean');
+      }
+      
+      const endTime = process.hrtime.bigint();
+      const durationMs = Number(endTime - startTime) / 1000000;
+      
+      // Should handle many concurrent validations quickly
+      expect(durationMs).toBeLessThan(1000); // 1 second
+      
+      const avgTimePerValidation = durationMs / numConcurrentValidations;
+      expect(avgTimePerValidation).toBeLessThan(10); // 10ms per validation
+    });
+
+    test('should manage memory efficiently with concurrent games', () => {
+      const initialMemory = process.memoryUsage().heapUsed;
+      const numGames = 20;
+      const games = [];
+      
+      // Create many concurrent games
+      for (let i = 0; i < numGames; i++) {
+        const game = new ChessGame();
+        games.push(game);
+        
+        // Play a few moves in each game
+        for (let moveNum = 0; moveNum < 5; moveNum++) {
+          const validMoves = game.getAllValidMoves(game.currentTurn);
+          if (validMoves.length === 0) break;
+          
+          const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+          game.makeMove(randomMove);
+        }
+      }
+      
+      const peakMemory = process.memoryUsage().heapUsed;
+      const memoryIncrease = peakMemory - initialMemory;
+      
+      // Memory usage should be reasonable for concurrent games
+      expect(memoryIncrease).toBeLessThan(100 * 1024 * 1024); // 100MB
+      
+      // Cleanup
+      games.length = 0;
+      if (global.gc) {
+        global.gc();
+      }
+    });
+
+    test('should handle resource contention gracefully', () => {
+      const numOperations = 50;
+      const operations = [];
+      
+      // Create multiple resource-intensive operations
+      for (let i = 0; i < numOperations; i++) {
+        operations.push(() => {
+          const testGame = new ChessGame();
+          
+          // Perform resource-intensive operations
+          for (let j = 0; j < 10; j++) {
+            const validMoves = testGame.getAllValidMoves(testGame.currentTurn);
+            if (validMoves.length === 0) break;
+            
+            const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+            testGame.makeMove(randomMove);
+          }
+          
+          return testGame.getGameState();
+        });
+      }
+      
+      const startTime = process.hrtime.bigint();
+      
+      // Execute all operations
+      const results = operations.map(op => op());
+      
+      const endTime = process.hrtime.bigint();
+      const durationMs = Number(endTime - startTime) / 1000000;
+      
+      // All operations should complete successfully
+      expect(results.length).toBe(numOperations);
+      results.forEach(result => {
+        expect(result).toBeDefined();
+        expect(result.board).toBeDefined();
+      });
+      
+      // Should handle resource contention reasonably
+      expect(durationMs).toBeLessThan(10000); // 10 seconds
     });
   });
 

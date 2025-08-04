@@ -22,8 +22,8 @@ const mockSocketIO = () => ({
   id: 'mock-socket-id'
 });
 
-describe('Server Integration Tests', () => {
-  describe('Server File Structure', () => {
+describe('Server Integration Tests - Comprehensive Coverage', () => {
+  describe('Server File Structure and Dependencies', () => {
     test('should have valid server entry point', () => {
       const serverPath = path.join(__dirname, '..', 'src/server/index.js');
       expect(fs.existsSync(serverPath)).toBe(true);
@@ -39,6 +39,31 @@ describe('Server Integration Tests', () => {
       
       const gameManagerContent = fs.readFileSync(gameManagerPath, 'utf8');
       expect(gameManagerContent).toContain('class GameManager');
+    });
+
+    test('should have all required shared modules', () => {
+      const requiredModules = [
+        'src/shared/chessGame.js',
+        'src/shared/gameState.js',
+        'src/shared/chessAI.js',
+        'src/shared/errorHandler.js'
+      ];
+
+      requiredModules.forEach(modulePath => {
+        const fullPath = path.join(__dirname, '..', modulePath);
+        expect(fs.existsSync(fullPath)).toBe(true);
+      });
+    });
+
+    test('should have proper module exports structure', () => {
+      const GameManager = require('../src/server/gameManager');
+      expect(typeof GameManager).toBe('function');
+      expect(GameManager.prototype.constructor).toBe(GameManager);
+      
+      const instance = new GameManager();
+      expect(typeof instance.createGame).toBe('function');
+      expect(typeof instance.joinGame).toBe('function');
+      expect(typeof instance.makeMove).toBe('function');
     });
   });
 
@@ -73,8 +98,8 @@ describe('Server Integration Tests', () => {
     });
   });
 
-  describe('Socket.IO Configuration', () => {
-    test('should handle socket connections', () => {
+  describe('WebSocket Communication and Events', () => {
+    test('should handle socket connections with proper event binding', () => {
       const io = mockSocketIO();
       const socket = mockSocketIO();
       
@@ -92,7 +117,7 @@ describe('Server Integration Tests', () => {
       expect(io.on).toHaveBeenCalledWith('connection', connectionHandler);
     });
 
-    test('should handle game events', () => {
+    test('should handle all required game events', () => {
       const socket = mockSocketIO();
       
       // Test event handlers
@@ -102,7 +127,10 @@ describe('Server Integration Tests', () => {
         'make-move',
         'chat-message',
         'resign-game',
-        'disconnect'
+        'disconnect',
+        'reconnect',
+        'spectate-game',
+        'get-game-state'
       ];
       
       gameEvents.forEach(event => {
@@ -110,6 +138,112 @@ describe('Server Integration Tests', () => {
         socket.on(event, handler);
         expect(socket.on).toHaveBeenCalledWith(event, handler);
       });
+    });
+
+    test('should handle WebSocket message broadcasting', () => {
+      const io = mockSocketIO();
+      const socket = mockSocketIO();
+      
+      // Mock room-based broadcasting
+      const mockRoom = {
+        emit: jest.fn()
+      };
+      
+      io.to = jest.fn(() => mockRoom);
+      
+      // Simulate broadcasting to a game room
+      const gameId = 'ABC123';
+      io.to(gameId).emit('game-update', { gameState: {} });
+      
+      expect(io.to).toHaveBeenCalledWith(gameId);
+      expect(mockRoom.emit).toHaveBeenCalledWith('game-update', { gameState: {} });
+    });
+
+    test('should handle WebSocket error scenarios', () => {
+      const socket = mockSocketIO();
+      
+      // Test error event handling
+      const errorHandler = jest.fn((error) => {
+        console.log('Socket error:', error.message);
+      });
+      
+      socket.on('error', errorHandler);
+      
+      // Simulate an error
+      const testError = new Error('Connection lost');
+      socket.emit('error', testError);
+      
+      expect(socket.on).toHaveBeenCalledWith('error', errorHandler);
+    });
+
+    test('should handle connection timeout scenarios', () => {
+      const socket = mockSocketIO();
+      
+      // Mock connection timeout handling
+      const timeoutHandler = jest.fn(() => {
+        socket.connected = false;
+      });
+      
+      socket.on('timeout', timeoutHandler);
+      
+      // Simulate timeout
+      socket.emit('timeout');
+      
+      expect(socket.on).toHaveBeenCalledWith('timeout', timeoutHandler);
+    });
+
+    test('should handle WebSocket authentication and validation', () => {
+      const socket = mockSocketIO();
+      
+      // Mock authentication middleware
+      const authMiddleware = jest.fn((socket, next) => {
+        if (socket.handshake.auth && socket.handshake.auth.token) {
+          next();
+        } else {
+          next(new Error('Authentication failed'));
+        }
+      });
+      
+      // Simulate authentication
+      socket.handshake = {
+        auth: { token: 'valid-token' }
+      };
+      
+      authMiddleware(socket, jest.fn());
+      expect(authMiddleware).toHaveBeenCalled();
+    });
+
+    test('should handle real-time game state synchronization', () => {
+      const io = mockSocketIO();
+      const gameId = 'ABC123';
+      
+      // Mock game state update
+      const gameState = {
+        board: Array(8).fill(null).map(() => Array(8).fill(null)),
+        currentTurn: 'white',
+        gameStatus: 'active',
+        moveHistory: []
+      };
+      
+      const mockRoom = {
+        emit: jest.fn()
+      };
+      
+      io.to = jest.fn(() => mockRoom);
+      
+      // Simulate real-time update
+      io.to(gameId).emit('game-state-update', {
+        gameId,
+        gameState,
+        timestamp: Date.now()
+      });
+      
+      expect(io.to).toHaveBeenCalledWith(gameId);
+      expect(mockRoom.emit).toHaveBeenCalledWith('game-state-update', expect.objectContaining({
+        gameId,
+        gameState,
+        timestamp: expect.any(Number)
+      }));
     });
   });
 

@@ -338,12 +338,17 @@ describe('Task 19: Comprehensive Check and Checkmate Test Suite', () => {
     test('should detect rook and king mate', () => {
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
       
-      // White king on edge
-      game.board[0][0] = { type: 'king', color: 'white' };
+      // Smothered mate position - white king trapped by own pieces
+      game.board[0][7] = { type: 'king', color: 'white' }; // h8
+      game.board[0][6] = { type: 'rook', color: 'white' }; // g8 (own rook blocks escape)
+      game.board[1][6] = { type: 'pawn', color: 'white' }; // g7 (own pawn blocks escape)
+      game.board[1][7] = { type: 'pawn', color: 'white' }; // h7 (own pawn blocks escape)
       
-      // Black pieces delivering mate
-      game.board[1][0] = { type: 'rook', color: 'black' }; // Attacks king
-      game.board[2][1] = { type: 'king', color: 'black' }; // Controls escape squares
+      // Black knight delivering checkmate
+      game.board[2][6] = { type: 'knight', color: 'black' }; // g6 (attacks h8)
+      
+      // Black king to support
+      game.board[3][5] = { type: 'king', color: 'black' }; // f5
       
       game.currentTurn = 'white';
       

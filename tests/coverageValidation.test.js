@@ -1,6 +1,8 @@
 const ChessGame = require('../src/shared/chessGame');
 const GameStateManager = require('../src/shared/gameState');
 const ChessErrorHandler = require('../src/shared/errorHandler');
+const fs = require('fs');
+const path = require('path');
 
 describe('Coverage Validation Tests - Ensuring 95% Code Coverage', () => {
   let game;
@@ -11,6 +13,68 @@ describe('Coverage Validation Tests - Ensuring 95% Code Coverage', () => {
     game = new ChessGame();
     stateManager = new GameStateManager();
     errorHandler = new ChessErrorHandler();
+  });
+
+  describe('Coverage Infrastructure Tests', () => {
+    test('should have coverage validation script', () => {
+      const scriptPath = path.join(__dirname, '../scripts/coverage-validation.js');
+      expect(fs.existsSync(scriptPath)).toBe(true);
+    });
+
+    test('should have coverage configuration', () => {
+      const configPath = path.join(__dirname, '../coverage.config.js');
+      expect(fs.existsSync(configPath)).toBe(true);
+      
+      const config = require('../coverage.config.js');
+      expect(config.globalThresholds).toBeDefined();
+      expect(config.globalThresholds.statements).toBe(95);
+      expect(config.globalThresholds.branches).toBe(95);
+      expect(config.globalThresholds.functions).toBe(95);
+      expect(config.globalThresholds.lines).toBe(95);
+    });
+
+    test('should have Jest coverage configuration', () => {
+      const jestConfig = require('../jest.config.js');
+      expect(jestConfig.collectCoverage).toBe(true);
+      expect(jestConfig.coverageThreshold).toBeDefined();
+      expect(jestConfig.coverageThreshold.global).toBeDefined();
+    });
+
+    test('should validate coverage thresholds are configured', () => {
+      const jestConfig = require('../jest.config.js');
+      
+      // Check global thresholds
+      expect(jestConfig.coverageThreshold.global.statements).toBe(95);
+      expect(jestConfig.coverageThreshold.global.branches).toBe(95);
+      expect(jestConfig.coverageThreshold.global.functions).toBe(95);
+      expect(jestConfig.coverageThreshold.global.lines).toBe(95);
+    });
+
+    test('should have coverage validation scripts', () => {
+      const packageJson = require('../package.json');
+      
+      expect(packageJson.scripts['test:coverage:validate']).toBeDefined();
+      expect(packageJson.scripts['test:coverage:report']).toBeDefined();
+      expect(packageJson.scripts['coverage:validate']).toBeDefined();
+    });
+
+    test('should exclude appropriate files from coverage', () => {
+      const jestConfig = require('../jest.config.js');
+      
+      expect(jestConfig.coveragePathIgnorePatterns).toContain('/tests/');
+      expect(jestConfig.coveragePathIgnorePatterns).toContain('/coverage/');
+      expect(jestConfig.coveragePathIgnorePatterns).toContain('/node_modules/');
+    });
+
+    test('should have coverage monitoring script', () => {
+      const monitorPath = path.join(__dirname, '../scripts/coverage-monitor.js');
+      expect(fs.existsSync(monitorPath)).toBe(true);
+    });
+
+    test('should have pre-commit coverage validation', () => {
+      const preCommitPath = path.join(__dirname, '../scripts/pre-commit-coverage.js');
+      expect(fs.existsSync(preCommitPath)).toBe(true);
+    });
   });
 
   describe('ChessGame Class Coverage', () => {

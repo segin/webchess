@@ -71,7 +71,7 @@ describe('ChessGame - Core Functionality', () => {
       
       // Test invalid two-square move
       const invalidMove = { from: { row: 5, col: 4 }, to: { row: 3, col: 4 } };
-      testUtils.ExecutionHelpers.testMove(game, invalidMove, false, testUtils.TestData.ERROR_CODES.INVALID_MOVE);
+      testUtils.ExecutionHelpers.testMove(game, invalidMove, false, testUtils.TestData.ERROR_CODES.INVALID_MOVEMENT);
     });
 
     test(testUtils.NamingPatterns.moveValidationTest('pawn', 'allow diagonal capture'), () => {
@@ -147,7 +147,7 @@ describe('ChessGame - Core Functionality', () => {
       
       invalidMoves.forEach(move => {
         const freshGame = testUtils.createFreshGame();
-        testUtils.ExecutionHelpers.testMove(freshGame, move, false, testUtils.TestData.ERROR_CODES.INVALID_MOVE);
+        testUtils.ExecutionHelpers.testMove(freshGame, move, false, testUtils.TestData.ERROR_CODES.INVALID_MOVEMENT);
       });
     });
 
@@ -197,7 +197,7 @@ describe('ChessGame - Core Functionality', () => {
       game.board[6][0] = null;
       
       const diagonalMove = { from: { row: 7, col: 0 }, to: { row: 6, col: 1 } };
-      testUtils.ExecutionHelpers.testMove(game, diagonalMove, false, testUtils.TestData.ERROR_CODES.INVALID_MOVE);
+      testUtils.ExecutionHelpers.testMove(game, diagonalMove, false, testUtils.TestData.ERROR_CODES.INVALID_MOVEMENT);
     });
 
     test(testUtils.NamingPatterns.moveValidationTest('rook', 'reject moves through pieces'), () => {
@@ -220,7 +220,7 @@ describe('ChessGame - Core Functionality', () => {
       game.board[6][2] = null;
       
       const straightMove = { from: { row: 7, col: 2 }, to: { row: 6, col: 2 } };
-      testUtils.ExecutionHelpers.testMove(game, straightMove, false, testUtils.TestData.ERROR_CODES.INVALID_MOVE);
+      testUtils.ExecutionHelpers.testMove(game, straightMove, false, testUtils.TestData.ERROR_CODES.INVALID_MOVEMENT);
     });
 
     test(testUtils.NamingPatterns.moveValidationTest('bishop', 'reject moves through pieces'), () => {
@@ -269,7 +269,7 @@ describe('ChessGame - Core Functionality', () => {
       game.board[5][4] = null;
       
       const multiSquareMove = { from: { row: 7, col: 4 }, to: { row: 5, col: 4 } };
-      testUtils.ExecutionHelpers.testMove(game, multiSquareMove, false, testUtils.TestData.ERROR_CODES.INVALID_MOVE);
+      testUtils.ExecutionHelpers.testMove(game, multiSquareMove, false, testUtils.TestData.ERROR_CODES.INVALID_MOVEMENT);
     });
   });
 

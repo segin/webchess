@@ -3029,6 +3029,21 @@ class ChessGame {
    * Get comprehensive game state with enhanced tracking and metadata
    * @returns {Object} Complete game state information
    */
+  /**
+   * Get simplified move history for API compatibility
+   * @returns {Array} Simplified move history entries
+   */
+  getSimplifiedMoveHistory() {
+    return this.moveHistory.map(move => ({
+      from: move.from,
+      to: move.to,
+      piece: move.piece,
+      color: move.color,
+      captured: move.captured,
+      promotion: move.promotion
+    }));
+  }
+
   getGameState() {
     const gameStateSnapshot = this.getGameStateForSnapshot();
     
@@ -3037,8 +3052,9 @@ class ChessGame {
       board: this.board,
       currentTurn: this.currentTurn,
       status: this.gameStatus,
+      gameStatus: this.gameStatus, // For backward compatibility
       winner: this.winner,
-      moveHistory: this.moveHistory,
+      moveHistory: this.getSimplifiedMoveHistory(),
       
       // Check and game end information
       inCheck: this.inCheck,

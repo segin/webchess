@@ -36,6 +36,7 @@ class ChessErrorHandler {
       WRONG_TURN: { category: 'PIECE', severity: 'MEDIUM', recoverable: false },
       
       // Movement errors
+      INVALID_MOVE: { category: 'MOVEMENT', severity: 'MEDIUM', recoverable: false },
       INVALID_MOVEMENT: { category: 'MOVEMENT', severity: 'MEDIUM', recoverable: false },
       UNKNOWN_PIECE_TYPE: { category: 'MOVEMENT', severity: 'HIGH', recoverable: true },
       
@@ -88,6 +89,7 @@ class ChessErrorHandler {
       INVALID_PIECE_COLOR: "Invalid piece color.",
       WRONG_TURN: "Not your turn",
       
+      INVALID_MOVE: "This piece cannot move in that pattern.",
       INVALID_MOVEMENT: "This piece cannot move in that pattern.",
       UNKNOWN_PIECE_TYPE: "Unknown piece type encountered.",
       
@@ -134,6 +136,7 @@ class ChessErrorHandler {
       INVALID_PIECE_COLOR: ["Report this error - it may indicate a bug"],
       WRONG_TURN: ["Wait for your turn", "Check whose turn it is"],
       
+      INVALID_MOVE: ["Review how this piece can move", "Choose a valid destination"],
       INVALID_MOVEMENT: ["Review how this piece can move", "Choose a valid destination"],
       UNKNOWN_PIECE_TYPE: ["Report this error - it indicates a system issue"],
       
