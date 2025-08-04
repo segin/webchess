@@ -81,7 +81,8 @@ class ChessGame {
       // Enhanced validation with detailed error reporting
       const validation = this.validateMove(move);
       if (!validation.isValid) {
-        return validation; // Return the full error structure from error handler
+        // Return the full validation error structure from error handler
+        return validation;
       }
 
       const { from, to, promotion } = move;

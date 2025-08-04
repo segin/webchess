@@ -3797,9 +3797,6 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       });
     });
   });
-  });
-  });
-  });
 });
 
 // Run the tests if this file is executed directly
