@@ -2980,8 +2980,20 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
 
       test('should allow queen diagonal move down-left', () => {
         game = new ChessGame(); // Reset game
-        // Move queen to center fi  descri
-be('Comprehensive Queen Movement Validation', () => {
+        // Move queen to center for testing
+        game.board[4][4] = { type: 'queen', color: 'white' };
+        game.board[0][3] = null; // Remove original queen
+        
+        const move = { from: { row: 4, col: 4 }, to: { row: 6, col: 2 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        expect(game.board[6][2]).toEqual({ type: 'queen', color: 'white' });
+        expect(game.board[4][4]).toBe(null);
+      });
+    });
+  });
+
+  describe('Comprehensive Queen Movement Validation', () => {
     beforeEach(() => {
       game = new ChessGame();
     });
