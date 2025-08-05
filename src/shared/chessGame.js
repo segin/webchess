@@ -818,12 +818,17 @@ class ChessGame {
     let currentRow = attackerPos.row + rowStep;
     let currentCol = attackerPos.col + colStep;
     
-    while (currentRow !== kingPos.row || currentCol !== kingPos.col) {
+    // Add safety counter to prevent infinite loops
+    let stepCount = 0;
+    const maxSteps = 8;
+    
+    while ((currentRow !== kingPos.row || currentCol !== kingPos.col) && stepCount < maxSteps) {
       if (Math.round(currentRow) === blockSquare.row && Math.round(currentCol) === blockSquare.col) {
         return true;
       }
       currentRow += rowStep;
       currentCol += colStep;
+      stepCount++;
     }
     
     return false;
@@ -1079,18 +1084,33 @@ class ChessGame {
   }
 
   isPathClear(from, to) {
+    // If source and destination are the same, path is clear (no movement)
+    if (from.row === to.row && from.col === to.col) {
+      return true;
+    }
+    
     const rowStep = to.row === from.row ? 0 : (to.row - from.row) / Math.abs(to.row - from.row);
     const colStep = to.col === from.col ? 0 : (to.col - from.col) / Math.abs(to.col - from.col);
+    
+    // Prevent infinite loop - if both steps are 0, something is wrong
+    if (rowStep === 0 && colStep === 0) {
+      return true; // Same square, path is clear
+    }
     
     let row = from.row + rowStep;
     let col = from.col + colStep;
     
-    while (row !== to.row || col !== to.col) {
+    // Add safety counter to prevent infinite loops
+    let stepCount = 0;
+    const maxSteps = 8; // Maximum possible steps on a chess board
+    
+    while ((row !== to.row || col !== to.col) && stepCount < maxSteps) {
       if (this.board[row][col]) {
         return false;
       }
       row += rowStep;
       col += colStep;
+      stepCount++;
     }
     
     return true;
@@ -2691,13 +2711,27 @@ class ChessGame {
    * @returns {boolean} True if path is clear except for excluded position
    */
   isPathClearForPin(kingPos, pinningPos, excludePos) {
+    // If king and pinning piece are the same position, no pin possible
+    if (kingPos.row === pinningPos.row && kingPos.col === pinningPos.col) {
+      return false;
+    }
+    
     const rowStep = pinningPos.row === kingPos.row ? 0 : (pinningPos.row - kingPos.row) / Math.abs(pinningPos.row - kingPos.row);
     const colStep = pinningPos.col === kingPos.col ? 0 : (pinningPos.col - kingPos.col) / Math.abs(pinningPos.col - kingPos.col);
+    
+    // Prevent infinite loop
+    if (rowStep === 0 && colStep === 0) {
+      return false;
+    }
     
     let currentRow = kingPos.row + rowStep;
     let currentCol = kingPos.col + colStep;
     
-    while (currentRow !== pinningPos.row || currentCol !== pinningPos.col) {
+    // Add safety counter
+    let stepCount = 0;
+    const maxSteps = 8;
+    
+    while ((currentRow !== pinningPos.row || currentCol !== pinningPos.col) && stepCount < maxSteps) {
       // Skip the excluded position (the potentially pinned piece)
       if (currentRow !== excludePos.row || currentCol !== excludePos.col) {
         if (this.board[currentRow][currentCol]) {
@@ -2707,6 +2741,7 @@ class ChessGame {
       
       currentRow += rowStep;
       currentCol += colStep;
+      stepCount++;
     }
     
     return true;
