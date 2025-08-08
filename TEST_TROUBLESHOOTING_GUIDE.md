@@ -1,202 +1,239 @@
 # Test Troubleshooting Guide for WebChess
 
-## Quick Reference for Common Test Issues
+## Quick Reference for Common Issues
 
-This guide provides immediate solutions for the most common test problems encountered in the WebChess project.
+### 🚨 Emergency Commands
 
-## Issue Categories
+```bash
+# Kill hanging test processes
+pkill -f "npm test" || pkill -f "jest"
 
-### 1. API Response Structure Issues
+# Run tests with timeout to prevent infinite hangs
+timeout 60s npm test
 
-#### Problem: Test expects different response format
-```
-Expected: { success: true, data: {...} }
-Received: { result: true, gameState: {...} }
-```
-
-**Solution:**
-```javascript
-// Check actual response structure first
-const result = game.makeMove(from, to);
-console.log('Actual response:', JSON.stringify(result, null, 2));
-
-// Update test expectations to match standardized format
-expect(result).toHaveProperty('success');
-expect(result).toHaveProperty('data');
+# Run single test file to isolate issues
+npm test -- --testPathPattern="specificFile.test.js" --runInBand
 ```
 
-#### Problem: Property name mismatches
-```
-TypeError: Cannot read property 'status' of undefined
+## Issue Categories and Solutions
+
+### 1. Infinite Loops and Hanging Tests
+
+#### Symptoms
+- Tests run for hours without completing
+- High CPU usage with no progress
+- Process must be manually killed
+
+#### Common Causes
+- **Incorrect API Usage**: Using wrong parameter format for methods
+- **While Loop Issues**: Loops without proper exit conditions
+- **Recursive Functions**: Missing base cases
+
+#### Diagnostic Steps
+```bash
+# Identify which test is hanging
+timeout 30s npm test -- --verbose --runInBand
+
+# Check for problematic while loops
+grep -r "while.*(" src/
+
+# Look for infinite recursion patterns
+grep -r "function.*{.*this\." src/
 ```
 
-**Solution:**
-```javascript
-// Check for property name inconsistencies
-expect(result.data.gameState.status).toBe('active'); // Not 'gameStatus'
-expect(result.data.move.piece).toBe('pawn'); // Not 'pieceType'
-```
+#### Solutions
+1. **Fix API Calls**:
+   ```javascript
+   // Correct
+   game.makeMove({ from: { row: 6, col: 4 }, to: { row: 4, col: 4 } });
+   
+   // Incorrect (causes issues)
+   game.makeMove({ row: 6, col: 4 }, { row: 4, col: 4 });
+   ```
+
+2. **Add Loop Safety**:
+   ```javascript
+   let stepCount = 0;
+   const maxSteps = 8;
+   while (condition && stepCount < maxSteps) {
+     // loop body
+     stepCount++;
+   }
+   ```
 
 ### 2. Console Error Spam
 
-#### Problem: Expected errors polluting test output
-```
-console.error: Invalid move: piece cannot move to that square
-console.error: Game state validation failed
-```
+#### Symptoms
+- Hundreds of console.error messages during test runs
+- Test output cluttered with expected error messages
+- Difficult to identify genuine issues
 
-**Solution:**
+#### Common Causes
+- Error recovery tests generating expected console errors
+- Missing error suppression in test setup
+
+#### Solutions
 ```javascript
-const { TestErrorSuppression } = require('./utils/errorSuppression');
+const { testUtils } = require('./utils/errorSuppression');
 
 describe('Error Recovery Tests', () => {
-  let errorSuppression;
-
   beforeEach(() => {
-    errorSuppression = new TestErrorSuppression();
-  });
-
-  afterEach(() => {
-    errorSuppression.restoreConsoleError();
-  });
-
-  test('should handle invalid moves gracefully', () => {
-    // Suppress expected errors
-    errorSuppression.suppressExpectedErrors([
-      /Invalid move/,
-      /Game state validation failed/
+    testUtils.suppressErrorLogs([
+      /WRONG_TURN/,
+      /PATH_BLOCKED/,
+      /INVALID_MOVEMENT/,
+      /CAPTURE_OWN_PIECE/,
+      /INVALID_CASTLING/
     ]);
-
-    const result = game.makeMove(invalidFrom, invalidTo);
-    expect(result.success).toBe(false);
-  });
-});
-```
-
-### 3. Performance Test Failures
-
-#### Problem: Tests failing due to unrealistic timing expectations
-```
-Expected: < 50ms
-Received: 127ms
-```
-
-**Solution:**
-```javascript
-// Use environment-appropriate thresholds
-const PERFORMANCE_THRESHOLD = {
-  development: 100,
-  ci: 200,
-  production: 50
-};
-
-const threshold = PERFORMANCE_THRESHOLD[process.env.NODE_ENV] || 
-                 PERFORMANCE_THRESHOLD.development;
-
-test('should validate moves within reasonable time', () => {
-  const startTime = performance.now();
-  game.makeMove(from, to);
-  const duration = performance.now() - startTime;
-  
-  expect(duration).toBeLessThan(threshold);
-});
-```
-
-### 4. Syntax and Parsing Errors
-
-#### Problem: Jest cannot parse test files
-```
-SyntaxError: Unexpected token 'export'
-```
-
-**Solution:**
-```javascript
-// Use consistent module syntax (CommonJS for Node.js)
-const { ChessGame } = require('../src/shared/chessGame');
-
-// Not: import { ChessGame } from '../src/shared/chessGame';
-
-// Ensure proper Jest configuration in jest.config.js
-module.exports = {
-  testEnvironment: 'node',
-  transform: {
-    '^.+\\.js$': 'babel-jest'
-  }
-};
-```
-
-#### Problem: Missing semicolons or brackets
-```
-SyntaxError: Unexpected token '}'
-```
-
-**Solution:**
-```javascript
-// Check for missing semicolons
-const game = new ChessGame(); // Add semicolon
-
-// Check for unmatched brackets
-describe('Test Suite', () => {
-  test('should work', () => {
-    expect(true).toBe(true);
-  }); // Ensure all brackets are closed
-});
-```
-
-### 5. Test Isolation Issues
-
-#### Problem: Tests pass individually but fail together
-```
-Test suite failed to run: Cannot read property 'board' of null
-```
-
-**Solution:**
-```javascript
-describe('Chess Game Tests', () => {
-  let game;
-
-  beforeEach(() => {
-    // Create fresh instance for each test
-    game = new ChessGame();
   });
 
   afterEach(() => {
-    // Clean up any global state
-    if (game && game.cleanup) {
-      game.cleanup();
-    }
-    // Reset any global variables
-    global.testGameState = null;
+    testUtils.restoreErrorLogs();
   });
 });
 ```
 
-### 6. Coverage Issues
+### 3. API Response Inconsistencies
 
-#### Problem: Coverage below required threshold
-```
-Coverage threshold for statements (95%) not met: 87.3%
-```
+#### Symptoms
+- Tests expect different response format than implementation provides
+- Assertion failures on response structure
+- Inconsistent success/error handling
 
-**Solution:**
+#### Common Patterns
 ```javascript
-// Identify uncovered code paths
-npm test -- --coverage --verbose
+// Expected format
+{
+  success: boolean,
+  data?: any,
+  message?: string,
+  errorCode?: string
+}
 
-// Add tests for missing coverage
-test('should handle edge case not previously tested', () => {
-  // Test the uncovered code path
-  const result = game.handleEdgeCase();
-  expect(result).toBeDefined();
+// Fix inconsistent responses
+function gameMethod() {
+  try {
+    const result = performOperation();
+    return {
+      success: true,
+      data: result
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.message,
+      errorCode: 'ERROR_CODE'
+    };
+  }
+}
+```
+
+### 4. Performance Test Failures
+
+#### Symptoms
+- Performance tests fail on different hardware
+- Timing assertions fail in CI/CD environments
+- Inconsistent performance measurements
+
+#### Solutions
+```javascript
+// Use relative measurements with reasonable variance
+const startTime = Date.now();
+performOperation();
+const duration = Date.now() - startTime;
+
+// Allow 100% variance for different environments
+const expectedTime = 1000; // 1 second baseline
+expect(duration).toBeLessThan(expectedTime * 2);
+
+// Or use statistical approaches
+const measurements = [];
+for (let i = 0; i < 5; i++) {
+  const start = Date.now();
+  performOperation();
+  measurements.push(Date.now() - start);
+}
+const averageTime = measurements.reduce((a, b) => a + b) / measurements.length;
+expect(averageTime).toBeLessThan(expectedTime);
+```
+
+### 5. Coverage Threshold Failures
+
+#### Symptoms
+- Tests pass but coverage requirements not met
+- New code added without corresponding tests
+- Coverage drops below required thresholds
+
+#### Diagnostic Commands
+```bash
+# Generate detailed coverage report
+npm test -- --coverage --coverageReporters=html
+
+# Check specific file coverage
+npm test -- --coverage --collectCoverageFrom="src/specific/file.js"
+
+# View coverage summary
+npm test -- --coverage --coverageReporters=text-summary
+```
+
+#### Solutions
+1. **Identify Uncovered Code**: Use HTML coverage report to find gaps
+2. **Add Missing Tests**: Create tests for uncovered functions/branches
+3. **Adjust Thresholds**: If appropriate, modify coverage requirements in `jest.config.js`
+
+### 6. Memory Leaks and Resource Issues
+
+#### Symptoms
+- Tests slow down over time
+- Memory usage continuously increases
+- "Out of memory" errors in long test runs
+
+#### Diagnostic Steps
+```bash
+# Run tests with memory monitoring
+npm test -- --detectOpenHandles --forceExit
+
+# Check for resource leaks
+npm test -- --verbose --runInBand
+```
+
+#### Solutions
+```javascript
+// Proper cleanup in tests
+afterEach(() => {
+  // Clean up resources
+  testUtils.restoreErrorLogs();
+  game = null;
+  // Close connections, clear timers, etc.
 });
 
-// Exclude non-testable files from coverage
-// In jest.config.js:
-collectCoverageFrom: [
-  'src/**/*.js',
-  '!src/**/*.test.js',
-  '!src/config/*.js' // Exclude configuration files
-]
+// Avoid creating large objects in loops
+// Use object pooling for frequently created objects
+```
+
+### 7. Test Isolation Issues
+
+#### Symptoms
+- Tests pass individually but fail when run together
+- Order-dependent test failures
+- Shared state causing interference
+
+#### Solutions
+```javascript
+// Ensure proper test isolation
+beforeEach(() => {
+  // Create fresh instances for each test
+  game = new ChessGame();
+  gameState = new GameStateManager();
+});
+
+afterEach(() => {
+  // Clean up any shared state
+  game = null;
+  gameState = null;
+});
+
+// Avoid global variables or shared mutable state
 ```
 
 ## Debugging Strategies
@@ -205,130 +242,220 @@ collectCoverageFrom: [
 
 ```bash
 # Run single test file
-npm test -- tests/chessGame.test.js
+npm test -- --testPathPattern="problematic.test.js"
 
-# Run specific test
-npm test -- --testNamePattern="should handle pawn movement"
+# Run specific test case
+npm test -- --testNamePattern="specific test name"
 
-# Run with maximum verbosity
-npm test -- --verbose --no-cache
+# Run with minimal output
+npm test -- --silent --testPathPattern="target.test.js"
 ```
 
-### 2. Add Debug Information
+### 2. Add Debugging Information
 
 ```javascript
-test('should debug complex scenario', () => {
-  console.log('=== DEBUG START ===');
-  console.log('Initial board:', game.getBoardState());
-  
-  const result = game.makeMove(from, to);
-  
-  console.log('Move result:', result);
-  console.log('Final board:', game.getBoardState());
-  console.log('=== DEBUG END ===');
+// Temporary debugging in tests
+test('should handle complex scenario', () => {
+  console.log('Test state before:', game.getState());
+  const result = game.performAction();
+  console.log('Result:', result);
+  console.log('Test state after:', game.getState());
   
   expect(result.success).toBe(true);
 });
 ```
 
-### 3. Use Jest Debug Features
+### 3. Use Jest Debugging Features
 
-```javascript
-// Focus on single test
-test.only('should focus on this test only', () => {
-  // Only this test will run
-});
+```bash
+# Run with Node.js debugger
+node --inspect-brk node_modules/.bin/jest --runInBand --testPathPattern="target.test.js"
 
-// Skip problematic tests temporarily
-test.skip('should skip this test for now', () => {
-  // This test will be skipped
-});
-
-// Add timeout for slow tests
-test('should handle slow operation', async () => {
-  // Test code
-}, 10000); // 10 second timeout
+# Run with verbose output
+npm test -- --verbose --testPathPattern="target.test.js"
 ```
 
 ## Environment-Specific Issues
 
 ### CI/CD Environment Problems
 
-#### Problem: Tests pass locally but fail in CI
-```
-Timeout: Test exceeded 5000ms
-```
+#### Common Issues
+- Different timing characteristics
+- Limited resources
+- Different Node.js versions
 
-**Solution:**
+#### Solutions
 ```javascript
-// Increase timeouts for CI environment
-const timeout = process.env.CI ? 30000 : 5000;
+// Detect CI environment
+const isCI = process.env.CI === 'true';
 
-test('should handle operation within timeout', async () => {
-  // Test code
-}, timeout);
+// Adjust timeouts for CI
+const timeout = isCI ? 30000 : 10000;
+jest.setTimeout(timeout);
 
-// Use different thresholds for CI
-const expectedDuration = process.env.CI ? 500 : 100;
-expect(actualDuration).toBeLessThan(expectedDuration);
+// Skip resource-intensive tests in CI if needed
+const skipInCI = isCI ? test.skip : test;
+skipInCI('resource intensive test', () => {
+  // test implementation
+});
 ```
 
-### Memory Issues
+### Local Development Issues
 
-#### Problem: Tests failing due to memory constraints
-```
-JavaScript heap out of memory
+#### Common Issues
+- Port conflicts
+- File system permissions
+- Local configuration differences
+
+#### Solutions
+```bash
+# Check for port conflicts
+lsof -i :8080
+
+# Ensure proper permissions
+chmod +x scripts/test-*.js
+
+# Clear Jest cache
+npm test -- --clearCache
 ```
 
-**Solution:**
+## Performance Optimization
+
+### Test Execution Speed
+
 ```javascript
-// Clean up large objects in afterEach
-afterEach(() => {
-  if (largeGameState) {
-    largeGameState = null;
-  }
-  if (global.gc) {
-    global.gc(); // Force garbage collection if available
-  }
+// Use beforeAll for expensive setup when possible
+describe('Expensive Setup Tests', () => {
+  let expensiveResource;
+  
+  beforeAll(async () => {
+    expensiveResource = await createExpensiveResource();
+  });
+  
+  afterAll(async () => {
+    await cleanupExpensiveResource(expensiveResource);
+  });
 });
 
-// Limit concurrent test execution
-// In jest.config.js:
-maxWorkers: process.env.CI ? 2 : '50%'
+// Avoid unnecessary async operations
+test('synchronous test', () => {
+  // Don't use async/await if not needed
+  const result = synchronousOperation();
+  expect(result).toBe(expected);
+});
 ```
 
-## Quick Fixes Checklist
+### Memory Usage Optimization
 
-When a test fails, check these items in order:
+```javascript
+// Clear large objects after use
+afterEach(() => {
+  largeTestData = null;
+  complexGameState = null;
+});
 
-1. **[ ] Response Structure**: Does the test expect the correct API response format?
-2. **[ ] Property Names**: Are property names consistent between test and implementation?
-3. **[ ] Error Suppression**: Are expected errors properly suppressed?
-4. **[ ] Performance Thresholds**: Are timing expectations realistic for the environment?
-5. **[ ] Test Isolation**: Does the test properly set up and clean up its state?
-6. **[ ] Syntax**: Are there any JavaScript syntax errors in the test file?
-7. **[ ] Dependencies**: Are all required modules properly imported?
-8. **[ ] Test Data**: Is the test using valid, realistic test data?
-9. **[ ] Async Handling**: Are promises and async operations properly handled?
-10. **[ ] Environment**: Are environment-specific configurations accounted for?
+// Use object pooling for frequently created objects
+const objectPool = [];
+function getTestObject() {
+  return objectPool.pop() || createNewTestObject();
+}
+function returnTestObject(obj) {
+  resetObject(obj);
+  objectPool.push(obj);
+}
+```
 
-## Getting Help
+## Monitoring and Alerting
 
-### Internal Resources
-1. Check existing test files for similar patterns
-2. Review `TEST_MAINTENANCE_GUIDE.md` for detailed patterns
-3. Examine `tests/helpers/testPatterns.js` for reusable utilities
-4. Look at `tests/utils/errorSuppression.js` for error handling
+### Test Health Metrics
 
-### External Resources
-1. [Jest Documentation](https://jestjs.io/docs/getting-started)
-2. [JavaScript Testing Best Practices](https://github.com/goldbergyoni/javascript-testing-best-practices)
-3. [Chess Programming Wiki](https://www.chessprogramming.org/)
+```bash
+# Monitor test execution time
+npm test -- --verbose | grep "Time:"
 
-### When to Ask for Help
-- Multiple tests are failing with similar patterns
-- Performance issues persist after optimization attempts
-- Coverage requirements cannot be met despite adding tests
-- CI/CD pipeline consistently fails while local tests pass
+# Track test count changes
+npm test -- --passWithNoTests --verbose | grep "Tests:"
 
-Remember: Most test issues fall into predictable categories. Use this guide to quickly identify and resolve common problems, keeping the test suite reliable and maintainable.
+# Monitor coverage trends
+npm test -- --coverage --coverageReporters=json-summary
+```
+
+### Automated Checks
+
+```javascript
+// Add test health checks
+describe('Test Infrastructure Health', () => {
+  test('should have reasonable test execution time', () => {
+    const startTime = Date.now();
+    // Run representative test operations
+    const duration = Date.now() - startTime;
+    expect(duration).toBeLessThan(5000); // 5 second max
+  });
+  
+  test('should not have memory leaks', () => {
+    const initialMemory = process.memoryUsage().heapUsed;
+    // Perform test operations
+    global.gc && global.gc(); // Force garbage collection if available
+    const finalMemory = process.memoryUsage().heapUsed;
+    const memoryIncrease = finalMemory - initialMemory;
+    expect(memoryIncrease).toBeLessThan(10 * 1024 * 1024); // 10MB max increase
+  });
+});
+```
+
+## Emergency Procedures
+
+### When Tests Are Completely Broken
+
+1. **Identify Last Working State**:
+   ```bash
+   git log --oneline --grep="test"
+   git checkout <last-working-commit>
+   npm test
+   ```
+
+2. **Isolate the Problem**:
+   ```bash
+   # Test each category separately
+   npm test -- --testPathPattern="unit"
+   npm test -- --testPathPattern="integration"
+   npm test -- --testPathPattern="comprehensive"
+   ```
+
+3. **Restore Functionality**:
+   ```bash
+   # Reset test configuration
+   git checkout HEAD -- jest.config.js
+   git checkout HEAD -- tests/setup.js
+   
+   # Clear all caches
+   npm test -- --clearCache
+   rm -rf node_modules/.cache
+   ```
+
+### When CI/CD Pipeline Fails
+
+1. **Check Environment Differences**:
+   ```bash
+   # Compare Node.js versions
+   node --version
+   npm --version
+   
+   # Check available memory
+   free -h
+   
+   # Verify test timeouts
+   grep -r "timeout" jest.config.js
+   ```
+
+2. **Adjust for CI Environment**:
+   ```javascript
+   // In jest.config.js
+   module.exports = {
+     testTimeout: process.env.CI ? 60000 : 30000,
+     maxWorkers: process.env.CI ? 2 : '50%',
+     // ... other config
+   };
+   ```
+
+This troubleshooting guide should help quickly identify and resolve common test issues. Keep it updated as new problems and solutions are discovered.

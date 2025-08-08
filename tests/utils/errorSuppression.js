@@ -209,7 +209,22 @@ const testUtils = {
     /WRONG_TURN/,
     /INVALID_PIECE/,
     /STATE_CORRUPTION/,
-    /Circular Object/
+    /Circular Object/,
+    /PATH_BLOCKED/,
+    /CAPTURE_OWN_PIECE/,
+    /INVALID_CASTLING/,
+    /INVALID_MOVEMENT/,
+    /Error: PATH_BLOCKED/,
+    /Error: CAPTURE_OWN_PIECE/,
+    /Error: WRONG_TURN/,
+    /Error: INVALID_CASTLING/,
+    /Error: INVALID_MOVEMENT/,
+    /Path is blocked/,
+    /Cannot capture own piece/,
+    /Not your turn/,
+    /Invalid kingside castling/,
+    /Invalid queenside castling/,
+    /Invalid pawn movement/
   ]) {
     if (!globalSuppression) {
       globalSuppression = new TestErrorSuppression();

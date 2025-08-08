@@ -2,9 +2,7 @@
 
 /**
  * Test Infrastructure Validation Script
- * 
- * This script validates the test infrastructure without running all tests,
- * checking for common issues and providing actionable feedback.
+ * Validates the health and configuration of the WebChess test infrastructure
  */
 
 const fs = require('fs');
@@ -13,405 +11,446 @@ const { execSync } = require('child_process');
 
 class TestInfrastructureValidator {
   constructor() {
-    this.issues = [];
-    this.warnings = [];
-    this.successes = [];
-    this.testFiles = [];
-    this.testCategories = {
-      unit: [],
-      integration: [],
-      performance: [],
-      browser: [],
-      helpers: [],
-      utils: []
+    this.results = {
+      passed: [],
+      failed: [],
+      warnings: []
     };
   }
 
   log(message, type = 'info') {
     const timestamp = new Date().toISOString();
-    const prefix = {
-      info: '✓',
-      warn: '⚠',
-      error: '✗',
-      success: '✓'
-    }[type] || 'ℹ';
-    
+    const prefix = type === 'error' ? '❌' : type === 'warning' ? '⚠️' : '✅';
     console.log(`${prefix} [${timestamp}] ${message}`);
   }
 
-  addIssue(message) {
-    this.issues.push(message);
-    this.log(message, 'error');
-  }
-
-  addWarning(message) {
-    this.warnings.push(message);
-    this.log(message, 'warn');
-  }
-
-  addSuccess(message) {
-    this.successes.push(message);
-    this.log(message, 'success');
-  }
-
-  // Discover all test files
-  discoverTestFiles() {
-    this.log('Discovering test files...');
-    
-    const testsDir = path.join(process.cwd(), 'tests');
-    if (!fs.existsSync(testsDir)) {
-      this.addIssue('Tests directory not found');
-      return;
+  addResult(test, passed, message) {
+    const result = { test, message, timestamp: new Date().toISOString() };
+    if (passed) {
+      this.results.passed.push(result);
+      this.log(`${test}: ${message}`, 'info');
+    } else {
+      this.results.failed.push(result);
+      this.log(`${test}: ${message}`, 'error');
     }
-
-    const files = fs.readdirSync(testsDir, { recursive: true });
-    this.testFiles = files
-      .filter(file => file.endsWith('.test.js'))
-      .map(file => path.join(testsDir, file));
-
-    this.log(`Found ${this.testFiles.length} test files`);
-    
-    // Categorize test files
-    this.categorizeTestFiles();
   }
 
-  categorizeTestFiles() {
-    this.testFiles.forEach(file => {
-      const fileName = path.basename(file);
-      const relativePath = path.relative(process.cwd(), file);
-      
-      if (fileName.includes('integration') || fileName.includes('gameFlow')) {
-        this.testCategories.integration.push(relativePath);
-      } else if (fileName.includes('performance') || fileName.includes('stress')) {
-        this.testCategories.performance.push(relativePath);
-      } else if (fileName.includes('browser') || fileName.includes('compatibility')) {
-        this.testCategories.browser.push(relativePath);
-      } else if (file.includes('helpers')) {
-        this.testCategories.helpers.push(relativePath);
-      } else if (file.includes('utils')) {
-        this.testCategories.utils.push(relativePath);
-      } else {
-        this.testCategories.unit.push(relativePath);
-      }
+  addWarning(test, message) {
+    const result = { test, message, timestamp: new Date().toISOString() };
+    this.results.warnings.push(result);
+    this.log(`${test}: ${message}`, 'warning');
+  }
+
+  validateFileExists(filePath, description) {
+    const exists = fs.existsSync(filePath);
+    this.addResult(
+      `File Existence: ${description}`,
+      exists,
+      exists ? `Found: ${filePath}` : `Missing: ${filePath}`
+    );
+    return exists;
+  }
+
+  validateDirectoryStructure() {
+    this.log('Validating directory structure...', 'info');
+    
+    const requiredDirs = [
+      'tests',
+      'tests/utils',
+      'tests/helpers',
+      'src/shared',
+      'scripts'
+    ];
+
+    requiredDirs.forEach(dir => {
+      const exists = fs.existsSync(dir);
+      this.addResult(
+        'Directory Structure',
+        exists,
+        exists ? `Directory exists: ${dir}` : `Missing directory: ${dir}`
+      );
     });
-
-    this.log(`Categorized tests: Unit(${this.testCategories.unit.length}), Integration(${this.testCategories.integration.length}), Performance(${this.testCategories.performance.length}), Browser(${this.testCategories.browser.length})`);
   }
 
-  // Check Jest configuration
-  validateJestConfig() {
-    this.log('Validating Jest configuration...');
+  validateCoreFiles() {
+    this.log('Validating core test files...', 'info');
     
-    const jestConfigPath = path.join(process.cwd(), 'jest.config.js');
-    if (!fs.existsSync(jestConfigPath)) {
-      this.addIssue('jest.config.js not found');
-      return;
-    }
+    const coreFiles = [
+      { path: 'tests/utils/errorSuppression.js', desc: 'Error Suppression Utilities' },
+      { path: 'tests/setup.js', desc: 'Test Setup Configuration' },
+      { path: 'jest.config.js', desc: 'Jest Configuration' },
+      { path: 'package.json', desc: 'Package Configuration' },
+      { path: 'src/shared/chessGame.js', desc: 'Chess Game Logic' },
+      { path: 'src/shared/gameState.js', desc: 'Game State Manager' },
+      { path: 'public/test-runner.html', desc: 'Browser Test Runner' }
+    ];
 
+    coreFiles.forEach(file => {
+      this.validateFileExists(file.path, file.desc);
+    });
+  }
+
+  validateTestFiles() {
+    this.log('Validating test file organization...', 'info');
+    
     try {
-      const jestConfig = require(jestConfigPath);
+      const testFiles = fs.readdirSync('tests')
+        .filter(file => file.endsWith('.test.js'))
+        .sort();
+
+      this.addResult(
+        'Test File Count',
+        testFiles.length > 0,
+        `Found ${testFiles.length} test files`
+      );
+
+      // Check for key test categories
+      const expectedCategories = [
+        'chessGame.test.js',
+        'gameState.test.js',
+        'errorHandling.test.js',
+        'performanceTests.test.js',
+        'integrationTests.test.js',
+        'browserCompatible.test.js'
+      ];
+
+      expectedCategories.forEach(category => {
+        const exists = testFiles.includes(category);
+        this.addResult(
+          'Test Category Coverage',
+          exists,
+          exists ? `Found: ${category}` : `Missing: ${category}`
+        );
+      });
+
+      // Check for comprehensive test files
+      const comprehensiveFiles = testFiles.filter(file => 
+        file.includes('Comprehensive') || file.includes('Expansion')
+      );
+      
+      this.addResult(
+        'Comprehensive Test Coverage',
+        comprehensiveFiles.length > 0,
+        `Found ${comprehensiveFiles.length} comprehensive test files`
+      );
+
+    } catch (error) {
+      this.addResult(
+        'Test File Validation',
+        false,
+        `Error reading test directory: ${error.message}`
+      );
+    }
+  }
+
+  validateJestConfiguration() {
+    this.log('Validating Jest configuration...', 'info');
+    
+    try {
+      const jestConfig = require(path.resolve('jest.config.js'));
       
       // Check essential configuration
-      if (!jestConfig.testEnvironment) {
-        this.addWarning('testEnvironment not specified in Jest config');
-      } else {
-        this.addSuccess(`Jest test environment: ${jestConfig.testEnvironment}`);
-      }
+      const requiredConfig = {
+        testEnvironment: 'node',
+        testMatch: Array.isArray(jestConfig.testMatch) && jestConfig.testMatch.length > 0,
+        collectCoverageFrom: Array.isArray(jestConfig.collectCoverageFrom),
+        coverageThreshold: typeof jestConfig.coverageThreshold === 'object'
+      };
 
-      if (!jestConfig.setupFilesAfterEnv) {
-        this.addWarning('setupFilesAfterEnv not configured');
-      } else {
-        this.addSuccess('Jest setup files configured');
-      }
-
-      if (!jestConfig.collectCoverageFrom) {
-        this.addWarning('Coverage collection not configured');
-      } else {
-        this.addSuccess('Coverage collection configured');
-      }
-
-      if (!jestConfig.coverageThreshold) {
-        this.addWarning('Coverage thresholds not set');
-      } else {
-        this.addSuccess('Coverage thresholds configured');
-      }
+      Object.entries(requiredConfig).forEach(([key, expected]) => {
+        const actual = jestConfig[key];
+        const isValid = typeof expected === 'boolean' ? expected : actual === expected;
+        
+        this.addResult(
+          'Jest Configuration',
+          isValid,
+          isValid ? `${key} properly configured` : `${key} configuration issue`
+        );
+      });
 
     } catch (error) {
-      this.addIssue(`Error loading Jest config: ${error.message}`);
+      this.addResult(
+        'Jest Configuration',
+        false,
+        `Error loading Jest config: ${error.message}`
+      );
     }
   }
 
-  // Check test file syntax
-  validateTestFileSyntax() {
-    this.log('Validating test file syntax...');
+  validatePackageJson() {
+    this.log('Validating package.json test scripts...', 'info');
     
-    let syntaxErrors = 0;
-    let validFiles = 0;
-
-    this.testFiles.forEach(file => {
-      try {
-        const content = fs.readFileSync(file, 'utf8');
-        
-        // Basic syntax checks
-        if (!content.includes('describe(') && !content.includes('test(')) {
-          this.addWarning(`${file} may not contain valid test structure`);
-        }
-
-        // Check for common syntax issues
-        if (content.includes('import ') && content.includes('require(')) {
-          this.addWarning(`${file} mixes import and require statements`);
-        }
-
-        // Check for proper module exports
-        if (content.includes('module.exports') && content.includes('export ')) {
-          this.addWarning(`${file} mixes CommonJS and ES6 module syntax`);
-        }
-
-        validFiles++;
-      } catch (error) {
-        this.addIssue(`Syntax error in ${file}: ${error.message}`);
-        syntaxErrors++;
-      }
-    });
-
-    if (syntaxErrors === 0) {
-      this.addSuccess(`All ${validFiles} test files have valid syntax`);
-    } else {
-      this.addIssue(`${syntaxErrors} test files have syntax errors`);
-    }
-  }
-
-  // Check error suppression utilities
-  validateErrorSuppression() {
-    this.log('Validating error suppression utilities...');
-    
-    const errorSuppressionPath = path.join(process.cwd(), 'tests/utils/errorSuppression.js');
-    if (!fs.existsSync(errorSuppressionPath)) {
-      this.addIssue('Error suppression utility not found at tests/utils/errorSuppression.js');
-      return;
-    }
-
     try {
-      const { TestErrorSuppression } = require(errorSuppressionPath);
+      const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+      
+      const requiredScripts = [
+        'test',
+        'test:watch'
+      ];
+
+      requiredScripts.forEach(script => {
+        const exists = packageJson.scripts && packageJson.scripts[script];
+        this.addResult(
+          'Package Scripts',
+          exists,
+          exists ? `Script exists: ${script}` : `Missing script: ${script}`
+        );
+      });
+
+      // Check for Jest dependency
+      const hasJest = (packageJson.devDependencies && packageJson.devDependencies.jest) ||
+                     (packageJson.dependencies && packageJson.dependencies.jest);
+      
+      this.addResult(
+        'Jest Dependency',
+        hasJest,
+        hasJest ? 'Jest dependency found' : 'Jest dependency missing'
+      );
+
+    } catch (error) {
+      this.addResult(
+        'Package.json Validation',
+        false,
+        `Error reading package.json: ${error.message}`
+      );
+    }
+  }
+
+  validateErrorSuppressionUtility() {
+    this.log('Validating error suppression utility...', 'info');
+    
+    try {
+      const errorSuppressionPath = 'tests/utils/errorSuppression.js';
+      if (fs.existsSync(errorSuppressionPath)) {
+        const { testUtils, TestErrorSuppression } = require(path.resolve(errorSuppressionPath));
+        
+        // Check for required methods
+        const requiredMethods = [
+          'suppressErrorLogs',
+          'restoreErrorLogs',
+          'validateErrorResponse',
+          'validateSuccessResponse',
+          'createFreshGame'
+        ];
+
+        requiredMethods.forEach(method => {
+          const exists = typeof testUtils[method] === 'function';
+          this.addResult(
+            'Error Suppression Utility',
+            exists,
+            exists ? `Method exists: ${method}` : `Missing method: ${method}`
+          );
+        });
+
+        // Check TestErrorSuppression class
+        const hasClass = typeof TestErrorSuppression === 'function';
+        this.addResult(
+          'Error Suppression Class',
+          hasClass,
+          hasClass ? 'TestErrorSuppression class available' : 'TestErrorSuppression class missing'
+        );
+
+      } else {
+        this.addResult(
+          'Error Suppression Utility',
+          false,
+          'Error suppression utility file not found'
+        );
+      }
+    } catch (error) {
+      this.addResult(
+        'Error Suppression Utility',
+        false,
+        `Error loading error suppression utility: ${error.message}`
+      );
+    }
+  }
+
+  validateChessGameLogic() {
+    this.log('Validating chess game logic...', 'info');
+    
+    try {
+      const ChessGame = require(path.resolve('src/shared/chessGame.js'));
+      const game = new ChessGame();
       
       // Test basic functionality
-      const suppression = new TestErrorSuppression();
-      if (typeof suppression.suppressExpectedErrors === 'function' &&
-          typeof suppression.restoreConsoleError === 'function') {
-        this.addSuccess('Error suppression utility is functional');
-      } else {
-        this.addIssue('Error suppression utility missing required methods');
-      }
-    } catch (error) {
-      this.addIssue(`Error loading error suppression utility: ${error.message}`);
-    }
-  }
+      const initialState = game.getGameState();
+      this.addResult(
+        'Chess Game Logic',
+        initialState && typeof initialState === 'object',
+        'Chess game initializes correctly'
+      );
 
-  // Check test helpers and patterns
-  validateTestHelpers() {
-    this.log('Validating test helpers and patterns...');
-    
-    const helpersDir = path.join(process.cwd(), 'tests/helpers');
-    if (!fs.existsSync(helpersDir)) {
-      this.addWarning('Test helpers directory not found');
-      return;
-    }
-
-    const helperFiles = fs.readdirSync(helpersDir).filter(file => file.endsWith('.js'));
-    if (helperFiles.length === 0) {
-      this.addWarning('No test helper files found');
-    } else {
-      this.addSuccess(`Found ${helperFiles.length} test helper files`);
-    }
-
-    // Check for common helper files
-    const expectedHelpers = ['testData.js', 'testPatterns.js'];
-    expectedHelpers.forEach(helper => {
-      if (helperFiles.includes(helper)) {
-        this.addSuccess(`Found expected helper: ${helper}`);
-      } else {
-        this.addWarning(`Missing expected helper: ${helper}`);
-      }
-    });
-  }
-
-  // Check package.json test scripts
-  validateTestScripts() {
-    this.log('Validating package.json test scripts...');
-    
-    const packageJsonPath = path.join(process.cwd(), 'package.json');
-    if (!fs.existsSync(packageJsonPath)) {
-      this.addIssue('package.json not found');
-      return;
-    }
-
-    try {
-      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-      
-      if (!packageJson.scripts) {
-        this.addIssue('No scripts section in package.json');
-        return;
-      }
-
-      const expectedScripts = ['test', 'test:watch'];
-      expectedScripts.forEach(script => {
-        if (packageJson.scripts[script]) {
-          this.addSuccess(`Found test script: ${script}`);
-        } else {
-          this.addWarning(`Missing test script: ${script}`);
-        }
+      // Test move validation
+      const moveResult = game.makeMove({
+        from: { row: 6, col: 4 },
+        to: { row: 4, col: 4 }
       });
-
-      // Check if test script uses Jest
-      if (packageJson.scripts.test && packageJson.scripts.test.includes('jest')) {
-        this.addSuccess('Test script uses Jest');
-      } else {
-        this.addWarning('Test script may not be using Jest');
-      }
-
-    } catch (error) {
-      this.addIssue(`Error reading package.json: ${error.message}`);
-    }
-  }
-
-  // Check browser test runner
-  validateBrowserTestRunner() {
-    this.log('Validating browser test runner...');
-    
-    const browserTestPath = path.join(process.cwd(), 'public/test-runner.html');
-    if (!fs.existsSync(browserTestPath)) {
-      this.addIssue('Browser test runner not found at public/test-runner.html');
-      return;
-    }
-
-    try {
-      const content = fs.readFileSync(browserTestPath, 'utf8');
       
-      if (content.includes('<!DOCTYPE html>') && content.includes('<script')) {
-        this.addSuccess('Browser test runner appears to be valid HTML');
-      } else {
-        this.addWarning('Browser test runner may have structural issues');
-      }
-
-      // Check for test runner JavaScript
-      const testRunnerJsPath = path.join(process.cwd(), 'public/test-runner.js');
-      if (fs.existsSync(testRunnerJsPath)) {
-        this.addSuccess('Browser test runner JavaScript found');
-      } else {
-        this.addWarning('Browser test runner JavaScript not found');
-      }
+      this.addResult(
+        'Move Validation',
+        moveResult && typeof moveResult.success === 'boolean',
+        'Move validation returns structured response'
+      );
 
     } catch (error) {
-      this.addIssue(`Error reading browser test runner: ${error.message}`);
+      this.addResult(
+        'Chess Game Logic',
+        false,
+        `Error testing chess game logic: ${error.message}`
+      );
     }
   }
 
-  // Run a quick smoke test
-  runSmokeTest() {
-    this.log('Running smoke test...');
+  async validateTestExecution() {
+    this.log('Validating test execution (quick check)...', 'info');
     
     try {
-      // Try to run Jest with --listTests to see if it can discover tests
-      const output = execSync('npx jest --listTests --passWithNoTests', { 
+      // Run a quick test to check if Jest can execute
+      const result = execSync('npm test -- --testNamePattern="should initialize" --passWithNoTests', {
         encoding: 'utf8',
-        timeout: 10000 
+        timeout: 30000,
+        stdio: 'pipe'
       });
       
-      const testCount = output.split('\n').filter(line => line.includes('.test.js')).length;
-      this.addSuccess(`Jest can discover ${testCount} test files`);
+      this.addResult(
+        'Test Execution',
+        true,
+        'Jest can execute tests successfully'
+      );
       
     } catch (error) {
-      this.addIssue(`Jest smoke test failed: ${error.message}`);
+      this.addResult(
+        'Test Execution',
+        false,
+        `Test execution failed: ${error.message}`
+      );
     }
   }
 
-  // Generate validation report
+  validateCoverageConfiguration() {
+    this.log('Validating coverage configuration...', 'info');
+    
+    try {
+      const jestConfig = require(path.resolve('jest.config.js'));
+      
+      // Check coverage configuration
+      const hasCoverageConfig = jestConfig.collectCoverageFrom && 
+                               Array.isArray(jestConfig.collectCoverageFrom);
+      
+      this.addResult(
+        'Coverage Configuration',
+        hasCoverageConfig,
+        hasCoverageConfig ? 'Coverage collection configured' : 'Coverage configuration missing'
+      );
+
+      const hasThresholds = jestConfig.coverageThreshold && 
+                           jestConfig.coverageThreshold.global;
+      
+      this.addResult(
+        'Coverage Thresholds',
+        hasThresholds,
+        hasThresholds ? 'Coverage thresholds configured' : 'Coverage thresholds missing'
+      );
+
+    } catch (error) {
+      this.addResult(
+        'Coverage Configuration',
+        false,
+        `Error validating coverage config: ${error.message}`
+      );
+    }
+  }
+
   generateReport() {
-    this.log('\n=== TEST INFRASTRUCTURE VALIDATION REPORT ===');
+    this.log('\n=== TEST INFRASTRUCTURE VALIDATION REPORT ===', 'info');
     
-    console.log('\n📊 SUMMARY:');
-    console.log(`✓ Successes: ${this.successes.length}`);
-    console.log(`⚠ Warnings: ${this.warnings.length}`);
-    console.log(`✗ Issues: ${this.issues.length}`);
+    const totalTests = this.results.passed.length + this.results.failed.length;
+    const passRate = totalTests > 0 ? (this.results.passed.length / totalTests * 100).toFixed(1) : 0;
     
-    console.log('\n📁 TEST FILE CATEGORIES:');
-    Object.entries(this.testCategories).forEach(([category, files]) => {
-      if (files.length > 0) {
-        console.log(`  ${category}: ${files.length} files`);
-      }
-    });
+    console.log(`\n📊 Summary:`);
+    console.log(`   Total Validations: ${totalTests}`);
+    console.log(`   Passed: ${this.results.passed.length}`);
+    console.log(`   Failed: ${this.results.failed.length}`);
+    console.log(`   Warnings: ${this.results.warnings.length}`);
+    console.log(`   Pass Rate: ${passRate}%`);
 
-    if (this.issues.length > 0) {
-      console.log('\n🚨 CRITICAL ISSUES TO FIX:');
-      this.issues.forEach((issue, index) => {
-        console.log(`  ${index + 1}. ${issue}`);
+    if (this.results.failed.length > 0) {
+      console.log(`\n❌ Failed Validations:`);
+      this.results.failed.forEach(result => {
+        console.log(`   - ${result.test}: ${result.message}`);
       });
     }
 
-    if (this.warnings.length > 0) {
-      console.log('\n⚠️  WARNINGS TO CONSIDER:');
-      this.warnings.forEach((warning, index) => {
-        console.log(`  ${index + 1}. ${warning}`);
+    if (this.results.warnings.length > 0) {
+      console.log(`\n⚠️  Warnings:`);
+      this.results.warnings.forEach(result => {
+        console.log(`   - ${result.test}: ${result.message}`);
       });
     }
 
-    console.log('\n🎯 RECOMMENDATIONS:');
+    if (this.results.passed.length > 0) {
+      console.log(`\n✅ Passed Validations:`);
+      this.results.passed.forEach(result => {
+        console.log(`   - ${result.test}: ${result.message}`);
+      });
+    }
+
+    // Overall health assessment
+    const isHealthy = this.results.failed.length === 0;
+    const healthStatus = isHealthy ? '🟢 HEALTHY' : '🔴 NEEDS ATTENTION';
     
-    if (this.issues.length === 0) {
-      console.log('  ✓ Test infrastructure appears to be in good condition');
-      console.log('  ✓ Ready for continuous integration workflows');
-    } else {
-      console.log('  • Fix critical issues before running full test suite');
-      console.log('  • Review error suppression implementation');
-      console.log('  • Ensure all test files follow standardized patterns');
+    console.log(`\n🏥 Infrastructure Health: ${healthStatus}`);
+    
+    if (!isHealthy) {
+      console.log(`\n📋 Recommended Actions:`);
+      console.log(`   1. Review failed validations above`);
+      console.log(`   2. Consult TEST_TROUBLESHOOTING_GUIDE.md`);
+      console.log(`   3. Fix critical issues before running tests`);
+      console.log(`   4. Re-run this validation script after fixes`);
     }
 
-    if (this.warnings.length > 0) {
-      console.log('  • Address warnings to improve test reliability');
-      console.log('  • Consider adding missing helper utilities');
-    }
-
-    console.log('\n📚 NEXT STEPS:');
-    console.log('  1. Review TEST_MAINTENANCE_GUIDE.md for detailed patterns');
-    console.log('  2. Check TEST_TROUBLESHOOTING_GUIDE.md for issue resolution');
-    console.log('  3. Run individual test categories to isolate problems');
-    console.log('  4. Use npm test -- --testPathPattern=<pattern> for targeted testing');
-
-    return {
-      success: this.issues.length === 0,
-      issues: this.issues.length,
-      warnings: this.warnings.length,
-      testFiles: this.testFiles.length,
-      categories: this.testCategories
-    };
+    return isHealthy;
   }
 
-  // Main validation method
-  async validate() {
-    console.log('🔍 Starting Test Infrastructure Validation...\n');
+  async runAllValidations() {
+    this.log('Starting test infrastructure validation...', 'info');
     
-    this.discoverTestFiles();
-    this.validateJestConfig();
-    this.validateTestFileSyntax();
-    this.validateErrorSuppression();
-    this.validateTestHelpers();
-    this.validateTestScripts();
-    this.validateBrowserTestRunner();
-    this.runSmokeTest();
+    this.validateDirectoryStructure();
+    this.validateCoreFiles();
+    this.validateTestFiles();
+    this.validateJestConfiguration();
+    this.validatePackageJson();
+    this.validateErrorSuppressionUtility();
+    this.validateChessGameLogic();
+    this.validateCoverageConfiguration();
+    
+    // Test execution validation (optional, can be slow)
+    if (process.argv.includes('--include-execution-test')) {
+      await this.validateTestExecution();
+    } else {
+      this.addWarning(
+        'Test Execution',
+        'Skipped (use --include-execution-test to enable)'
+      );
+    }
     
     return this.generateReport();
   }
 }
 
-// Run validation if called directly
+// Main execution
 if (require.main === module) {
   const validator = new TestInfrastructureValidator();
-  validator.validate().then(result => {
-    process.exit(result.success ? 0 : 1);
-  }).catch(error => {
-    console.error('Validation failed:', error);
-    process.exit(1);
-  });
+  
+  validator.runAllValidations()
+    .then(isHealthy => {
+      process.exit(isHealthy ? 0 : 1);
+    })
+    .catch(error => {
+      console.error('❌ Validation script failed:', error.message);
+      process.exit(1);
+    });
 }
 
-module.exports = { TestInfrastructureValidator };
+module.exports = TestInfrastructureValidator;

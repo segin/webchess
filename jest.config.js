@@ -34,6 +34,8 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   verbose: true,
   collectCoverage: true,
+  // Add more detailed logging
+  silent: false,
   coverageThreshold: {
     global: coverageConfig.globalThresholds,
     // Specific thresholds for chess game logic modules

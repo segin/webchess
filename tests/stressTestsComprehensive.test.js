@@ -22,11 +22,11 @@ describe('Comprehensive Stress Tests', () => {
       for (let i = 0; i < moveCount; i++) {
         // Alternate between simple pawn moves
         if (i % 2 === 0) {
-          game.makeMove({ row: 6, col: 4 }, { row: 4, col: 4 });
-          game.makeMove({ row: 1, col: 4 }, { row: 3, col: 4 });
+          game.makeMove({ from: { row: 6, col: 4 }, to: { row: 4, col: 4 } });
+          game.makeMove({ from: { row: 1, col: 4 }, to: { row: 3, col: 4 } });
         } else {
-          game.makeMove({ row: 4, col: 4 }, { row: 6, col: 4 });
-          game.makeMove({ row: 3, col: 4 }, { row: 1, col: 4 });
+          game.makeMove({ from: { row: 4, col: 4 }, to: { row: 6, col: 4 } });
+          game.makeMove({ from: { row: 3, col: 4 }, to: { row: 1, col: 4 } });
         }
       }
       
@@ -47,10 +47,10 @@ describe('Comprehensive Stress Tests', () => {
       // Create many concurrent move validation requests
       for (let i = 0; i < concurrentRequests; i++) {
         const promise = new Promise((resolve) => {
-          const result = game.isValidMove(
-            { row: 6, col: 4 }, 
-            { row: 4, col: 4 }
-          );
+          const result = game.isValidMove({
+            from: { row: 6, col: 4 }, 
+            to: { row: 4, col: 4 }
+          });
           resolve(result);
         });
         promises.push(promise);
@@ -234,8 +234,8 @@ describe('Comprehensive Stress Tests', () => {
       
       // Make moves in all games simultaneously
       games.forEach(gameId => {
-        gameManager.makeMove(gameId, `player1_${gameId}`, { row: 6, col: 4 }, { row: 4, col: 4 });
-        gameManager.makeMove(gameId, `player2_${gameId}`, { row: 1, col: 4 }, { row: 3, col: 4 });
+        gameManager.makeMove(gameId, `player1_${gameId}`, { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } });
+        gameManager.makeMove(gameId, `player2_${gameId}`, { from: { row: 1, col: 4 }, to: { row: 3, col: 4 } });
       });
       
       const endTime = Date.now();
@@ -382,7 +382,7 @@ describe('Comprehensive Stress Tests', () => {
         }
         
         // Game should still function under memory pressure
-        const result = game.makeMove({ row: 6, col: 4 }, { row: 4, col: 4 });
+        const result = game.makeMove({ from: { row: 6, col: 4 }, to: { row: 4, col: 4 } });
         expect(result.success).toBe(true);
         
       } finally {
@@ -408,7 +408,7 @@ describe('Comprehensive Stress Tests', () => {
         // Mix of different operations
         switch (operationCount % 4) {
           case 0:
-            game.isValidMove({ row: 6, col: 4 }, { row: 4, col: 4 });
+            game.isValidMove({ from: { row: 6, col: 4 }, to: { row: 4, col: 4 } });
             break;
           case 1:
             game.getAllValidMoves('white');
