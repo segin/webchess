@@ -45,8 +45,8 @@ describe('Comprehensive Checkmate Detection System', () => {
       game.board[0][0] = { type: 'king', color: 'white' };
       
       // Black pieces delivering mate
-      game.board[1][2] = { type: 'queen', color: 'black' }; // Attacks king and controls escape squares
-      game.board[2][1] = { type: 'king', color: 'black' }; // Supports queen
+      game.board[0][2] = { type: 'queen', color: 'black' }; // Attacks king horizontally and controls escape squares
+      game.board[2][1] = { type: 'king', color: 'black' }; // Supports queen and controls escape squares
       
       game.currentTurn = 'white';
       
