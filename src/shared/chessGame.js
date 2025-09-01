@@ -80,7 +80,7 @@ class ChessGame {
     try {
       // Enhanced validation with detailed error reporting
       const validation = this.validateMove(move);
-      if (!validation.isValid) {
+      if (!validation.success) {
         // Return the full validation error structure from error handler
         return validation;
       }
