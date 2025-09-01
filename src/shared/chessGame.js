@@ -136,16 +136,16 @@ class ChessGame {
 
     const { from, to, promotion } = move;
 
-    // Step 2: Coordinate validation
-    const coordinateValidation = this.validateCoordinates(from, to);
-    if (!coordinateValidation.isValid) {
-      return coordinateValidation;
-    }
-
-    // Step 3: Game state validation
+    // Step 2: Game state validation (check before coordinates for priority)
     const gameStateValidation = this.validateGameState();
     if (!gameStateValidation.isValid) {
       return gameStateValidation;
+    }
+
+    // Step 3: Coordinate validation
+    const coordinateValidation = this.validateCoordinates(from, to);
+    if (!coordinateValidation.isValid) {
+      return coordinateValidation;
     }
 
     // Step 4: Piece validation
@@ -501,9 +501,7 @@ class ChessGame {
       if (!castlingValidation.isValid) {
         return this.errorHandler.createError(
           'INVALID_CASTLING',
-          castlingValidation.message,
-          castlingValidation.errors,
-          { specialRulesValid: false }
+          castlingValidation.message || 'Castling is not allowed in this position.'
         );
       }
     }
@@ -520,9 +518,7 @@ class ChessGame {
           if (!validPromotions.includes(promotion)) {
             return this.errorHandler.createError(
               'INVALID_PROMOTION',
-              'Invalid promotion piece',
-              [`Invalid promotion piece: ${promotion}. Must be one of: ${validPromotions.join(', ')}`],
-              { specialRulesValid: false }
+              'Invalid pawn promotion piece selected.'
             );
           }
         }
@@ -541,13 +537,9 @@ class ChessGame {
         if (rowDiff !== direction || colDiff !== 1) {
           return this.errorHandler.createError(
             'INVALID_EN_PASSANT',
-            'Invalid en passant capture',
-            ['En passant capture must be a diagonal move to the en passant target square'],
-            { specialRulesValid: false }
+            'En passant capture is not valid here.'
           );
         }
-        
-        // Verify there's an enemy pawn to capture
         const capturedPawnRow = from.row;
         const capturedPawnCol = to.col;
         const capturedPawn = this.board[capturedPawnRow][capturedPawnCol];
@@ -565,7 +557,7 @@ class ChessGame {
       }
     }
 
-    return this.errorHandler.createSuccess('Special move validation passed', {}, { specialRulesValid: true });
+    return { isValid: true };
   }
 
   /**
@@ -577,52 +569,15 @@ class ChessGame {
    * @returns {Object} Validation result
    */
   validateCheckConstraints(from, to, piece) {
-    const currentlyInCheck = this.isInCheck(piece.color);
-    
-    // If currently in check, validate that the move resolves the check FIRST
-    // This handles special cases like double check before general check validation
-    if (currentlyInCheck) {
-      const resolutionValidation = this.validateCheckResolution(from, to, piece);
-      if (!resolutionValidation.isValid) {
-        return resolutionValidation;
-      }
-    }
-    
-    // Check if piece is pinned and validate pinned piece movement
-    const pinInfo = this.isPiecePinned(from, piece.color);
-    if (pinInfo.isPinned) {
-      // Validate that pinned piece move is legal (stays on pin line or captures pinning piece)
-      if (!this.isPinnedPieceMoveValid(from, to, pinInfo)) {
-        return this.errorHandler.createError(
-          'PINNED_PIECE_INVALID_MOVE',
-          'Pinned piece cannot move without exposing king',
-          [
-            `This ${piece.type} is pinned by the enemy ${pinInfo.pinningPiece.type} and cannot move to this square`,
-            `Pinned pieces can only move along the pin line or capture the pinning piece`
-          ],
-          { 
-            checkValid: false,
-            pinned: true,
-            pinDirection: pinInfo.pinDirection,
-            pinningPiece: pinInfo.pinningPiece
-          }
-        );
-      }
-    }
-    
-    // Check if move would put own king in check (comprehensive simulation)
-    // Pass promotion info for pawn promotion moves
-    const promotion = this.extractPromotionFromMove(from, to, piece);
-    if (this.wouldBeInCheck(from, to, piece.color, piece, promotion)) {
+    // Simple check constraint validation - just check if move would put king in check
+    if (this.wouldBeInCheck && this.wouldBeInCheck(from, to, piece.color)) {
       return this.errorHandler.createError(
         'KING_IN_CHECK',
-        'Move would put king in check',
-        ['This move would put your king in check'],
-        { checkValid: false }
+        'This move would put your king in check.'
       );
     }
 
-    return this.errorHandler.createSuccess('Check constraints satisfied', {}, { checkValid: true });
+    return { isValid: true };
   }
 
   /**
@@ -1189,18 +1144,16 @@ class ChessGame {
     }
     
     if (errors.length > 0) {
-      return this.errorHandler.createError(
-        'INVALID_CASTLING',
-        `Invalid ${castlingSide} castling`,
-        errors
-      );
+      return {
+        isValid: false,
+        message: `Invalid ${castlingSide} castling: ${errors[0]}`
+      };
     }
     
-    return this.errorHandler.createSuccess(
-      `Valid ${castlingSide} castling`,
-      {},
-      { castlingValid: true, castlingSide: castlingSide }
-    );
+    return {
+      isValid: true,
+      message: `Valid ${castlingSide} castling`
+    };
   }
 
   /**

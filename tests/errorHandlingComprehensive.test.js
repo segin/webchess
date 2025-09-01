@@ -341,9 +341,13 @@ describe('Error Handling - Comprehensive Coverage', () => {
     });
 
     test('should handle castling while in check', () => {
-      // Clear path but put king in check
+      // Clear path for castling
       game.board[7][5] = null;
       game.board[7][6] = null;
+      
+      // Clear the path and put king in check with a rook
+      game.board[1][4] = null; // Remove black pawn
+      game.board[6][4] = null; // Remove white pawn
       game.board[0][4] = { type: 'rook', color: 'black' };
       
       const result = game.makeMove({ from: { row: 7, col: 4 }, to: { row: 7, col: 6 } });

@@ -90,7 +90,7 @@ class ChessErrorHandler {
       WRONG_TURN: "Not your turn",
       
       INVALID_MOVE: "This piece cannot move in that pattern.",
-      INVALID_MOVEMENT: "This piece cannot move in that pattern.",
+      INVALID_MOVEMENT: "Invalid movement pattern",
       UNKNOWN_PIECE_TYPE: "Unknown piece type encountered.",
       
       PATH_BLOCKED: "The path is blocked by other pieces.",
