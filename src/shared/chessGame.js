@@ -227,10 +227,7 @@ class ChessGame {
       if (!move || typeof move !== 'object') {
         return this.errorHandler.createError(
           'MALFORMED_MOVE',
-          null,
-          ['Move parameter is null, undefined, or not an object'],
-          { formatValid: false },
-          { move: move }
+          'Move must be an object'
         );
       }
 
@@ -261,21 +258,15 @@ class ChessGame {
       if (errors.length > 0) {
         return this.errorHandler.createError(
           'INVALID_FORMAT',
-          null,
-          errors,
-          { formatValid: false },
-          { move: move }
+          'Move format is incorrect. Check your move structure.'
         );
       }
 
-      return this.errorHandler.createSuccess('Move format is valid', {}, { formatValid: true });
+      return { isValid: true };
     } catch (error) {
       return this.errorHandler.createError(
         'SYSTEM_ERROR',
-        'Error during move format validation: ' + error.message,
-        [error.message],
-        { formatValid: false },
-        { move: move, error: error.stack }
+        'Error during move format validation: ' + error.message
       );
     }
   }
@@ -305,21 +296,15 @@ class ChessGame {
       if (errors.length > 0) {
         return this.errorHandler.createError(
           'INVALID_COORDINATES',
-          null,
-          errors,
-          { coordinatesValid: false },
-          { from: from, to: to }
+          'Invalid coordinates'
         );
       }
 
-      return this.errorHandler.createSuccess('Coordinates are valid', {}, { coordinatesValid: true });
+      return { isValid: true };
     } catch (error) {
       return this.errorHandler.createError(
         'SYSTEM_ERROR',
-        'Error during coordinate validation: ' + error.message,
-        [error.message],
-        { coordinatesValid: false },
-        { from: from, to: to, error: error.stack }
+        'Error during coordinate validation: ' + error.message
       );
     }
   }
@@ -333,21 +318,15 @@ class ChessGame {
       if (this.gameStatus !== 'active') {
         return this.errorHandler.createError(
           'GAME_NOT_ACTIVE',
-          null,
-          [`Game status is ${this.gameStatus}, moves are not allowed`],
-          { gameStateValid: false },
-          { currentStatus: this.gameStatus }
+          'Game is not active'
         );
       }
 
-      return this.errorHandler.createSuccess('Game state is valid', {}, { gameStateValid: true });
+      return { isValid: true };
     } catch (error) {
       return this.errorHandler.createError(
         'SYSTEM_ERROR',
-        'Error during game state validation: ' + error.message,
-        [error.message],
-        { gameStateValid: false },
-        { gameStatus: this.gameStatus, error: error.stack }
+        'Error during game state validation: ' + error.message
       );
     }
   }
@@ -364,32 +343,14 @@ class ChessGame {
       if (!piece) {
         return this.errorHandler.createError(
           'NO_PIECE',
-          null,
-          [`No piece found at square row ${from.row}, col ${from.col}`],
-          { pieceValid: false },
-          { from: from, boardSquare: piece }
+          'No piece at source square'
         );
       }
 
       if (!piece.type || !piece.color) {
-        // Attempt recovery for corrupted piece data
-        const recoveryResult = this.errorHandler.attemptRecovery('INVALID_PIECE', {
-          piece: piece,
-          position: from
-        });
-
-        if (recoveryResult.success) {
-          // Apply recovered piece data
-          this.board[from.row][from.col] = recoveryResult.recoveredData;
-          console.log('Recovered piece data:', recoveryResult.recoveredData);
-        }
-
         return this.errorHandler.createError(
           'INVALID_PIECE',
-          null,
-          ['Piece missing type or color information'],
-          { pieceValid: false, recovery: recoveryResult },
-          { from: from, piece: piece }
+          'Invalid piece data'
         );
       }
 
@@ -397,45 +358,24 @@ class ChessGame {
       const validColors = ['white', 'black'];
 
       if (!validTypes.includes(piece.type)) {
-        // Attempt recovery for invalid piece type
-        const recoveryResult = this.errorHandler.attemptRecovery('INVALID_PIECE_TYPE', {
-          piece: piece,
-          position: from
-        });
-
         return this.errorHandler.createError(
           'INVALID_PIECE_TYPE',
-          null,
-          [`Invalid piece type: ${piece.type}`],
-          { pieceValid: false, recovery: recoveryResult },
-          { from: from, piece: piece, validTypes: validTypes }
+          `Invalid piece type: ${piece.type}`
         );
       }
 
       if (!validColors.includes(piece.color)) {
-        // Attempt recovery for invalid piece color
-        const recoveryResult = this.errorHandler.attemptRecovery('INVALID_PIECE_COLOR', {
-          piece: piece,
-          position: from
-        });
-
         return this.errorHandler.createError(
           'INVALID_PIECE_COLOR',
-          null,
-          [`Invalid piece color: ${piece.color}`],
-          { pieceValid: false, recovery: recoveryResult },
-          { from: from, piece: piece, validColors: validColors }
+          `Invalid piece color: ${piece.color}`
         );
       }
 
-      return this.errorHandler.createSuccess('Piece is valid', { piece: piece }, { pieceValid: true });
+      return { isValid: true };
     } catch (error) {
       return this.errorHandler.createError(
         'SYSTEM_ERROR',
-        'Error during piece validation: ' + error.message,
-        [error.message],
-        { pieceValid: false },
-        { from: from, error: error.stack }
+        'Error during piece validation: ' + error.message
       );
     }
   }
@@ -450,25 +390,15 @@ class ChessGame {
       if (piece.color !== this.currentTurn) {
         return this.errorHandler.createError(
           'WRONG_TURN',
-          null,
-          [`It's ${this.currentTurn}'s turn, cannot move ${piece.color} piece`],
-          { turnValid: false },
-          { 
-            pieceColor: piece.color, 
-            currentTurn: this.currentTurn,
-            moveHistory: this.moveHistory.length 
-          }
+          'Not your turn'
         );
       }
 
-      return this.errorHandler.createSuccess('Turn is valid', {}, { turnValid: true });
+      return { isValid: true };
     } catch (error) {
       return this.errorHandler.createError(
         'SYSTEM_ERROR',
-        'Error during turn validation: ' + error.message,
-        [error.message],
-        { turnValid: false },
-        { piece: piece, currentTurn: this.currentTurn, error: error.stack }
+        'Error during turn validation: ' + error.message
       );
     }
   }
@@ -505,22 +435,18 @@ class ChessGame {
       default:
         return this.errorHandler.createError(
           'UNKNOWN_PIECE_TYPE',
-          'Unknown piece type',
-          [`Unknown piece type: ${piece.type}`],
-          { movementValid: false }
+          'Unknown piece type'
         );
     }
 
     if (!isValidMovement) {
       return this.errorHandler.createError(
         'INVALID_MOVEMENT',
-        `Invalid ${piece.type} movement`,
-        [`${piece.type} cannot move from row ${from.row}, col ${from.col} to row ${to.row}, col ${to.col}`],
-        { movementValid: false }
+        'This piece cannot move in that pattern.'
       );
     }
 
-    return this.errorHandler.createSuccess('Movement pattern is valid', {}, { movementValid: true });
+    return { isValid: true };
   }
 
   /**
@@ -533,13 +459,11 @@ class ChessGame {
     if (!this.isPathClear(from, to)) {
       return this.errorHandler.createError(
         'PATH_BLOCKED',
-        'Path is blocked',
-        ['There are pieces blocking the path between source and destination'],
-        { pathValid: false }
+        'The path is blocked by other pieces.'
       );
     }
 
-    return this.errorHandler.createSuccess('Path is clear', {}, { pathValid: true });
+    return { isValid: true };
   }
 
   /**
@@ -555,13 +479,11 @@ class ChessGame {
     if (target && target.color === piece.color) {
       return this.errorHandler.createError(
         'CAPTURE_OWN_PIECE',
-        'Cannot capture own piece',
-        [`Cannot capture your own ${target.type} at row ${to.row}, col ${to.col}`],
-        { captureValid: false }
+        'You cannot capture your own pieces.'
       );
     }
 
-    return this.errorHandler.createSuccess('Capture is valid', {}, { captureValid: true });
+    return { isValid: true };
   }
 
   /**
