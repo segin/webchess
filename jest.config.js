@@ -32,10 +32,14 @@ module.exports = {
     'lighthouse.config.js'
   ],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
-  verbose: true,
+  verbose: false,
   collectCoverage: true,
-  // Add more detailed logging
+  // Reduce console noise during tests
   silent: false,
+  // Use a quieter reporter
+  reporters: [
+    'default'
+  ],
   coverageThreshold: {
     global: coverageConfig.globalThresholds,
     // Specific thresholds for chess game logic modules

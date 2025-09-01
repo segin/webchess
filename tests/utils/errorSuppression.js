@@ -187,12 +187,15 @@ const testUtils = {
    * @param {Array<RegExp|string>} patterns - Optional patterns to match
    */
   suppressErrorLogs(patterns = [
+    // Critical and high severity errors
     /CRITICAL ERROR/,
     /HIGH SEVERITY ERROR/,
     /Recovery failed/,
     /Error in error creation/,
     /Simulated system error/,
     /Network error/,
+    
+    // Chess game specific errors
     /Invalid piece/,
     /Malformed move/,
     /Invalid coordinates/,
@@ -203,6 +206,8 @@ const testUtils = {
     /King in check/,
     /Invalid movement/,
     /System error/,
+    
+    // Error codes
     /MALFORMED_MOVE/,
     /INVALID_COORDINATES/,
     /NO_PIECE/,
@@ -214,17 +219,58 @@ const testUtils = {
     /CAPTURE_OWN_PIECE/,
     /INVALID_CASTLING/,
     /INVALID_MOVEMENT/,
+    /INVALID_FORMAT/,
+    /CHECK_NOT_RESOLVED/,
+    /PINNED_PIECE_INVALID_MOVE/,
+    /MUST_RESOLVE_CHECK/,
+    /GAME_NOT_ACTIVE/,
+    /SYSTEM_ERROR/,
+    /TEST_ERROR/,
+    /VALIDATION_ERROR/,
+    /EMPTY_SQUARE/,
+    
+    // Error messages with "Error:" prefix
     /Error: PATH_BLOCKED/,
     /Error: CAPTURE_OWN_PIECE/,
     /Error: WRONG_TURN/,
     /Error: INVALID_CASTLING/,
     /Error: INVALID_MOVEMENT/,
+    /Error: INVALID_FORMAT/,
+    /Error: NO_PIECE/,
+    /Error: SYSTEM_ERROR/,
+    /Error: TEST_ERROR/,
+    
+    // Descriptive error messages
     /Path is blocked/,
     /Cannot capture own piece/,
     /Not your turn/,
     /Invalid kingside castling/,
     /Invalid queenside castling/,
-    /Invalid pawn movement/
+    /Invalid pawn movement/,
+    /Invalid rook movement/,
+    /Invalid bishop movement/,
+    /Invalid knight movement/,
+    /Invalid queen movement/,
+    /Invalid king movement/,
+    /Move must be an object/,
+    /Move format is incorrect/,
+    /No piece at source square/,
+    /Invalid board coordinates/,
+    /Game is not active/,
+    /Test message/,
+    /Test success/,
+    
+    // Unknown error code warnings
+    /Unknown error code/,
+    
+    // Stack trace noise reduction
+    /at ChessErrorHandler/,
+    /at ChessGame/,
+    /at Object\./,
+    /at Array\.forEach/,
+    /src\/shared\/errorHandler\.js/,
+    /src\/shared\/chessGame\.js/,
+    /tests\//
   ]) {
     if (!globalSuppression) {
       globalSuppression = new TestErrorSuppression();
