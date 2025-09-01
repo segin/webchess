@@ -14,9 +14,7 @@ describe('Comprehensive Knight Movement', () => {
 
   describe('Basic Knight Movement Patterns', () => {
     test('should allow all 8 valid L-shaped moves from center position', () => {
-      // Place knight in center of board
-      game.board[4][4] = { type: 'knight', color: 'white' };
-      
+      // Test valid L-shaped moves from center position on a clear board
       const validMoves = [
         { row: 2, col: 3 }, // Up 2, Left 1
         { row: 2, col: 5 }, // Up 2, Right 1
@@ -30,6 +28,19 @@ describe('Comprehensive Knight Movement', () => {
       
       validMoves.forEach((to, index) => {
         const freshGame = testUtils.createFreshGame();
+        
+        // Clear the board to avoid conflicts with starting pieces
+        for (let row = 0; row < 8; row++) {
+          for (let col = 0; col < 8; col++) {
+            freshGame.board[row][col] = null;
+          }
+        }
+        
+        // Place kings to maintain valid game state
+        freshGame.board[0][4] = { type: 'king', color: 'black' };
+        freshGame.board[7][4] = { type: 'king', color: 'white' };
+        
+        // Place knight at center
         freshGame.board[4][4] = { type: 'knight', color: 'white' };
         
         const result = freshGame.makeMove({ from: { row: 4, col: 4 }, to });
@@ -64,9 +75,7 @@ describe('Comprehensive Knight Movement', () => {
     });
 
     test('should validate L-shaped pattern mathematically', () => {
-      game.board[4][4] = { type: 'knight', color: 'white' };
-      
-      // Test all possible moves within board bounds
+      // Test all possible moves within board bounds on a clear board
       for (let row = 0; row < 8; row++) {
         for (let col = 0; col < 8; col++) {
           if (row === 4 && col === 4) continue; // Skip starting position
@@ -76,6 +85,19 @@ describe('Comprehensive Knight Movement', () => {
           const isValidKnightMove = (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
           
           const freshGame = testUtils.createFreshGame();
+          
+          // Clear the board to avoid conflicts with starting pieces
+          for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+              freshGame.board[r][c] = null;
+            }
+          }
+          
+          // Place kings to maintain valid game state
+          freshGame.board[0][4] = { type: 'king', color: 'black' };
+          freshGame.board[7][4] = { type: 'king', color: 'white' };
+          
+          // Place knight at center
           freshGame.board[4][4] = { type: 'knight', color: 'white' };
           
           const result = freshGame.makeMove({ from: { row: 4, col: 4 }, to: { row, col } });
@@ -177,14 +199,7 @@ describe('Comprehensive Knight Movement', () => {
     });
 
     test('should jump over mixed pieces', () => {
-      // Place knight and surround with mixed pieces
-      game.board[4][4] = { type: 'knight', color: 'white' };
-      game.board[3][4] = { type: 'queen', color: 'white' };
-      game.board[4][3] = { type: 'rook', color: 'black' };
-      game.board[4][5] = { type: 'bishop', color: 'white' };
-      game.board[5][4] = { type: 'knight', color: 'black' };
-      
-      // Test multiple valid moves
+      // Test knight jumping over pieces on a clear board
       const validMoves = [
         { row: 2, col: 3 }, { row: 2, col: 5 },
         { row: 3, col: 2 }, { row: 3, col: 6 },
@@ -194,6 +209,19 @@ describe('Comprehensive Knight Movement', () => {
       
       validMoves.forEach(to => {
         const freshGame = testUtils.createFreshGame();
+        
+        // Clear the board to avoid conflicts with starting pieces
+        for (let row = 0; row < 8; row++) {
+          for (let col = 0; col < 8; col++) {
+            freshGame.board[row][col] = null;
+          }
+        }
+        
+        // Place kings to maintain valid game state
+        freshGame.board[0][4] = { type: 'king', color: 'black' };
+        freshGame.board[7][4] = { type: 'king', color: 'white' };
+        
+        // Place knight and surround with mixed pieces
         freshGame.board[4][4] = { type: 'knight', color: 'white' };
         freshGame.board[3][4] = { type: 'queen', color: 'white' };
         freshGame.board[4][3] = { type: 'rook', color: 'black' };
@@ -278,6 +306,19 @@ describe('Comprehensive Knight Movement', () => {
       
       cornerPositions.forEach(pos => {
         const freshGame = testUtils.createFreshGame();
+        
+        // Clear the board to avoid conflicts with starting pieces
+        for (let row = 0; row < 8; row++) {
+          for (let col = 0; col < 8; col++) {
+            freshGame.board[row][col] = null;
+          }
+        }
+        
+        // Place kings to maintain valid game state
+        freshGame.board[0][4] = { type: 'king', color: 'black' };
+        freshGame.board[7][4] = { type: 'king', color: 'white' };
+        
+        // Place knight at corner position
         freshGame.board[pos.row][pos.col] = { type: 'knight', color: 'white' };
         
         // Calculate all possible knight moves from this position
@@ -293,12 +334,29 @@ describe('Comprehensive Knight Movement', () => {
         ];
         
         possibleMoves.forEach(to => {
-          const result = freshGame.makeMove({ from: pos, to });
+          // Create a fresh game for each move
+          const moveGame = testUtils.createFreshGame();
+          
+          // Clear the board to avoid conflicts with starting pieces
+          for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+              moveGame.board[row][col] = null;
+            }
+          }
+          
+          // Place kings to maintain valid game state
+          moveGame.board[0][4] = { type: 'king', color: 'black' };
+          moveGame.board[7][4] = { type: 'king', color: 'white' };
+          
+          // Place knight at corner position
+          moveGame.board[pos.row][pos.col] = { type: 'knight', color: 'white' };
+          
+          const result = moveGame.makeMove({ from: pos, to });
           
           // Should succeed if destination is on board, fail if off board
           if (to.row >= 0 && to.row < 8 && to.col >= 0 && to.col < 8) {
             testUtils.validateSuccessResponse(result);
-            expect(freshGame.board[to.row][to.col]).toEqual({ type: 'knight', color: 'white' });
+            expect(moveGame.board[to.row][to.col]).toEqual({ type: 'knight', color: 'white' });
           } else {
             testUtils.validateErrorResponse(result);
           }
@@ -316,6 +374,19 @@ describe('Comprehensive Knight Movement', () => {
       
       edgePositions.forEach(pos => {
         const freshGame = testUtils.createFreshGame();
+        
+        // Clear the board to avoid conflicts with starting pieces
+        for (let row = 0; row < 8; row++) {
+          for (let col = 0; col < 8; col++) {
+            freshGame.board[row][col] = null;
+          }
+        }
+        
+        // Place kings to maintain valid game state
+        freshGame.board[0][4] = { type: 'king', color: 'black' };
+        freshGame.board[7][4] = { type: 'king', color: 'white' };
+        
+        // Place knight at edge position
         freshGame.board[pos.row][pos.col] = { type: 'knight', color: 'white' };
         
         // Test a few valid moves from each edge position
@@ -328,7 +399,24 @@ describe('Comprehensive Knight Movement', () => {
         
         possibleMoves.forEach(to => {
           if (to.row >= 0 && to.row < 8 && to.col >= 0 && to.col < 8) {
-            const result = freshGame.makeMove({ from: pos, to });
+            // Create a fresh game for each move
+            const moveGame = testUtils.createFreshGame();
+            
+            // Clear the board to avoid conflicts with starting pieces
+            for (let row = 0; row < 8; row++) {
+              for (let col = 0; col < 8; col++) {
+                moveGame.board[row][col] = null;
+              }
+            }
+            
+            // Place kings to maintain valid game state
+            moveGame.board[0][4] = { type: 'king', color: 'black' };
+            moveGame.board[7][4] = { type: 'king', color: 'white' };
+            
+            // Place knight at edge position
+            moveGame.board[pos.row][pos.col] = { type: 'knight', color: 'white' };
+            
+            const result = moveGame.makeMove({ from: pos, to });
             testUtils.validateSuccessResponse(result);
           }
         });
