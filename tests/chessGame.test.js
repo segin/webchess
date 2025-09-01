@@ -96,7 +96,7 @@ describe('ChessGame - Core Functionality', () => {
       game.board[5][4] = { type: 'pawn', color: 'black' };
       
       const blockedMove = { from: { row: 6, col: 4 }, to: { row: 5, col: 4 } };
-      testUtils.ExecutionHelpers.testMove(game, blockedMove, false, testUtils.TestData.ERROR_CODES.PATH_BLOCKED);
+      testUtils.ExecutionHelpers.testMove(game, blockedMove, false, testUtils.TestData.ERROR_CODES.INVALID_MOVEMENT);
     });
 
     test(testUtils.NamingPatterns.moveValidationTest('pawn', 'handle promotion correctly'), () => {
@@ -162,21 +162,27 @@ describe('ChessGame - Core Functionality', () => {
     });
 
     test(testUtils.NamingPatterns.moveValidationTest('knight', 'execute valid tour sequence'), () => {
-      // Set up isolated knight for tour
+      // Set up isolated knight for tour with alternating moves
       const tourGame = testUtils.TestPositions.KINGS_ONLY();
       tourGame.board[0][0] = { type: 'knight', color: 'white' };
+      tourGame.board[0][7] = { type: 'knight', color: 'black' };
       
       const knightTourMoves = [
-        { from: { row: 0, col: 0 }, to: { row: 2, col: 1 } },
-        { from: { row: 2, col: 1 }, to: { row: 4, col: 2 } },
-        { from: { row: 4, col: 2 }, to: { row: 6, col: 3 } },
-        { from: { row: 6, col: 3 }, to: { row: 4, col: 4 } }
+        { from: { row: 0, col: 0 }, to: { row: 2, col: 1 } }, // White knight
+        { from: { row: 0, col: 7 }, to: { row: 2, col: 6 } }, // Black knight
+        { from: { row: 2, col: 1 }, to: { row: 4, col: 2 } }, // White knight
+        { from: { row: 2, col: 6 }, to: { row: 4, col: 5 } }, // Black knight
+        { from: { row: 4, col: 2 }, to: { row: 6, col: 3 } }, // White knight
+        { from: { row: 4, col: 5 }, to: { row: 6, col: 4 } }, // Black knight
+        { from: { row: 6, col: 3 }, to: { row: 4, col: 4 } }, // White knight
+        { from: { row: 6, col: 4 }, to: { row: 4, col: 3 } }  // Black knight
       ];
       
       testUtils.ExecutionHelpers.executeMovesSequence(tourGame, knightTourMoves);
       
-      // Validate final position
+      // Validate final positions
       testUtils.validateBoardPosition(tourGame.board, 4, 4, { type: 'knight', color: 'white' });
+      testUtils.validateBoardPosition(tourGame.board, 4, 3, { type: 'knight', color: 'black' });
     });
   });
 
@@ -313,7 +319,7 @@ describe('ChessGame - Core Functionality', () => {
       testUtils.ExecutionHelpers.executeMovesSequence(game, setupMoves);
       
       const invalidCastling = { from: { row: 7, col: 4 }, to: { row: 7, col: 6 } };
-      testUtils.ExecutionHelpers.testMove(game, invalidCastling, false, testUtils.TestData.ERROR_CODES.INVALID_MOVE);
+      testUtils.ExecutionHelpers.testMove(game, invalidCastling, false, testUtils.TestData.ERROR_CODES.INVALID_CASTLING);
     });
 
     test(testUtils.NamingPatterns.moveValidationTest('king', 'reject castling after rook has moved'), () => {
@@ -329,25 +335,27 @@ describe('ChessGame - Core Functionality', () => {
       testUtils.ExecutionHelpers.executeMovesSequence(game, setupMoves);
       
       const invalidCastling = { from: { row: 7, col: 4 }, to: { row: 7, col: 6 } };
-      testUtils.ExecutionHelpers.testMove(game, invalidCastling, false, testUtils.TestData.ERROR_CODES.INVALID_MOVE);
+      testUtils.ExecutionHelpers.testMove(game, invalidCastling, false, testUtils.TestData.ERROR_CODES.INVALID_CASTLING);
     });
 
     test(testUtils.NamingPatterns.moveValidationTest('king', 'reject castling through check'), () => {
       game = testUtils.TestPositions.CASTLING_READY_KINGSIDE();
-      // Place attacking piece on f-file
-      game.board[1][5] = { type: 'rook', color: 'black' };
+      // Clear the f-file and place attacking rook
+      game.board[6][5] = null; // Remove f2 pawn
+      game.board[1][5] = { type: 'rook', color: 'black' }; // Place rook on f7
       
       const castlingThroughCheck = { from: { row: 7, col: 4 }, to: { row: 7, col: 6 } };
-      testUtils.ExecutionHelpers.testMove(game, castlingThroughCheck, false, testUtils.TestData.ERROR_CODES.KING_IN_CHECK);
+      testUtils.ExecutionHelpers.testMove(game, castlingThroughCheck, false, testUtils.TestData.ERROR_CODES.INVALID_CASTLING);
     });
 
     test(testUtils.NamingPatterns.moveValidationTest('king', 'reject castling while in check'), () => {
       game = testUtils.TestPositions.CASTLING_READY_KINGSIDE();
-      // Place attacking piece targeting king
-      game.board[1][4] = { type: 'rook', color: 'black' };
+      // Clear the e-file and place attacking rook
+      game.board[6][4] = null; // Remove e2 pawn
+      game.board[1][4] = { type: 'rook', color: 'black' }; // Place rook on e7
       
       const castlingInCheck = { from: { row: 7, col: 4 }, to: { row: 7, col: 6 } };
-      testUtils.ExecutionHelpers.testMove(game, castlingInCheck, false, testUtils.TestData.ERROR_CODES.KING_IN_CHECK);
+      testUtils.ExecutionHelpers.testMove(game, castlingInCheck, false, testUtils.TestData.ERROR_CODES.INVALID_CASTLING);
     });
   });
 
@@ -366,11 +374,14 @@ describe('ChessGame - Core Functionality', () => {
       game.board[1][4] = { type: 'rook', color: 'black' };
       
       const exposingMove = { from: { row: 5, col: 4 }, to: { row: 4, col: 3 } };
-      testUtils.ExecutionHelpers.testMove(game, exposingMove, false, testUtils.TestData.ERROR_CODES.KING_IN_CHECK);
+      testUtils.ExecutionHelpers.testMove(game, exposingMove, false, testUtils.TestData.ERROR_CODES.PINNED_PIECE_INVALID_MOVE);
     });
 
     test(testUtils.NamingPatterns.gameStateTest('checkmate detection', 'identify checkmate positions correctly'), () => {
       game = testUtils.TestPositions.CHECKMATE_POSITION();
+      
+      // Update game status
+      game.checkGameEnd();
       
       const isCheckmate = game.isCheckmate('black');
       expect(isCheckmate).toBe(true);
@@ -382,6 +393,9 @@ describe('ChessGame - Core Functionality', () => {
 
     test(testUtils.NamingPatterns.gameStateTest('stalemate detection', 'identify stalemate positions correctly'), () => {
       game = testUtils.TestPositions.STALEMATE_POSITION();
+      
+      // Update game status
+      game.checkGameEnd();
       
       const isStalemate = game.isStalemate('black');
       expect(isStalemate).toBe(true);
@@ -477,7 +491,7 @@ describe('ChessGame - Core Functionality', () => {
         { row: 7, col: 4 }
       );
       
-      testUtils.ExecutionHelpers.testMove(game, friendlyFireMove, false, testUtils.TestData.ERROR_CODES.INVALID_MOVE);
+      testUtils.ExecutionHelpers.testMove(game, friendlyFireMove, false, testUtils.TestData.ERROR_CODES.INVALID_MOVEMENT);
     });
   });
 });

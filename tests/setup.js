@@ -59,6 +59,11 @@ global.testUtils = {
     }
   },
   
+  // Create a fresh game instance
+  createFreshGame: () => {
+    return TestPositions.STARTING_POSITION();
+  },
+  
   // Helper to execute a sequence of moves
   executeMovesSequence: (game, moves, expectAllSuccess = true) => {
     return ExecutionHelpers.executeMovesSequence(game, moves, expectAllSuccess);

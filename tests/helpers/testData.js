@@ -74,13 +74,12 @@ const TestPositions = {
         const game = new ChessGame();
         game.board = Array(8).fill(null).map(() => Array(8).fill(null));
         // Black king trapped on back rank
-        game.board[0][4] = { type: 'king', color: 'black' };
-        game.board[0][3] = { type: 'pawn', color: 'black' };
-        game.board[0][5] = { type: 'pawn', color: 'black' };
-        game.board[1][3] = { type: 'pawn', color: 'black' };
-        game.board[1][4] = { type: 'pawn', color: 'black' };
+        game.board[0][6] = { type: 'king', color: 'black' };
+        // Black pawns blocking escape
         game.board[1][5] = { type: 'pawn', color: 'black' };
-        // White rook delivering checkmate
+        game.board[1][6] = { type: 'pawn', color: 'black' };
+        game.board[1][7] = { type: 'pawn', color: 'black' };
+        // White rook delivering checkmate on back rank
         game.board[0][0] = { type: 'rook', color: 'white' };
         // White king
         game.board[7][4] = { type: 'king', color: 'white' };
@@ -215,7 +214,9 @@ const TestData = {
         WRONG_TURN: 'WRONG_TURN',
         INVALID_MOVE: 'INVALID_MOVE',
         INVALID_MOVEMENT: 'INVALID_MOVEMENT',
+        INVALID_CASTLING: 'INVALID_CASTLING',
         KING_IN_CHECK: 'KING_IN_CHECK',
+        PINNED_PIECE_INVALID_MOVE: 'PINNED_PIECE_INVALID_MOVE',
         PATH_BLOCKED: 'PATH_BLOCKED',
         GAME_OVER: 'GAME_OVER'
     }
