@@ -182,12 +182,12 @@ describe('Error Handling - Comprehensive Coverage', () => {
     test('should handle invalid knight movements', () => {
       // Clear some squares first to avoid capture issues
       game.board[5][1] = null; // Clear destination squares
-      game.board[6][3] = null;
+      game.board[6][2] = null;
       game.board[4][4] = null;
       
       const invalidKnightMoves = [
         { from: { row: 7, col: 1 }, to: { row: 5, col: 1 } }, // Straight (not L-shape)
-        { from: { row: 7, col: 1 }, to: { row: 6, col: 3 } }, // Not L-shape
+        { from: { row: 7, col: 1 }, to: { row: 6, col: 2 } }, // Diagonal (not L-shape)
         { from: { row: 7, col: 1 }, to: { row: 4, col: 4 } }  // Too far
       ];
 
