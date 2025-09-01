@@ -569,7 +569,20 @@ class ChessGame {
    * @returns {Object} Validation result
    */
   validateCheckConstraints(from, to, piece) {
-    // Simple check constraint validation - just check if move would put king in check
+    // Check if the piece is pinned
+    const pinInfo = this.isPiecePinned(from, piece.color);
+    
+    if (pinInfo.isPinned) {
+      // Check if the pinned piece move is valid
+      if (!this.isPinnedPieceMoveValid(from, to, pinInfo)) {
+        return this.errorHandler.createError(
+          'PINNED_PIECE_INVALID_MOVE',
+          'This piece is pinned and cannot move there.'
+        );
+      }
+    }
+    
+    // General check constraint validation - check if move would put king in check
     if (this.wouldBeInCheck && this.wouldBeInCheck(from, to, piece.color)) {
       return this.errorHandler.createError(
         'KING_IN_CHECK',
