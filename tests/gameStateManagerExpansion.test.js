@@ -63,9 +63,8 @@ describe('Game State Manager - Under-Tested Functions Coverage', () => {
         moveHistory: []
       };
 
-      const validation = stateManager.validateCastlingRightsConsistency(gameState);
-      expect(validation).toHaveProperty('isValid');
-      expect(validation).toHaveProperty('issues');
+      const validation = stateManager.validateCastlingRightsConsistency(gameState.board, gameState.castlingRights);
+      expect(typeof validation).toBe('boolean');
     });
 
     test('should test validateEnPassantConsistency function', () => {
@@ -82,8 +81,21 @@ describe('Game State Manager - Under-Tested Functions Coverage', () => {
 
   describe('State Tracking Functions', () => {
     test('should test trackStateChange function', () => {
-      const oldState = { currentTurn: 'white', moveHistory: [] };
-      const newState = { currentTurn: 'black', moveHistory: [{ from: { row: 6, col: 4 }, to: { row: 4, col: 4 } }] };
+      const game = new ChessGame();
+      const oldState = { 
+        board: game.board,
+        currentTurn: 'white', 
+        castlingRights: game.castlingRights,
+        enPassantTarget: null,
+        moveHistory: [] 
+      };
+      const newState = { 
+        board: game.board,
+        currentTurn: 'black', 
+        castlingRights: game.castlingRights,
+        enPassantTarget: null,
+        moveHistory: [{ from: { row: 6, col: 4 }, to: { row: 4, col: 4 } }] 
+      };
 
       expect(() => {
         stateManager.trackStateChange(oldState, newState);
