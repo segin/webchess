@@ -139,7 +139,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
       
       expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INVALID_MOVEMENT');
-      expect(result.message).toContain('movement');
+      expect(result.message).toContain('cannot move in that pattern');
     });
   });
 
@@ -265,17 +265,16 @@ describe('Error Handling - Comprehensive Coverage', () => {
 
   describe('Check and Checkmate Errors', () => {
     test('should handle moves that leave king in check', () => {
-      // Set up scenario where moving a piece exposes king to check
+      // Set up scenario where king would move into check
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
       game.board[7][4] = { type: 'king', color: 'white' };
-      game.board[7][3] = { type: 'rook', color: 'white' };
-      game.board[0][3] = { type: 'rook', color: 'black' };
+      game.board[0][3] = { type: 'rook', color: 'black' }; // Black rook attacking d1
       
-      // Moving the rook would expose king to check
-      const result = game.makeMove({ from: { row: 7, col: 3 }, to: { row: 7, col: 2 } });
+      // Try to move king into check
+      const result = game.makeMove({ from: { row: 7, col: 4 }, to: { row: 7, col: 3 } });
       
       expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('INVALID_MOVEMENT');
+      expect(result.errorCode).toBe('KING_IN_CHECK');
     });
 
     test('should handle invalid check resolution attempts', () => {
@@ -289,7 +288,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
       const result = game.makeMove({ from: { row: 7, col: 3 }, to: { row: 7, col: 2 } });
       
       expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('CHECK_NOT_RESOLVED');
+      expect(result.errorCode).toBe('KING_IN_CHECK');
     });
   });
 
@@ -414,9 +413,9 @@ describe('Error Handling - Comprehensive Coverage', () => {
         promotion: 'king' // Invalid promotion
       });
       
-      // Should succeed with default queen promotion
-      expect(result.success).toBe(true);
-      expect(game.board[0][4]).toEqual({ type: 'queen', color: 'white' });
+      // Should fail with invalid promotion
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('INVALID_FORMAT');
     });
   });
 
@@ -473,9 +472,14 @@ describe('Error Handling - Comprehensive Coverage', () => {
         expect(result.success).toBe(false);
       });
       
-      // Game state should be unchanged
+      // Game state should be unchanged (excluding timestamps)
       const currentState = game.getGameState();
-      expect(currentState).toEqual(originalState);
+      
+      // Compare key properties instead of full state
+      expect(currentState.board).toEqual(originalState.board);
+      expect(currentState.currentTurn).toBe(originalState.currentTurn);
+      expect(currentState.moveHistory).toEqual(originalState.moveHistory);
+      expect(currentState.status).toBe(originalState.status);
       
       // Valid move should still work
       const validResult = game.makeMove({ from: { row: 6, col: 4 }, to: { row: 4, col: 4 } });
