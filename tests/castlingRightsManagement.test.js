@@ -200,18 +200,18 @@ describe('Castling Rights Management System', () => {
     test('should validate castling rights for specific sides', () => {
       // Test initial state
       const whiteKingsideValidation = game.validateCastlingRightsForSide('white', 'kingside');
-      expect(whiteKingsideValidation.isValid).toBe(true);
-      expect(whiteKingsideValidation.hasRights).toBe(true);
-      expect(whiteKingsideValidation.kingInPosition).toBe(true);
-      expect(whiteKingsideValidation.rookInPosition).toBe(true);
+      expect(whiteKingsideValidation.success).toBe(true);
+      expect(whiteKingsideValidation.data.hasRights).toBe(true);
+      expect(whiteKingsideValidation.data.kingInPosition).toBe(true);
+      expect(whiteKingsideValidation.data.rookInPosition).toBe(true);
       
       // Move king and test again
       game.board[7][5] = null;
       game.makeMove({ from: { row: 7, col: 4 }, to: { row: 7, col: 5 } });
       
       const whiteKingsideAfterKingMove = game.validateCastlingRightsForSide('white', 'kingside');
-      expect(whiteKingsideAfterKingMove.isValid).toBe(false);
-      expect(whiteKingsideAfterKingMove.hasRights).toBe(false);
+      expect(whiteKingsideAfterKingMove.success).toBe(false);
+      expect(whiteKingsideAfterKingMove.errorCode).toBe('INVALID_CASTLING');
     });
 
     test('should get comprehensive castling rights status', () => {
@@ -222,10 +222,10 @@ describe('Castling Rights Management System', () => {
       expect(status.black.kingside.hasRights).toBe(true);
       expect(status.black.queenside.hasRights).toBe(true);
       
-      expect(status.white.kingside.validation.isValid).toBe(true);
-      expect(status.white.queenside.validation.isValid).toBe(true);
-      expect(status.black.kingside.validation.isValid).toBe(true);
-      expect(status.black.queenside.validation.isValid).toBe(true);
+      expect(status.white.kingside.validation.success).toBe(true);
+      expect(status.white.queenside.validation.success).toBe(true);
+      expect(status.black.kingside.validation.success).toBe(true);
+      expect(status.black.queenside.validation.success).toBe(true);
     });
   });
 
