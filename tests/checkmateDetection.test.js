@@ -342,14 +342,14 @@ describe('Comprehensive Checkmate Detection System', () => {
       // Set up clear checkmate position
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
       
-      // White king trapped and in check
-      game.board[7][7] = { type: 'king', color: 'white' };
-      game.board[6][6] = { type: 'pawn', color: 'white' }; // Blocks escape
-      game.board[6][7] = { type: 'pawn', color: 'white' }; // Blocks escape
-      game.board[7][6] = { type: 'pawn', color: 'white' }; // Blocks escape
+      // White king trapped on back rank
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[6][3] = { type: 'pawn', color: 'white' }; // Blocks escape
+      game.board[6][4] = { type: 'pawn', color: 'white' }; // Blocks escape  
+      game.board[6][5] = { type: 'pawn', color: 'white' }; // Blocks escape
       
-      // Black queen delivering check
-      game.board[5][7] = { type: 'queen', color: 'black' }; // Attacks king
+      // Black queen delivering checkmate on back rank
+      game.board[7][0] = { type: 'queen', color: 'black' }; // Attacks along rank 7
       
       // Black king
       game.board[0][0] = { type: 'king', color: 'black' };
@@ -420,14 +420,14 @@ describe('Comprehensive Checkmate Detection System', () => {
       // Set up true checkmate position
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
       
-      // White king trapped
-      game.board[7][7] = { type: 'king', color: 'white' };
-      game.board[6][6] = { type: 'pawn', color: 'white' };
-      game.board[6][7] = { type: 'pawn', color: 'white' };
-      game.board[7][6] = { type: 'pawn', color: 'white' };
+      // White king trapped on back rank
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[6][3] = { type: 'pawn', color: 'white' }; // Blocks escape
+      game.board[6][4] = { type: 'pawn', color: 'white' }; // Blocks escape  
+      game.board[6][5] = { type: 'pawn', color: 'white' }; // Blocks escape
       
-      // Black queen delivering mate
-      game.board[5][7] = { type: 'queen', color: 'black' };
+      // Black queen delivering checkmate on back rank
+      game.board[7][0] = { type: 'queen', color: 'black' }; // Attacks along rank 7
       
       // Black king
       game.board[0][0] = { type: 'king', color: 'black' };
@@ -446,14 +446,14 @@ describe('Comprehensive Checkmate Detection System', () => {
       // Set up checkmate scenario
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
       
-      // White king in checkmate
-      game.board[7][7] = { type: 'king', color: 'white' };
-      game.board[6][6] = { type: 'pawn', color: 'white' };
-      game.board[6][7] = { type: 'pawn', color: 'white' };
-      game.board[7][6] = { type: 'pawn', color: 'white' };
+      // White king trapped on back rank
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[6][3] = { type: 'pawn', color: 'white' }; // Blocks escape
+      game.board[6][4] = { type: 'pawn', color: 'white' }; // Blocks escape  
+      game.board[6][5] = { type: 'pawn', color: 'white' }; // Blocks escape
       
-      // Black queen delivering mate
-      game.board[5][7] = { type: 'queen', color: 'black' };
+      // Black queen delivering checkmate on back rank
+      game.board[7][0] = { type: 'queen', color: 'black' }; // Attacks along rank 7
       
       // Black king
       game.board[0][0] = { type: 'king', color: 'black' };
@@ -478,14 +478,14 @@ describe('Comprehensive Checkmate Detection System', () => {
       // Set up checkmate scenario for black
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
       
-      // Black king in checkmate
-      game.board[0][0] = { type: 'king', color: 'black' };
-      game.board[1][1] = { type: 'pawn', color: 'black' };
-      game.board[1][0] = { type: 'pawn', color: 'black' };
-      game.board[0][1] = { type: 'pawn', color: 'black' };
+      // Black king trapped on back rank
+      game.board[0][4] = { type: 'king', color: 'black' };
+      game.board[1][3] = { type: 'pawn', color: 'black' }; // Blocks escape
+      game.board[1][4] = { type: 'pawn', color: 'black' }; // Blocks escape  
+      game.board[1][5] = { type: 'pawn', color: 'black' }; // Blocks escape
       
-      // White queen delivering mate
-      game.board[2][0] = { type: 'queen', color: 'white' };
+      // White queen delivering checkmate on back rank
+      game.board[0][0] = { type: 'queen', color: 'white' }; // Attacks along rank 0
       
       // White king
       game.board[7][7] = { type: 'king', color: 'white' };
@@ -510,14 +510,14 @@ describe('Comprehensive Checkmate Detection System', () => {
       // Set up checkmate scenario
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
       
-      // White king in checkmate
-      game.board[7][7] = { type: 'king', color: 'white' };
-      game.board[6][6] = { type: 'pawn', color: 'white' };
-      game.board[6][7] = { type: 'pawn', color: 'white' };
-      game.board[7][6] = { type: 'pawn', color: 'white' };
+      // White king trapped on back rank
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[6][3] = { type: 'pawn', color: 'white' }; // Blocks escape
+      game.board[6][4] = { type: 'pawn', color: 'white' }; // Blocks escape  
+      game.board[6][5] = { type: 'pawn', color: 'white' }; // Blocks escape
       
-      // Black queen delivering mate
-      game.board[5][7] = { type: 'queen', color: 'black' };
+      // Black queen delivering checkmate on back rank
+      game.board[7][0] = { type: 'queen', color: 'black' }; // Attacks along rank 7
       
       // Black king
       game.board[0][0] = { type: 'king', color: 'black' };
@@ -527,8 +527,8 @@ describe('Comprehensive Checkmate Detection System', () => {
       
       // Attempt to make a move after checkmate
       const moveResult = game.makeMove({
-        from: { row: 7, col: 7 },
-        to: { row: 6, col: 7 }
+        from: { row: 7, col: 4 },
+        to: { row: 7, col: 3 }
       });
       
       expect(moveResult.success).toBe(false);
