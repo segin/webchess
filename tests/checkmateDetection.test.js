@@ -139,17 +139,18 @@ describe('Comprehensive Checkmate Detection System', () => {
 
   describe('Checkmate Detection with Different Pieces', () => {
     test('should detect knight checkmate', () => {
-      // Set up knight checkmate scenario
+      // Set up knight checkmate scenario - back rank mate with knight
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
       
-      // White king in corner with limited escape
-      game.board[7][7] = { type: 'king', color: 'white' };
-      game.board[6][6] = { type: 'pawn', color: 'white' }; // Blocks escape
-      game.board[6][7] = { type: 'pawn', color: 'white' }; // Blocks escape
-      game.board[7][6] = { type: 'pawn', color: 'white' }; // Blocks escape
+      // White king trapped on back rank
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[6][3] = { type: 'pawn', color: 'white' }; // Blocks escape
+      game.board[6][4] = { type: 'pawn', color: 'white' }; // Blocks escape  
+      game.board[6][5] = { type: 'pawn', color: 'white' }; // Blocks escape
       
-      // Black knight delivering checkmate (L-shaped attack)
-      game.board[5][6] = { type: 'knight', color: 'black' }; // Attacks (7,7)
+      // Black knight delivering checkmate
+      game.board[5][3] = { type: 'knight', color: 'black' }; // Attacks king at (7,4) - L-shape (2,1)
+      game.board[5][6] = { type: 'rook', color: 'black' }; // Controls escape squares
       
       // Black king
       game.board[0][0] = { type: 'king', color: 'black' };
