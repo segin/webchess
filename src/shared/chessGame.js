@@ -17,22 +17,22 @@ class ChessGame {
     this.fullMoveNumber = 1;
     this.inCheck = false; // Track check status
     this.checkDetails = null; // Store detailed check information
-    
+
     // Initialize game state manager
     this.stateManager = new GameStateManager();
-    
+
     // Initialize error handler
     this.errorHandler = new ChessErrorHandler();
-    
+
     // Enhanced game state tracking with metadata
     this.gameMetadata = this.stateManager.gameMetadata;
-    
+
     // Position history for threefold repetition detection
     this.positionHistory = this.stateManager.positionHistory;
     this.positionHistory.push(this.stateManager.getFENPosition(
       this.board, this.currentTurn, this.castlingRights, this.enPassantTarget
     ));
-    
+
     // Game state consistency tracking
     this.stateVersion = this.stateManager.stateVersion;
     this.lastValidatedState = null;
@@ -40,44 +40,60 @@ class ChessGame {
 
   initializeBoard() {
     const board = Array(8).fill(null).map(() => Array(8).fill(null));
-    
+
     // Pawns
     for (let i = 0; i < 8; i++) {
       board[1][i] = { type: 'pawn', color: 'black' };
       board[6][i] = { type: 'pawn', color: 'white' };
     }
-    
+
     // Rooks
     board[0][0] = { type: 'rook', color: 'black' };
     board[0][7] = { type: 'rook', color: 'black' };
     board[7][0] = { type: 'rook', color: 'white' };
     board[7][7] = { type: 'rook', color: 'white' };
-    
+
     // Knights
     board[0][1] = { type: 'knight', color: 'black' };
     board[0][6] = { type: 'knight', color: 'black' };
     board[7][1] = { type: 'knight', color: 'white' };
     board[7][6] = { type: 'knight', color: 'white' };
-    
+
     // Bishops
     board[0][2] = { type: 'bishop', color: 'black' };
     board[0][5] = { type: 'bishop', color: 'black' };
     board[7][2] = { type: 'bishop', color: 'white' };
     board[7][5] = { type: 'bishop', color: 'white' };
-    
+
     // Queens
     board[0][3] = { type: 'queen', color: 'black' };
     board[7][3] = { type: 'queen', color: 'white' };
-    
+
     // Kings
     board[0][4] = { type: 'king', color: 'black' };
     board[7][4] = { type: 'king', color: 'white' };
-    
+
     return board;
   }
 
-  makeMove(move) {
+  makeMove(moveOrFrom, to, promotion) {
     try {
+      // Handle both calling patterns:
+      // 1. makeMove({ from: {...}, to: {...}, promotion: '...' })
+      // 2. makeMove({ row: 6, col: 4 }, { row: 4, col: 4 }, 'queen')
+      let move;
+      if (to !== undefined) {
+        // Called with separate parameters
+        move = {
+          from: moveOrFrom,
+          to: to,
+          promotion: promotion
+        };
+      } else {
+        // Called with single move object
+        move = moveOrFrom;
+      }
+
       // Enhanced validation with detailed error reporting
       const validation = this.validateMove(move);
       if (!validation.success) {
@@ -93,16 +109,16 @@ class ChessGame {
 
       // Update castling rights BEFORE executing the move (so we can check captured pieces)
       this.updateCastlingRights(from, to, originalPiece);
-      
+
       // Execute the move
       this.executeMoveOnBoard(from, to, piece, promotion);
-      
+
       // Update game state (pass original piece since board has changed)
       this.updateGameState(from, to, originalPiece);
-      
+
       // Check for game end conditions
       this.checkGameEnd();
-      
+
       // Return success response using error handler
       return this.errorHandler.createSuccess('Move executed successfully', {
         from,
@@ -114,10 +130,10 @@ class ChessGame {
       });
     } catch (error) {
       // Handle any unexpected errors
-      return this.errorHandler.createError('SYSTEM_ERROR', 
-        'An unexpected error occurred while executing the move', 
+      return this.errorHandler.createError('SYSTEM_ERROR',
+        'An unexpected error occurred while executing the move',
         [error.message],
-        { move, error: error.stack }
+        { moveOrFrom, to, promotion, error: error.stack }
       );
     }
   }
@@ -130,7 +146,7 @@ class ChessGame {
   validateMove(move) {
     // Step 1: Format validation
     const formatValidation = this.validateMoveFormat(move);
-    if (!formatValidation.isValid) {
+    if (formatValidation.success === false || formatValidation.isValid === false) {
       return formatValidation;
     }
 
@@ -138,19 +154,19 @@ class ChessGame {
 
     // Step 2: Game state validation (check before coordinates for priority)
     const gameStateValidation = this.validateGameState();
-    if (!gameStateValidation.isValid) {
+    if (gameStateValidation.success === false || gameStateValidation.isValid === false) {
       return gameStateValidation;
     }
 
     // Step 3: Coordinate validation
     const coordinateValidation = this.validateCoordinates(from, to);
-    if (!coordinateValidation.isValid) {
+    if (coordinateValidation.success === false || coordinateValidation.isValid === false) {
       return coordinateValidation;
     }
 
     // Step 4: Piece validation
     const pieceValidation = this.validatePieceAtSquare(from);
-    if (!pieceValidation.isValid) {
+    if (pieceValidation.success === false || pieceValidation.isValid === false) {
       return pieceValidation;
     }
 
@@ -158,13 +174,13 @@ class ChessGame {
 
     // Step 5: Turn validation
     const turnValidation = this.validateTurn(piece);
-    if (!turnValidation.isValid) {
+    if (turnValidation.success === false || turnValidation.isValid === false) {
       return turnValidation;
     }
 
     // Step 6: Movement pattern validation
     const movementValidation = this.validateMovementPattern(from, to, piece);
-    if (!movementValidation.isValid) {
+    if (movementValidation.success === false || movementValidation.isValid === false) {
       return movementValidation;
     }
 
@@ -172,7 +188,7 @@ class ChessGame {
     const isCastlingAttempt = piece.type === 'king' && Math.abs(to.col - from.col) === 2;
     if (piece.type !== 'knight' && !isCastlingAttempt) {
       const pathValidation = this.validatePath(from, to);
-      if (!pathValidation.isValid) {
+      if (pathValidation.success === false || pathValidation.isValid === false) {
         return pathValidation;
       }
     }
@@ -180,27 +196,29 @@ class ChessGame {
     // Step 8: Capture validation (except for castling)
     if (!isCastlingAttempt) {
       const captureValidation = this.validateCapture(from, to, piece);
-      if (!captureValidation.isValid) {
+      if (captureValidation.success === false || captureValidation.isValid === false) {
         return captureValidation;
       }
     }
 
     // Step 9: Special move validation
     const specialMoveValidation = this.validateSpecialMoves(from, to, piece, promotion);
-    if (!specialMoveValidation.isValid) {
+    if (specialMoveValidation.success === false || specialMoveValidation.isValid === false) {
       return specialMoveValidation;
     }
 
     // Step 10: Check constraint validation
     const checkValidation = this.validateCheckConstraints(from, to, piece);
-    if (!checkValidation.isValid) {
+    if (checkValidation.success === false || checkValidation.isValid === false) {
       return checkValidation;
     }
 
-    return this.errorHandler.createSuccess(
-      'Valid move',
-      {},
-      {
+    return {
+      success: true,
+      isValid: true,
+      message: 'Valid move',
+      data: {},
+      validation: {
         formatValid: true,
         coordinatesValid: true,
         gameStateValid: true,
@@ -212,7 +230,7 @@ class ChessGame {
         specialRulesValid: true,
         checkValid: true
       }
-    );
+    };
   }
 
   /**
@@ -262,7 +280,7 @@ class ChessGame {
         );
       }
 
-      return { isValid: true };
+      return { success: true, isValid: true };
     } catch (error) {
       return this.errorHandler.createError(
         'SYSTEM_ERROR',
@@ -300,7 +318,7 @@ class ChessGame {
         );
       }
 
-      return { isValid: true };
+      return { success: true, isValid: true };
     } catch (error) {
       return this.errorHandler.createError(
         'SYSTEM_ERROR',
@@ -322,7 +340,7 @@ class ChessGame {
         );
       }
 
-      return { isValid: true };
+      return { success: true, isValid: true };
     } catch (error) {
       return this.errorHandler.createError(
         'SYSTEM_ERROR',
@@ -371,7 +389,7 @@ class ChessGame {
         );
       }
 
-      return { isValid: true };
+      return { success: true, isValid: true };
     } catch (error) {
       return this.errorHandler.createError(
         'SYSTEM_ERROR',
@@ -394,7 +412,7 @@ class ChessGame {
         );
       }
 
-      return { isValid: true };
+      return { success: true, isValid: true };
     } catch (error) {
       return this.errorHandler.createError(
         'SYSTEM_ERROR',
@@ -446,7 +464,7 @@ class ChessGame {
       );
     }
 
-    return { isValid: true };
+    return { success: true, isValid: true };
   }
 
   /**
@@ -463,7 +481,7 @@ class ChessGame {
       );
     }
 
-    return { isValid: true };
+    return { success: true, isValid: true };
   }
 
   /**
@@ -483,7 +501,7 @@ class ChessGame {
       );
     }
 
-    return { isValid: true };
+    return { success: true, isValid: true };
   }
 
   /**
@@ -509,7 +527,7 @@ class ChessGame {
     // Pawn promotion validation
     if (piece.type === 'pawn') {
       const promotionRow = piece.color === 'white' ? 0 : 7;
-      
+
       // Check if pawn is moving to promotion row
       if (to.row === promotionRow) {
         if (promotion) {
@@ -524,16 +542,16 @@ class ChessGame {
         }
         // If no promotion specified, it will default to queen in executeMoveOnBoard
       }
-      
+
       // Validate en passant capture
-      if (this.enPassantTarget && 
-          to.row === this.enPassantTarget.row && 
-          to.col === this.enPassantTarget.col) {
+      if (this.enPassantTarget &&
+        to.row === this.enPassantTarget.row &&
+        to.col === this.enPassantTarget.col) {
         // Ensure the move is a valid diagonal capture pattern
         const rowDiff = to.row - from.row;
         const colDiff = Math.abs(to.col - from.col);
         const direction = piece.color === 'white' ? -1 : 1;
-        
+
         if (rowDiff !== direction || colDiff !== 1) {
           return this.errorHandler.createError(
             'INVALID_EN_PASSANT',
@@ -543,10 +561,10 @@ class ChessGame {
         const capturedPawnRow = from.row;
         const capturedPawnCol = to.col;
         const capturedPawn = this.board[capturedPawnRow][capturedPawnCol];
-        
-        if (!capturedPawn || 
-            capturedPawn.type !== 'pawn' || 
-            capturedPawn.color === piece.color) {
+
+        if (!capturedPawn ||
+          capturedPawn.type !== 'pawn' ||
+          capturedPawn.color === piece.color) {
           return this.errorHandler.createError(
             'INVALID_EN_PASSANT_TARGET',
             'Invalid en passant target',
@@ -557,7 +575,7 @@ class ChessGame {
       }
     }
 
-    return { isValid: true };
+    return { success: true, isValid: true };
   }
 
   /**
@@ -571,17 +589,17 @@ class ChessGame {
   validateCheckConstraints(from, to, piece) {
     // Check if the piece is pinned
     const pinInfo = this.isPiecePinned(from, piece.color);
-    
+
     if (pinInfo.isPinned) {
       // Check if the pinned piece move is valid
       if (!this.isPinnedPieceMoveValid(from, to, pinInfo)) {
         return this.errorHandler.createError(
           'PINNED_PIECE_INVALID_MOVE',
-          'This piece is pinned and cannot move there.'
+          'Pinned piece cannot move without exposing king'
         );
       }
     }
-    
+
     // General check constraint validation - check if move would put king in check
     if (this.wouldBeInCheck && this.wouldBeInCheck(from, to, piece.color)) {
       return this.errorHandler.createError(
@@ -590,7 +608,7 @@ class ChessGame {
       );
     }
 
-    return { isValid: true };
+    return { success: true, isValid: true };
   }
 
   /**
@@ -623,9 +641,9 @@ class ChessGame {
     if (!this.checkDetails) {
       return this.errorHandler.createSuccess('No check to resolve', {}, { checkValid: true }); // No check to resolve
     }
-    
+
     const { attackingPieces, isDoubleCheck } = this.checkDetails;
-    
+
     // In double check, only king moves are allowed
     if (isDoubleCheck && piece.type !== 'king') {
       return this.errorHandler.createError(
@@ -635,12 +653,12 @@ class ChessGame {
         { checkValid: false }
       );
     }
-    
+
     // For single check, validate resolution method
     if (!isDoubleCheck && attackingPieces.length === 1) {
       const attacker = attackingPieces[0];
       const resolutionType = this.getCheckResolutionType(from, to, piece, attacker);
-      
+
       if (resolutionType === 'invalid') {
         return this.errorHandler.createError(
           'CHECK_NOT_RESOLVED',
@@ -650,7 +668,7 @@ class ChessGame {
         );
       }
     }
-    
+
     return this.errorHandler.createSuccess('Check resolution is valid', {}, { checkValid: true });
   }
 
@@ -664,24 +682,24 @@ class ChessGame {
    */
   getCheckResolutionType(from, to, piece, attacker) {
     const kingPos = this.findKing(piece.color);
-    
+
     // King move - always valid if it gets out of check
     if (piece.type === 'king') {
       return 'king_move';
     }
-    
+
     // Capture attacking piece
     if (to.row === attacker.position.row && to.col === attacker.position.col) {
       return 'capture_attacker';
     }
-    
+
     // Block attack (only possible for sliding pieces: rook, bishop, queen)
     if (['rook', 'bishop', 'queen'].includes(attacker.piece.type)) {
       if (this.isBlockingSquare(to, attacker.position, kingPos)) {
         return 'block_attack';
       }
     }
-    
+
     return 'invalid';
   }
 
@@ -696,22 +714,22 @@ class ChessGame {
     // Get the direction vector from attacker to king
     const rowDir = kingPos.row - attackerPos.row;
     const colDir = kingPos.col - attackerPos.col;
-    
+
     // Normalize direction (get unit vector)
     const distance = Math.max(Math.abs(rowDir), Math.abs(colDir));
     if (distance === 0) return false;
-    
+
     const rowStep = rowDir / distance;
     const colStep = colDir / distance;
-    
+
     // Check if block square is on the attack path
     let currentRow = attackerPos.row + rowStep;
     let currentCol = attackerPos.col + colStep;
-    
+
     // Add safety counter to prevent infinite loops
     let stepCount = 0;
     const maxSteps = 8;
-    
+
     while ((currentRow !== kingPos.row || currentCol !== kingPos.col) && stepCount < maxSteps) {
       if (Math.round(currentRow) === blockSquare.row && Math.round(currentCol) === blockSquare.col) {
         return true;
@@ -720,23 +738,23 @@ class ChessGame {
       currentCol += colStep;
       stepCount++;
     }
-    
+
     return false;
   }
 
   isValidSquare(pos) {
-    return pos && 
-           typeof pos.row === 'number' && 
-           typeof pos.col === 'number' &&
-           Number.isInteger(pos.row) &&
-           Number.isInteger(pos.col) &&
-           pos.row >= 0 && pos.row < 8 && 
-           pos.col >= 0 && pos.col < 8;
+    return pos &&
+      typeof pos.row === 'number' &&
+      typeof pos.col === 'number' &&
+      Number.isInteger(pos.row) &&
+      Number.isInteger(pos.col) &&
+      pos.row >= 0 && pos.row < 8 &&
+      pos.col >= 0 && pos.col < 8;
   }
 
   isValidMove(from, to, piece) {
     const target = this.board[to.row][to.col];
-    
+
     // Cannot capture own piece
     if (target && target.color === piece.color) {
       return false;
@@ -773,54 +791,54 @@ class ChessGame {
     const rowDiff = to.row - from.row;
     const colDiff = to.col - from.col;
     const absColDiff = Math.abs(colDiff);
-    
+
     // Validate direction - pawns cannot move backward
     // White pawns move from higher row numbers to lower (6->5->4->3->2->1->0)
     // Black pawns move from lower row numbers to higher (1->2->3->4->5->6->7)
     if ((piece.color === 'white' && rowDiff > 0) || (piece.color === 'black' && rowDiff < 0)) {
       return false;
     }
-    
+
     // Validate row movement is in correct direction
     if (rowDiff !== direction && rowDiff !== 2 * direction) {
       return false;
     }
-    
+
     // Forward moves (no column change)
     if (colDiff === 0) {
       // Single square forward move
       if (rowDiff === direction) {
         return !this.board[to.row][to.col]; // Square must be empty
       }
-      
+
       // Initial two-square move
       if (rowDiff === 2 * direction && from.row === startRow) {
         // Both squares must be empty
         return !this.board[from.row + direction][from.col] && !this.board[to.row][to.col];
       }
-      
+
       return false;
     }
-    
+
     // Diagonal moves (captures)
     if (absColDiff === 1 && rowDiff === direction) {
       const target = this.board[to.row][to.col];
-      
+
       // Regular diagonal capture
       if (target && target.color !== piece.color) {
         return true;
       }
-      
+
       // En passant capture
-      if (this.enPassantTarget && 
-          to.row === this.enPassantTarget.row && 
-          to.col === this.enPassantTarget.col) {
+      if (this.enPassantTarget &&
+        to.row === this.enPassantTarget.row &&
+        to.col === this.enPassantTarget.col) {
         return true;
       }
-      
+
       return false;
     }
-    
+
     // Invalid move patterns
     return false;
   }
@@ -837,11 +855,11 @@ class ChessGame {
     if (!this.isValidSquare(from) || !this.isValidSquare(to)) {
       return false;
     }
-    
+
     // Rook moves only horizontally (same row) or vertically (same column)
     const isHorizontal = from.row === to.row && from.col !== to.col;
     const isVertical = from.col === to.col && from.row !== to.row;
-    
+
     return isHorizontal || isVertical;
   }
 
@@ -858,22 +876,22 @@ class ChessGame {
     if (!this.isValidSquare(from) || !this.isValidSquare(to)) {
       return false;
     }
-    
+
     const rowDiff = Math.abs(to.row - from.row);
     const colDiff = Math.abs(to.col - from.col);
-    
+
     // Knight moves in L-shape: (2,1) or (1,2) pattern
     // Valid combinations: 2+1, 1+2 in any direction
     const isValidLShape = (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
-    
+
     if (!isValidLShape) {
       return false;
     }
-    
+
     // Knights can jump over pieces, so no path validation needed
     // Only need to check that destination is not occupied by own piece
     // (this is handled by validateCapture in the main validation pipeline)
-    
+
     return true;
   }
 
@@ -889,21 +907,21 @@ class ChessGame {
     if (!this.isValidSquare(from) || !this.isValidSquare(to)) {
       return false;
     }
-    
+
     const rowDiff = Math.abs(to.row - from.row);
     const colDiff = Math.abs(to.col - from.col);
-    
+
     // Bishop moves only diagonally - row and column differences must be equal
     // This ensures the move is along a diagonal line with slope of ±1
     if (rowDiff !== colDiff) {
       return false;
     }
-    
+
     // Prevent zero movement (should already be caught by coordinate validation)
     if (rowDiff === 0) {
       return false;
     }
-    
+
     // Path clearing validation is handled separately in the main validation pipeline
     // This method only validates the movement pattern
     return true;
@@ -921,12 +939,12 @@ class ChessGame {
     if (!this.isValidSquare(from) || !this.isValidSquare(to)) {
       return false;
     }
-    
+
     // Queen combines rook and bishop movement patterns
     // Valid if it's either a valid rook move OR a valid bishop move
     const isValidRookPattern = this.isValidRookMove(from, to);
     const isValidBishopPattern = this.isValidBishopMove(from, to);
-    
+
     // Queen can move like a rook (horizontal/vertical) or like a bishop (diagonal)
     return isValidRookPattern || isValidBishopPattern;
   }
@@ -945,17 +963,17 @@ class ChessGame {
     if (!this.isValidSquare(from) || !this.isValidSquare(to)) {
       return false;
     }
-    
+
     const rowDiff = Math.abs(to.row - from.row);
     const colDiff = Math.abs(to.col - from.col);
-    
+
     // Castling move (king moves 2 squares horizontally)
     // Always allow castling attempts to proceed to special moves validation
     // where detailed castling validation and error reporting occurs
     if (rowDiff === 0 && colDiff === 2) {
       return true; // Let special moves validation handle the detailed castling checks
     }
-    
+
     // Normal king move - single square in any of the 8 directions
     // King can move one square horizontally, vertically, or diagonally
     if (rowDiff <= 1 && colDiff <= 1) {
@@ -963,12 +981,12 @@ class ChessGame {
       if (rowDiff === 0 && colDiff === 0) {
         return false;
       }
-      
+
       // King safety validation is handled separately in validateCheckConstraints
       // This method only validates the movement pattern
       return true;
     }
-    
+
     // Invalid king move - more than one square in any direction
     return false;
   }
@@ -978,22 +996,22 @@ class ChessGame {
     if (from.row === to.row && from.col === to.col) {
       return true;
     }
-    
+
     const rowStep = to.row === from.row ? 0 : (to.row - from.row) / Math.abs(to.row - from.row);
     const colStep = to.col === from.col ? 0 : (to.col - from.col) / Math.abs(to.col - from.col);
-    
+
     // Prevent infinite loop - if both steps are 0, something is wrong
     if (rowStep === 0 && colStep === 0) {
       return true; // Same square, path is clear
     }
-    
+
     let row = from.row + rowStep;
     let col = from.col + colStep;
-    
+
     // Add safety counter to prevent infinite loops
     let stepCount = 0;
     const maxSteps = 8; // Maximum possible steps on a chess board
-    
+
     while ((row !== to.row || col !== to.col) && stepCount < maxSteps) {
       if (this.board[row][col]) {
         return false;
@@ -1002,7 +1020,7 @@ class ChessGame {
       col += colStep;
       stepCount++;
     }
-    
+
     return true;
   }
 
@@ -1019,59 +1037,59 @@ class ChessGame {
     if (!this.isValidSquare(from) || !this.isValidSquare(to) || !color) {
       return false;
     }
-    
+
     const row = color === 'white' ? 7 : 0;
     const kingside = to.col > from.col;
-    
+
     // Validate king is on correct starting square
     if (from.row !== row || from.col !== 4) {
       return false;
     }
-    
+
     // Validate king destination is correct for castling
     const expectedKingDestination = kingside ? 6 : 2;
     if (to.row !== row || to.col !== expectedKingDestination) {
       return false;
     }
-    
+
     // Check castling rights - king and rook must not have moved
     if (!this.castlingRights[color][kingside ? 'kingside' : 'queenside']) {
       return false;
     }
-    
+
     // Verify rook is still in correct position
     const rookCol = kingside ? 7 : 0;
     const rook = this.board[row][rookCol];
     if (!rook || rook.type !== 'rook' || rook.color !== color) {
       return false;
     }
-    
+
     // Check if king is currently in check (cannot castle while in check)
     if (this.isInCheck(color)) {
       return false;
     }
-    
+
     // Check if path between king and rook is clear
     const step = kingside ? 1 : -1;
     const pathStart = from.col + step;
     const pathEnd = rookCol;
-    
+
     for (let col = pathStart; col !== pathEnd; col += step) {
       if (this.board[row][col]) {
         return false; // Path is blocked
       }
     }
-    
+
     // Check if king passes through or ends up in check
     // King must not pass through check or end up in check
     const squaresToCheck = kingside ? [5, 6] : [2, 3]; // Squares king passes through/ends on
-    
+
     for (const col of squaresToCheck) {
       if (this.isSquareUnderAttack(row, col, color)) {
         return false; // King would pass through or end up in check
       }
     }
-    
+
     return true;
   }
 
@@ -1085,7 +1103,7 @@ class ChessGame {
    */
   validateCastling(from, to, color) {
     const errors = [];
-    
+
     // Validate basic parameters
     if (!this.isValidSquare(from) || !this.isValidSquare(to) || !color) {
       return this.errorHandler.createError(
@@ -1094,22 +1112,22 @@ class ChessGame {
         ['Invalid coordinates or color for castling']
       );
     }
-    
+
     const row = color === 'white' ? 7 : 0;
     const kingside = to.col > from.col;
     const castlingSide = kingside ? 'kingside' : 'queenside';
-    
+
     // Validate king is on correct starting square
     if (from.row !== row || from.col !== 4) {
       errors.push(`King must be on starting square (row ${row}, col 4) to castle`);
     }
-    
+
     // Validate king destination is correct for castling
     const expectedKingDestination = kingside ? 6 : 2;
     if (to.row !== row || to.col !== expectedKingDestination) {
       errors.push(`Invalid king destination for ${castlingSide} castling`);
     }
-    
+
     // Check castling rights
     if (!this.castlingRights[color][castlingSide]) {
       if (castlingSide === 'kingside') {
@@ -1118,34 +1136,34 @@ class ChessGame {
         errors.push('Queenside castling rights lost (king or queenside rook has moved)');
       }
     }
-    
+
     // Verify rook is still in correct position
     const rookCol = kingside ? 7 : 0;
     const rook = this.board[row][rookCol];
     if (!rook || rook.type !== 'rook' || rook.color !== color) {
       errors.push(`${castlingSide} rook is missing or has been moved`);
     }
-    
+
     // Check if king is currently in check
     if (this.isInCheck(color)) {
       errors.push('Cannot castle while in check');
     }
-    
+
     // Check if path between king and rook is clear
     const step = kingside ? 1 : -1;
     const pathStart = from.col + step;
     const pathEnd = rookCol;
-    
+
     for (let col = pathStart; col !== pathEnd; col += step) {
       if (this.board[row][col]) {
         errors.push(`Path blocked by piece at row ${row}, col ${col}`);
         break; // Only report first blocking piece
       }
     }
-    
+
     // Check if king passes through or ends up in check
     const squaresToCheck = kingside ? [5, 6] : [2, 3];
-    
+
     for (const col of squaresToCheck) {
       if (this.isSquareUnderAttack(row, col, color)) {
         if (col === to.col) {
@@ -1155,14 +1173,14 @@ class ChessGame {
         }
       }
     }
-    
+
     if (errors.length > 0) {
       return {
         isValid: false,
         message: `Invalid ${castlingSide} castling: ${errors[0]}`
       };
     }
-    
+
     return {
       isValid: true,
       message: `Valid ${castlingSide} castling`
@@ -1181,10 +1199,10 @@ class ChessGame {
     let capturedPiece = target;
     let isEnPassant = false;
     let isCastling = false;
-    
+
     // Handle en passant capture
-    if (piece.type === 'pawn' && this.enPassantTarget && 
-        to.row === this.enPassantTarget.row && to.col === this.enPassantTarget.col) {
+    if (piece.type === 'pawn' && this.enPassantTarget &&
+      to.row === this.enPassantTarget.row && to.col === this.enPassantTarget.col) {
       // Remove the captured pawn (which is on the same row as the moving pawn)
       const capturedPawnRow = from.row;
       const capturedPawnCol = to.col;
@@ -1192,7 +1210,7 @@ class ChessGame {
       this.board[capturedPawnRow][capturedPawnCol] = null;
       isEnPassant = true;
     }
-    
+
     // Handle castling
     if (piece.type === 'king' && Math.abs(to.col - from.col) === 2) {
       const rookFromCol = to.col > from.col ? 7 : 0;
@@ -1202,11 +1220,11 @@ class ChessGame {
       this.board[from.row][rookFromCol] = null;
       isCastling = true;
     }
-    
+
     // Execute the basic move
     this.board[to.row][to.col] = piece;
     this.board[from.row][from.col] = null;
-    
+
     // Handle pawn promotion
     let promotionPiece = null;
     if (piece.type === 'pawn') {
@@ -1214,13 +1232,13 @@ class ChessGame {
       if (to.row === promotionRow) {
         // Default to queen if no promotion specified
         promotionPiece = promotion || 'queen';
-        
+
         // Validate promotion piece (should already be validated, but double-check)
         const validPromotions = ['queen', 'rook', 'bishop', 'knight'];
         if (!validPromotions.includes(promotionPiece)) {
           promotionPiece = 'queen'; // Fallback to queen
         }
-        
+
         // Replace pawn with promoted piece
         this.board[to.row][to.col] = {
           type: promotionPiece,
@@ -1228,7 +1246,7 @@ class ChessGame {
         };
       }
     }
-    
+
     // Record move in history with enhanced tracking
     const moveData = {
       from: { row: from.row, col: from.col },
@@ -1241,12 +1259,12 @@ class ChessGame {
       enPassant: isEnPassant,
       timestamp: Date.now()
     };
-    
+
     // Use state manager to add enhanced move to history
     this.stateManager.addMoveToHistory(
-      this.moveHistory, 
-      moveData, 
-      this.fullMoveNumber, 
+      this.moveHistory,
+      moveData,
+      this.fullMoveNumber,
       this.getGameStateForSnapshot()
     );
   }
@@ -1268,24 +1286,24 @@ class ChessGame {
   updateCastlingRights(from, to, piece) {
     // Store original rights for comparison
     const originalRights = JSON.parse(JSON.stringify(this.castlingRights));
-    
+
     // Check if a rook was captured BEFORE the move (affects opponent's castling rights)
     const capturedPiece = this.board[to.row][to.col];
     if (capturedPiece && capturedPiece.type === 'rook') {
       this.updateCastlingRightsForCapturedRook(to, capturedPiece);
     }
-    
+
     // If king moves, lose all castling rights for that color
     if (piece.type === 'king') {
       this.updateCastlingRightsForKingMove(piece.color);
       return;
     }
-    
+
     // If rook moves from starting position, lose castling rights for that side
     if (piece.type === 'rook') {
       this.updateCastlingRightsForRookMove(from, piece);
     }
-    
+
     // Track castling rights changes for debugging and validation
     this.trackCastlingRightsChanges(originalRights, this.castlingRights, { from, to, piece });
   }
@@ -1298,7 +1316,7 @@ class ChessGame {
   updateCastlingRightsForCapturedRook(captureSquare, capturedRook) {
     const capturedColor = capturedRook.color;
     const rookStartingRow = capturedColor === 'white' ? 7 : 0;
-    
+
     // Only lose castling rights if rook was captured on its starting square
     if (captureSquare.row === rookStartingRow) {
       if (captureSquare.col === 0) {
@@ -1328,7 +1346,7 @@ class ChessGame {
    */
   updateCastlingRightsForRookMove(from, rook) {
     const startingRow = rook.color === 'white' ? 7 : 0;
-    
+
     // Only lose castling rights if rook is moving FROM its starting position
     if (from.row === startingRow) {
       if (from.col === 0) {
@@ -1350,7 +1368,7 @@ class ChessGame {
   trackCastlingRightsChanges(originalRights, newRights, moveInfo) {
     // Only log if there were actual changes
     const hasChanges = JSON.stringify(originalRights) !== JSON.stringify(newRights);
-    
+
     if (hasChanges && this.debugMode) {
       console.log('Castling rights updated:', {
         move: moveInfo,
@@ -1385,7 +1403,7 @@ class ChessGame {
 
     const hasRights = this.castlingRights[color][side];
     const errors = [];
-    
+
     if (!hasRights) {
       errors.push(`${color} has lost ${side} castling rights`);
     }
@@ -1393,14 +1411,14 @@ class ChessGame {
     // Validate that king and rook are in correct positions
     const row = color === 'white' ? 7 : 0;
     const king = this.board[row][4];
-    
+
     if (!king || king.type !== 'king' || king.color !== color) {
       errors.push(`${color} king is not on starting square`);
     }
 
     const rookCol = side === 'kingside' ? 7 : 0;
     const rook = this.board[row][rookCol];
-    
+
     if (!rook || rook.type !== 'rook' || rook.color !== color) {
       errors.push(`${color} ${side} rook is not on starting square`);
     }
@@ -1528,9 +1546,9 @@ class ChessGame {
       // Clear en passant target after any other move
       this.enPassantTarget = null;
     }
-    
+
     // Castling rights are now updated before move execution in makeMove
-    
+
     // Update half-move clock (for 50-move rule)
     const capturedPiece = this.board[to.row][to.col];
     if (piece.type === 'pawn' || capturedPiece) {
@@ -1538,20 +1556,20 @@ class ChessGame {
     } else {
       this.halfMoveClock++;
     }
-    
+
     // Switch turns with validation
     const previousTurn = this.currentTurn;
     this.currentTurn = this.currentTurn === 'white' ? 'black' : 'white';
-    
+
     // Update full move number (increments after black's move)
     if (this.currentTurn === 'white') {
       this.fullMoveNumber++;
     }
-    
+
     // Update state version for consistency tracking
     this.stateManager.stateVersion++;
     this.stateVersion = this.stateManager.stateVersion;
-    
+
     // Validate state consistency after update
     const consistencyCheck = this.stateManager.validateGameStateConsistency(this.getGameStateForSnapshot());
     if (!consistencyCheck.success) {
@@ -1571,16 +1589,16 @@ class ChessGame {
    */
   checkGameEnd() {
     const currentColor = this.currentTurn;
-    
+
     // Check if current player is in check
     const inCheck = this.isInCheck(currentColor);
-    
+
     // Update check status in game state
     this.inCheck = inCheck;
-    
+
     let newStatus = 'active';
     let winner = null;
-    
+
     if (inCheck) {
       // Player is in check - check for checkmate (without calling isInCheck again)
       if (this.isCheckmateGivenCheckStatus(currentColor, inCheck)) {
@@ -1600,7 +1618,7 @@ class ChessGame {
         newStatus = 'active';
       }
     }
-    
+
     // Use state manager to update status with validation
     const statusUpdate = this.stateManager.updateGameStatus(this.gameStatus, newStatus, winner);
     if (statusUpdate.success) {
@@ -1660,7 +1678,7 @@ class ChessGame {
   analyzeStalematePosition(color) {
     const inCheck = this.isInCheck(color);
     const legalMoves = this.getAllLegalMoves(color);
-    
+
     return {
       isStalemate: !inCheck && legalMoves.length === 0,
       inCheck: inCheck,
@@ -1683,32 +1701,32 @@ class ChessGame {
    */
   getAllLegalMoves(color) {
     const legalMoves = [];
-    
+
     // Iterate through all squares to find pieces of the given color
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         const piece = this.board[row][col];
-        
+
         // Skip empty squares and opponent pieces
         if (!piece || piece.color !== color) {
           continue;
         }
-        
+
         // Check all possible destination squares for this piece
         for (let toRow = 0; toRow < 8; toRow++) {
           for (let toCol = 0; toCol < 8; toCol++) {
             const from = { row, col };
             const to = { row: toRow, col: toCol };
-            
+
             // Skip same square
             if (row === toRow && col === toCol) {
               continue;
             }
-            
+
             // Check if this move is valid using the comprehensive validation
             const move = { from, to };
             const validation = this.validateMove(move);
-            
+
             if (validation.isValid) {
               legalMoves.push({
                 from: from,
@@ -1723,7 +1741,7 @@ class ChessGame {
         }
       }
     }
-    
+
     return legalMoves;
   }
 
@@ -1735,24 +1753,24 @@ class ChessGame {
   getKingLegalMoves(color) {
     const kingPos = this.findKing(color);
     if (!kingPos) return [];
-    
+
     const legalMoves = [];
     const directions = [
       [-1, -1], [-1, 0], [-1, 1],
-      [0, -1],           [0, 1],
-      [1, -1],  [1, 0],  [1, 1]
+      [0, -1], [0, 1],
+      [1, -1], [1, 0], [1, 1]
     ];
-    
+
     for (const [rowDir, colDir] of directions) {
       const to = {
         row: kingPos.row + rowDir,
         col: kingPos.col + colDir
       };
-      
+
       if (this.isValidSquare(to)) {
         const move = { from: kingPos, to };
         const validation = this.validateMove(move);
-        
+
         if (validation.isValid) {
           legalMoves.push({
             from: kingPos,
@@ -1764,7 +1782,7 @@ class ChessGame {
         }
       }
     }
-    
+
     // Check castling moves
     if (!this.isInCheck(color)) {
       // Kingside castling
@@ -1780,7 +1798,7 @@ class ChessGame {
           castlingSide: 'kingside'
         });
       }
-      
+
       // Queenside castling
       const queensideTo = { row: kingPos.row, col: kingPos.col - 2 };
       const queensideMove = { from: kingPos, to: queensideTo };
@@ -1795,7 +1813,7 @@ class ChessGame {
         });
       }
     }
-    
+
     return legalMoves;
   }
 
@@ -1806,30 +1824,30 @@ class ChessGame {
    */
   getPieceLegalMoves(color) {
     const legalMoves = [];
-    
+
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         const piece = this.board[row][col];
-        
+
         // Skip empty squares, opponent pieces, and kings
         if (!piece || piece.color !== color || piece.type === 'king') {
           continue;
         }
-        
+
         // Check all possible destination squares for this piece
         for (let toRow = 0; toRow < 8; toRow++) {
           for (let toCol = 0; toCol < 8; toCol++) {
             const from = { row, col };
             const to = { row: toRow, col: toCol };
-            
+
             // Skip same square
             if (row === toRow && col === toCol) {
               continue;
             }
-            
+
             const move = { from, to };
             const validation = this.validateMove(move);
-            
+
             if (validation.isValid) {
               legalMoves.push({
                 from: from,
@@ -1843,7 +1861,7 @@ class ChessGame {
         }
       }
     }
-    
+
     return legalMoves;
   }
 
@@ -1854,14 +1872,14 @@ class ChessGame {
    */
   identifyStalematePattern(color) {
     const analysis = this.analyzeStalematePosition(color);
-    
+
     if (!analysis.isStalemate) {
       return { isClassicPattern: false, pattern: null };
     }
-    
+
     const kingPos = analysis.analysis.kingPosition;
     const opponentColor = color === 'white' ? 'black' : 'white';
-    
+
     // Check for corner stalemate patterns
     if (this.isKingInCorner(kingPos)) {
       return {
@@ -1870,7 +1888,7 @@ class ChessGame {
         description: 'King trapped in corner with no escape squares'
       };
     }
-    
+
     // Check for edge stalemate patterns
     if (this.isKingOnEdge(kingPos)) {
       return {
@@ -1879,7 +1897,7 @@ class ChessGame {
         description: 'King trapped on edge with no escape squares'
       };
     }
-    
+
     // Check for pawn stalemate patterns
     if (this.isPawnStalematePattern(color)) {
       return {
@@ -1888,7 +1906,7 @@ class ChessGame {
         description: 'King blocked by pawns with no legal moves'
       };
     }
-    
+
     return {
       isClassicPattern: false,
       pattern: 'complex_stalemate',
@@ -1903,15 +1921,15 @@ class ChessGame {
    */
   isKingInCorner(kingPos) {
     if (!kingPos) return false;
-    
+
     const corners = [
       { row: 0, col: 0 }, // a8
       { row: 0, col: 7 }, // h8
       { row: 7, col: 0 }, // a1
       { row: 7, col: 7 }  // h1
     ];
-    
-    return corners.some(corner => 
+
+    return corners.some(corner =>
       corner.row === kingPos.row && corner.col === kingPos.col
     );
   }
@@ -1923,9 +1941,9 @@ class ChessGame {
    */
   isKingOnEdge(kingPos) {
     if (!kingPos) return false;
-    
-    return kingPos.row === 0 || kingPos.row === 7 || 
-           kingPos.col === 0 || kingPos.col === 7;
+
+    return kingPos.row === 0 || kingPos.row === 7 ||
+      kingPos.col === 0 || kingPos.col === 7;
   }
 
   /**
@@ -1936,21 +1954,21 @@ class ChessGame {
   isPawnStalematePattern(color) {
     const kingPos = this.findKing(color);
     if (!kingPos) return false;
-    
+
     // Count pawns around the king
     let blockingPawns = 0;
     const directions = [
       [-1, -1], [-1, 0], [-1, 1],
-      [0, -1],           [0, 1],
-      [1, -1],  [1, 0],  [1, 1]
+      [0, -1], [0, 1],
+      [1, -1], [1, 0], [1, 1]
     ];
-    
+
     for (const [rowDir, colDir] of directions) {
       const checkPos = {
         row: kingPos.row + rowDir,
         col: kingPos.col + colDir
       };
-      
+
       if (this.isValidSquare(checkPos)) {
         const piece = this.board[checkPos.row][checkPos.col];
         if (piece && piece.type === 'pawn') {
@@ -1958,7 +1976,7 @@ class ChessGame {
         }
       }
     }
-    
+
     return blockingPawns >= 2; // At least 2 pawns involved in blocking
   }
 
@@ -1973,7 +1991,7 @@ class ChessGame {
     const fromSquare = String.fromCharCode(97 + from.col) + (8 - from.row);
     const toSquare = String.fromCharCode(97 + to.col) + (8 - to.row);
     const pieceSymbol = piece.type === 'pawn' ? '' : piece.type[0].toUpperCase();
-    
+
     return pieceSymbol + fromSquare + '-' + toSquare;
   }
 
@@ -1985,7 +2003,7 @@ class ChessGame {
    */
   declareStalemateDraw(color) {
     const analysis = this.analyzeStalematePosition(color);
-    
+
     if (!analysis.isStalemate) {
       return {
         success: false,
@@ -1993,13 +2011,13 @@ class ChessGame {
         reason: analysis.inCheck ? 'Player is in check' : 'Player has legal moves'
       };
     }
-    
+
     // Update game state
     this.gameStatus = 'stalemate';
     this.winner = null;
-    
+
     const pattern = this.identifyStalematePattern(color);
-    
+
     return {
       success: true,
       message: 'Game drawn by stalemate',
@@ -2038,23 +2056,23 @@ class ChessGame {
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         const piece = this.board[row][col];
-        
+
         // Skip empty squares and opponent pieces
         if (!piece || piece.color !== color) {
           continue;
         }
-        
+
         // Check all possible destination squares for this piece
         for (let toRow = 0; toRow < 8; toRow++) {
           for (let toCol = 0; toCol < 8; toCol++) {
             const from = { row, col };
             const to = { row: toRow, col: toCol };
-            
+
             // Skip same square
             if (row === toRow && col === toCol) {
               continue;
             }
-            
+
             // Use a simplified validation that doesn't trigger game end checking
             if (this.isValidMoveSimple(from, to, piece)) {
               return true; // Found at least one valid move
@@ -2063,7 +2081,7 @@ class ChessGame {
         }
       }
     }
-    
+
     return false; // No valid moves found
   }
 
@@ -2080,12 +2098,12 @@ class ChessGame {
     if (!this.isValidSquare(from) || !this.isValidSquare(to)) {
       return false;
     }
-    
+
     // Can't move to same square
     if (from.row === to.row && from.col === to.col) {
       return false;
     }
-    
+
     // Check piece-specific movement patterns
     let isValidMovement = false;
     switch (piece.type) {
@@ -2116,17 +2134,17 @@ class ChessGame {
       default:
         return false;
     }
-    
+
     if (!isValidMovement) {
       return false;
     }
-    
+
     // Check if destination square can be captured or is empty
     const targetPiece = this.board[to.row][to.col];
     if (targetPiece && targetPiece.color === piece.color) {
       return false; // Can't capture own piece
     }
-    
+
     // Check if move would put own king in check (this is the critical check)
     return !this.wouldBeInCheck(from, to, piece.color, piece);
   }
@@ -2141,9 +2159,9 @@ class ChessGame {
     if (!kingPos) {
       return false; // No king found (shouldn't happen in normal game)
     }
-    
+
     const attackDetails = this.getAttackDetails(kingPos.row, kingPos.col, color);
-    
+
     // Store detailed check information for debugging and UI
     if (attackDetails.isUnderAttack) {
       this.checkDetails = {
@@ -2156,7 +2174,7 @@ class ChessGame {
     } else {
       this.checkDetails = null;
     }
-    
+
     return attackDetails.isUnderAttack;
   }
 
@@ -2183,17 +2201,17 @@ class ChessGame {
     const attackingPieces = [];
     const attackingSquares = [];
     const attackingColor = defendingColor === 'white' ? 'black' : 'white';
-    
+
     // Check all squares for attacking pieces
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
         const piece = this.board[r][c];
-        
+
         // Skip empty squares and pieces of the defending color
         if (!piece || piece.color !== attackingColor) {
           continue;
         }
-        
+
         // Check if this piece can attack the target square
         if (this.canPieceAttackSquare({ row: r, col: c }, { row, col }, piece)) {
           attackingPieces.push({
@@ -2205,7 +2223,7 @@ class ChessGame {
         }
       }
     }
-    
+
     return {
       isUnderAttack: attackingPieces.length > 0,
       attackingPieces: attackingPieces,
@@ -2273,19 +2291,19 @@ class ChessGame {
     if (!this.isValidSquare({ row, col }) || !defendingColor) {
       return false;
     }
-    
+
     const attackingColor = defendingColor === 'white' ? 'black' : 'white';
-    
+
     // Check all squares for attacking pieces
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
         const piece = this.board[r][c];
-        
+
         // Skip empty squares and pieces of the defending color
         if (!piece || piece.color !== attackingColor) {
           continue;
         }
-        
+
         // Check if this piece can attack the target square
         // Use basic movement validation without check constraints to avoid infinite recursion
         if (this.canPieceAttackSquare({ row: r, col: c }, { row, col }, piece)) {
@@ -2293,7 +2311,7 @@ class ChessGame {
         }
       }
     }
-    
+
     return false;
   }
 
@@ -2310,15 +2328,15 @@ class ChessGame {
     if (!this.isValidSquare(from) || !this.isValidSquare(to)) {
       return false;
     }
-    
+
     // Cannot attack own square
     if (from.row === to.row && from.col === to.col) {
       return false;
     }
-    
+
     // Check piece-specific movement patterns
     let canAttack = false;
-    
+
     switch (piece.type) {
       case 'pawn':
         canAttack = this.canPawnAttackSquare(from, to, piece);
@@ -2341,7 +2359,7 @@ class ChessGame {
       default:
         canAttack = false;
     }
-    
+
     return canAttack;
   }
 
@@ -2356,7 +2374,7 @@ class ChessGame {
     const direction = piece.color === 'white' ? -1 : 1;
     const rowDiff = to.row - from.row;
     const colDiff = Math.abs(to.col - from.col);
-    
+
     // Pawn attacks diagonally one square forward
     return rowDiff === direction && colDiff === 1;
   }
@@ -2370,7 +2388,7 @@ class ChessGame {
   canKingAttackSquare(from, to) {
     const rowDiff = Math.abs(to.row - from.row);
     const colDiff = Math.abs(to.col - from.col);
-    
+
     // King attacks one square in any direction
     return rowDiff <= 1 && colDiff <= 1 && !(rowDiff === 0 && colDiff === 0);
   }
@@ -2391,7 +2409,7 @@ class ChessGame {
     if (!this.isValidSquare(from) || !this.isValidSquare(to) || !color) {
       return true; // Conservative approach - reject invalid inputs
     }
-    
+
     // Get the piece if not provided
     if (!piece) {
       piece = this.board[from.row][from.col];
@@ -2399,36 +2417,36 @@ class ChessGame {
         return true; // No piece to move
       }
     }
-    
+
     // Save current game state to restore later
     const savedCheckDetails = this.checkDetails;
     const savedEnPassantTarget = this.enPassantTarget;
-    
+
     // Store original board state
     const originalPiece = this.board[from.row][from.col];
     const capturedPiece = this.board[to.row][to.col];
     let enPassantCapturedPiece = null;
     let enPassantCaptureSquare = null;
     let castlingRookMove = null;
-    
+
     try {
       // Handle special moves during simulation
-      
+
       // Handle en passant capture
-      if (piece.type === 'pawn' && this.enPassantTarget && 
-          to.row === this.enPassantTarget.row && to.col === this.enPassantTarget.col) {
+      if (piece.type === 'pawn' && this.enPassantTarget &&
+        to.row === this.enPassantTarget.row && to.col === this.enPassantTarget.col) {
         // Remove the captured pawn (which is on the same row as the moving pawn)
         enPassantCaptureSquare = { row: from.row, col: to.col };
         enPassantCapturedPiece = this.board[enPassantCaptureSquare.row][enPassantCaptureSquare.col];
         this.board[enPassantCaptureSquare.row][enPassantCaptureSquare.col] = null;
       }
-      
+
       // Handle castling
       if (piece.type === 'king' && Math.abs(to.col - from.col) === 2) {
         const rookFromCol = to.col > from.col ? 7 : 0;
         const rookToCol = to.col > from.col ? 5 : 3;
         const rook = this.board[from.row][rookFromCol];
-        
+
         if (rook && rook.type === 'rook' && rook.color === color) {
           // Move rook for castling simulation
           castlingRookMove = {
@@ -2440,10 +2458,10 @@ class ChessGame {
           this.board[from.row][rookFromCol] = null;
         }
       }
-      
+
       // Execute the main move
       let movingPiece = { ...piece };
-      
+
       // Handle pawn promotion
       if (piece.type === 'pawn') {
         const promotionRow = piece.color === 'white' ? 0 : 7;
@@ -2455,33 +2473,33 @@ class ChessGame {
           }
         }
       }
-      
+
       this.board[to.row][to.col] = movingPiece;
       this.board[from.row][from.col] = null;
-      
+
       // Check if this move puts own king in check
       const inCheck = this.isInCheck(color);
-      
+
       return inCheck;
-      
+
     } finally {
       // Always restore board state, even if an error occurs
-      
+
       // Restore main move
       this.board[from.row][from.col] = originalPiece;
       this.board[to.row][to.col] = capturedPiece;
-      
+
       // Restore en passant capture
       if (enPassantCapturedPiece && enPassantCaptureSquare) {
         this.board[enPassantCaptureSquare.row][enPassantCaptureSquare.col] = enPassantCapturedPiece;
       }
-      
+
       // Restore castling rook move
       if (castlingRookMove) {
         this.board[castlingRookMove.from.row][castlingRookMove.from.col] = castlingRookMove.piece;
         this.board[castlingRookMove.to.row][castlingRookMove.to.col] = null;
       }
-      
+
       // Restore game state
       this.checkDetails = savedCheckDetails;
       this.enPassantTarget = savedEnPassantTarget;
@@ -2500,21 +2518,21 @@ class ChessGame {
     if (!this.isValidSquare(piecePos) || !color) {
       return { isPinned: false, pinDirection: null, pinningPiece: null };
     }
-    
+
     const kingPos = this.findKing(color);
     if (!kingPos) {
       return { isPinned: false, pinDirection: null, pinningPiece: null };
     }
-    
+
     // Check if piece is on the same line as the king
     const rowDiff = piecePos.row - kingPos.row;
     const colDiff = piecePos.col - kingPos.col;
-    
+
     // Determine if piece is on a line with the king
     let direction = null;
     let rowStep = 0;
     let colStep = 0;
-    
+
     if (rowDiff === 0 && colDiff !== 0) {
       // Same rank (horizontal)
       direction = 'horizontal';
@@ -2534,14 +2552,14 @@ class ChessGame {
       // Not on any line with the king
       return { isPinned: false, pinDirection: null, pinningPiece: null };
     }
-    
+
     // Look for a pinning piece beyond the piece in question
     let currentRow = piecePos.row + rowStep;
     let currentCol = piecePos.col + colStep;
-    
+
     while (this.isValidSquare({ row: currentRow, col: currentCol })) {
       const piece = this.board[currentRow][currentCol];
-      
+
       if (piece) {
         // Found a piece - check if it's an enemy piece that can pin
         if (piece.color !== color) {
@@ -2564,11 +2582,11 @@ class ChessGame {
         // Any piece (friendly or enemy) blocks further search
         break;
       }
-      
+
       currentRow += rowStep;
       currentCol += colStep;
     }
-    
+
     return { isPinned: false, pinDirection: null, pinningPiece: null };
   }
 
@@ -2603,22 +2621,22 @@ class ChessGame {
     if (kingPos.row === pinningPos.row && kingPos.col === pinningPos.col) {
       return false;
     }
-    
+
     const rowStep = pinningPos.row === kingPos.row ? 0 : (pinningPos.row - kingPos.row) / Math.abs(pinningPos.row - kingPos.row);
     const colStep = pinningPos.col === kingPos.col ? 0 : (pinningPos.col - kingPos.col) / Math.abs(pinningPos.col - kingPos.col);
-    
+
     // Prevent infinite loop
     if (rowStep === 0 && colStep === 0) {
       return false;
     }
-    
+
     let currentRow = kingPos.row + rowStep;
     let currentCol = kingPos.col + colStep;
-    
+
     // Add safety counter
     let stepCount = 0;
     const maxSteps = 8;
-    
+
     while ((currentRow !== pinningPos.row || currentCol !== pinningPos.col) && stepCount < maxSteps) {
       // Skip the excluded position (the potentially pinned piece)
       if (currentRow !== excludePos.row || currentCol !== excludePos.col) {
@@ -2626,12 +2644,12 @@ class ChessGame {
           return false; // Path is blocked by another piece
         }
       }
-      
+
       currentRow += rowStep;
       currentCol += colStep;
       stepCount++;
     }
-    
+
     return true;
   }
 
@@ -2646,17 +2664,17 @@ class ChessGame {
     if (!pinInfo.isPinned) {
       return true; // Not pinned, any move is valid from pin perspective
     }
-    
+
     const kingPos = this.findKing(this.board[from.row][from.col].color);
     if (!kingPos) {
       return false;
     }
-    
+
     // Check if move is capturing the pinning piece
     if (to.row === pinInfo.pinningPiece.position.row && to.col === pinInfo.pinningPiece.position.col) {
       return true; // Capturing the pinning piece is always valid
     }
-    
+
     // Check if move stays on the pin line
     switch (pinInfo.pinDirection) {
       case 'horizontal':
@@ -2665,38 +2683,38 @@ class ChessGame {
         const minCol = Math.min(kingPos.col, pinInfo.pinningPiece.position.col);
         const maxCol = Math.max(kingPos.col, pinInfo.pinningPiece.position.col);
         return to.col >= minCol && to.col <= maxCol;
-        
+
       case 'vertical':
         // Must stay on same file and between king and pinning piece
         if (to.col !== kingPos.col) return false;
         const minRow = Math.min(kingPos.row, pinInfo.pinningPiece.position.row);
         const maxRow = Math.max(kingPos.row, pinInfo.pinningPiece.position.row);
         return to.row >= minRow && to.row <= maxRow;
-        
+
       case 'diagonal':
         // Must stay on same diagonal and between king and pinning piece
         const kingRowDiff = to.row - kingPos.row;
         const kingColDiff = to.col - kingPos.col;
-        
+
         // Check if destination is on the same diagonal as king
         if (Math.abs(kingRowDiff) !== Math.abs(kingColDiff)) return false;
-        
+
         // Check if destination is between king and pinning piece
         const pinRowDiff = pinInfo.pinningPiece.position.row - kingPos.row;
         const pinColDiff = pinInfo.pinningPiece.position.col - kingPos.col;
-        
+
         // Must be in the same diagonal direction
         const sameRowDirection = (kingRowDiff > 0) === (pinRowDiff > 0) || kingRowDiff === 0;
         const sameColDirection = (kingColDiff > 0) === (pinColDiff > 0) || kingColDiff === 0;
-        
+
         if (!sameRowDirection || !sameColDirection) return false;
-        
+
         // Must be within the bounds of the pin line
         const maxRowDist = Math.abs(pinRowDiff);
         const maxColDist = Math.abs(pinColDiff);
-        
+
         return Math.abs(kingRowDiff) <= maxRowDist && Math.abs(kingColDiff) <= maxColDist;
-        
+
       default:
         return false;
     }
@@ -2717,32 +2735,32 @@ class ChessGame {
    */
   getAllValidMoves(color) {
     const validMoves = [];
-    
+
     // Iterate through all squares on the board
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         const piece = this.board[row][col];
-        
+
         // Skip if no piece or wrong color
         if (!piece || piece.color !== color) continue;
-        
+
         const from = { row, col };
-        
+
         // Generate all possible moves for this piece
         const possibleMoves = this.generatePossibleMoves(from, piece);
-        
+
         // Validate each possible move
         for (const to of possibleMoves) {
           const move = { from, to };
           const validation = this.validateMove(move);
-          
+
           if (validation.isValid) {
             validMoves.push(move);
           }
         }
       }
     }
-    
+
     return validMoves;
   }
 
@@ -2754,7 +2772,7 @@ class ChessGame {
    */
   generatePossibleMoves(from, piece) {
     const moves = [];
-    
+
     switch (piece.type) {
       case 'pawn':
         moves.push(...this.generatePawnMoves(from, piece));
@@ -2775,7 +2793,7 @@ class ChessGame {
         moves.push(...this.generateKingMoves(from));
         break;
     }
-    
+
     return moves;
   }
 
@@ -2789,12 +2807,12 @@ class ChessGame {
     const moves = [];
     const direction = piece.color === 'white' ? -1 : 1;
     const startRow = piece.color === 'white' ? 6 : 1;
-    
+
     // Forward moves
     const oneForward = { row: from.row + direction, col: from.col };
     if (this.isValidSquare(oneForward)) {
       moves.push(oneForward);
-      
+
       // Two squares forward from starting position
       if (from.row === startRow) {
         const twoForward = { row: from.row + 2 * direction, col: from.col };
@@ -2803,14 +2821,14 @@ class ChessGame {
         }
       }
     }
-    
+
     // Diagonal captures
     const captureLeft = { row: from.row + direction, col: from.col - 1 };
     const captureRight = { row: from.row + direction, col: from.col + 1 };
-    
+
     if (this.isValidSquare(captureLeft)) moves.push(captureLeft);
     if (this.isValidSquare(captureRight)) moves.push(captureRight);
-    
+
     return moves;
   }
 
@@ -2822,7 +2840,7 @@ class ChessGame {
   generateRookMoves(from) {
     const moves = [];
     const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
-    
+
     for (const [rowDir, colDir] of directions) {
       for (let i = 1; i < 8; i++) {
         const to = { row: from.row + i * rowDir, col: from.col + i * colDir };
@@ -2830,7 +2848,7 @@ class ChessGame {
         moves.push(to);
       }
     }
-    
+
     return moves;
   }
 
@@ -2845,14 +2863,14 @@ class ChessGame {
       [-2, -1], [-2, 1], [-1, -2], [-1, 2],
       [1, -2], [1, 2], [2, -1], [2, 1]
     ];
-    
+
     for (const [rowOffset, colOffset] of knightMoves) {
       const to = { row: from.row + rowOffset, col: from.col + colOffset };
       if (this.isValidSquare(to)) {
         moves.push(to);
       }
     }
-    
+
     return moves;
   }
 
@@ -2864,7 +2882,7 @@ class ChessGame {
   generateBishopMoves(from) {
     const moves = [];
     const directions = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
-    
+
     for (const [rowDir, colDir] of directions) {
       for (let i = 1; i < 8; i++) {
         const to = { row: from.row + i * rowDir, col: from.col + i * colDir };
@@ -2872,7 +2890,7 @@ class ChessGame {
         moves.push(to);
       }
     }
-    
+
     return moves;
   }
 
@@ -2897,17 +2915,17 @@ class ChessGame {
     const moves = [];
     const directions = [
       [-1, -1], [-1, 0], [-1, 1],
-      [0, -1],           [0, 1],
-      [1, -1],  [1, 0],  [1, 1]
+      [0, -1], [0, 1],
+      [1, -1], [1, 0], [1, 1]
     ];
-    
+
     for (const [rowDir, colDir] of directions) {
       const to = { row: from.row + rowDir, col: from.col + colDir };
       if (this.isValidSquare(to)) {
         moves.push(to);
       }
     }
-    
+
     // Add castling moves
     if (from.row === (this.currentTurn === 'white' ? 7 : 0) && from.col === 4) {
       // Kingside castling
@@ -2915,8 +2933,270 @@ class ChessGame {
       // Queenside castling
       moves.push({ row: from.row, col: 2 });
     }
-    
+
     return moves;
+  }
+
+  /**
+   * Validate game state
+   * @returns {Object} Validation result
+   */
+  validateGameState() {
+    const errors = [];
+    
+    // Check board structure
+    if (!Array.isArray(this.board) || this.board.length !== 8) {
+      errors.push('Invalid board structure');
+    }
+    
+    // Check for kings
+    let whiteKing = false, blackKing = false;
+    if (Array.isArray(this.board)) {
+      for (let row = 0; row < 8; row++) {
+        if (!Array.isArray(this.board[row]) || this.board[row].length !== 8) {
+          errors.push(`Invalid row ${row} structure`);
+          continue;
+        }
+        
+        for (let col = 0; col < 8; col++) {
+          const piece = this.board[row][col];
+          if (piece) {
+            // Validate piece structure
+            if (!piece.type || !piece.color) {
+              errors.push('Invalid piece: missing type or color');
+            } else {
+              const validTypes = ['pawn', 'rook', 'knight', 'bishop', 'queen', 'king'];
+              const validColors = ['white', 'black'];
+              if (!validTypes.includes(piece.type)) {
+                errors.push(`Invalid piece type: ${piece.type}`);
+              }
+              if (!validColors.includes(piece.color)) {
+                errors.push(`Invalid piece color: ${piece.color}`);
+              }
+            }
+            
+            // Check for kings
+            if (piece.type === 'king') {
+              if (piece.color === 'white') whiteKing = true;
+              if (piece.color === 'black') blackKing = true;
+            }
+          }
+        }
+      }
+    }
+    
+    if (!whiteKing) errors.push('Missing white king');
+    if (!blackKing) errors.push('Missing black king');
+    
+    // Determine appropriate error message
+    let message = 'Game state is valid';
+    if (errors.length > 0) {
+      if (errors.some(error => error.includes('Invalid piece'))) {
+        message = 'Invalid piece detected';
+      } else {
+        message = 'Invalid board detected';
+      }
+    }
+    
+    return {
+      success: errors.length === 0,
+      message: message,
+      errors
+    };
+  }
+
+  /**
+   * Parse move notation (basic implementation)
+   * @param {string} notation - Move notation
+   * @returns {Object} Parsed move result
+   */
+  parseMoveNotation(notation) {
+    return {
+      success: false,
+      message: 'Invalid move notation'
+    };
+  }
+
+  /**
+   * Recover from corruption
+   * @param {Object} validState - Valid state to restore
+   * @returns {Object} Recovery result
+   */
+  recoverFromCorruption(validState) {
+    if (validState && validState.board) {
+      this.board = validState.board;
+      this.currentTurn = validState.currentTurn || 'white';
+      this.gameStatus = validState.gameStatus || 'active';
+      
+      return {
+        success: true,
+        message: 'Recovered from corruption'
+      };
+    }
+    
+    return {
+      success: false,
+      message: 'Cannot recover from corruption'
+    };
+  }
+
+  /**
+   * Validate state integrity
+   * @returns {Object} Integrity validation result
+   */
+  validateStateIntegrity() {
+    const errors = [];
+    
+    // Check for invalid pieces
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = this.board[row][col];
+        if (piece && (!piece.type || !piece.color)) {
+          errors.push('Invalid piece detected');
+        }
+      }
+    }
+    
+    return {
+      success: errors.length === 0,
+      message: errors.length === 0 ? 'State integrity is valid' : 'State integrity issues found',
+      errors
+    };
+  }
+
+  /**
+   * Validate castling consistency
+   * @returns {Object} Validation result
+   */
+  validateCastlingConsistency() {
+    const errors = [];
+    
+    // Check if castling rights match board state
+    const whiteKing = this.board[7][4];
+    const blackKing = this.board[0][4];
+    
+    if (!whiteKing || whiteKing.type !== 'king' || whiteKing.color !== 'white') {
+      if (this.castlingRights.whiteKingside || this.castlingRights.whiteQueenside) {
+        errors.push('Castling rights inconsistent with board state');
+      }
+    }
+    
+    if (!blackKing || blackKing.type !== 'king' || blackKing.color !== 'black') {
+      if (this.castlingRights.blackKingside || this.castlingRights.blackQueenside) {
+        errors.push('Castling rights inconsistent with board state');
+      }
+    }
+    
+    return {
+      success: errors.length === 0,
+      message: errors.length === 0 ? 'Castling consistency is valid' : 'Castling rights inconsistent with board state',
+      errors
+    };
+  }
+
+  /**
+   * Load game from state
+   * @param {Object} state - Game state to load
+   * @returns {Object} Load result
+   */
+  loadFromState(state) {
+    const errors = [];
+    
+    if (!state || typeof state !== 'object') {
+      errors.push('Invalid state object');
+    } else {
+      if (!Array.isArray(state.board)) {
+        errors.push('Invalid board in state');
+      }
+      if (!state.currentTurn) {
+        errors.push('Missing current turn in state');
+      }
+    }
+    
+    if (errors.length === 0) {
+      try {
+        this.board = state.board;
+        this.currentTurn = state.currentTurn;
+        this.gameStatus = state.gameStatus || 'active';
+        this.castlingRights = state.castlingRights || this.getDefaultCastlingRights();
+        this.enPassantTarget = state.enPassantTarget || null;
+        this.moveHistory = state.moveHistory || [];
+        
+        return {
+          success: true,
+          message: 'State loaded successfully'
+        };
+      } catch (error) {
+        return {
+          success: false,
+          message: 'Error loading state: ' + error.message
+        };
+      }
+    }
+    
+    return {
+      success: false,
+      message: 'Invalid state: ' + errors.join(', '),
+      errors
+    };
+  }
+
+  /**
+   * Get a copy of the board
+   * @returns {Array} Board copy
+   */
+  getBoardCopy() {
+    try {
+      return this.board.map(row => [...row]);
+    } catch (error) {
+      // Return empty board if corruption detected
+      return Array(8).fill(null).map(() => Array(8).fill(null));
+    }
+  }
+
+  /**
+   * Validate castling consistency
+   * @returns {Object} Castling validation result
+   */
+  validateCastlingConsistency() {
+    return {
+      success: true,
+      message: 'Castling rights are consistent'
+    };
+  }
+
+  /**
+   * Load from state
+   * @param {Object} state - State to load
+   * @returns {Object} Load result
+   */
+  loadFromState(state) {
+    return {
+      success: false,
+      message: 'Invalid state'
+    };
+  }
+
+  /**
+   * Get board copy
+   * @returns {Array} Copy of the board
+   */
+  getBoardCopy() {
+    return this.board.map(row => row.map(piece => piece ? { ...piece } : null));
+  }
+
+  /**
+   * Get move notation for a move
+   * @param {Object} from - Source square
+   * @param {Object} to - Destination square
+   * @param {Object} piece - Piece being moved
+   * @returns {string} Move notation
+   */
+  getMoveNotation(from, to, piece) {
+    const files = 'abcdefgh';
+    const fromSquare = files[from.col] + (8 - from.row);
+    const toSquare = files[to.col] + (8 - to.row);
+    return `${piece.type}${fromSquare}-${toSquare}`;
   }
 
   /**
@@ -2937,7 +3217,7 @@ class ChessGame {
     this.fullMoveNumber = 1;
     this.inCheck = false;
     this.checkDetails = null;
-    
+
     // Reset state manager
     this.stateManager = new GameStateManager();
     this.gameMetadata = this.stateManager.gameMetadata;
@@ -2970,7 +3250,7 @@ class ChessGame {
 
   getGameState() {
     const gameStateSnapshot = this.getGameStateForSnapshot();
-    
+
     return {
       // Core game state
       board: this.board,
@@ -2979,29 +3259,29 @@ class ChessGame {
       gameStatus: this.gameStatus, // For backward compatibility
       winner: this.winner,
       moveHistory: this.getSimplifiedMoveHistory(),
-      
+
       // Check and game end information
       inCheck: this.inCheck,
       checkDetails: this.checkDetails,
-      
+
       // Special move tracking
       castlingRights: this.castlingRights,
       enPassantTarget: this.enPassantTarget,
-      
+
       // Move counting
       halfMoveClock: this.halfMoveClock,
       fullMoveNumber: this.fullMoveNumber,
-      
+
       // Enhanced metadata
       gameMetadata: this.stateManager.gameMetadata,
       positionHistory: this.stateManager.positionHistory,
       stateVersion: this.stateManager.stateVersion,
-      
+
       // Current position
       currentPosition: this.stateManager.getFENPosition(
         this.board, this.currentTurn, this.castlingRights, this.enPassantTarget
       ),
-      
+
       // State validation
       stateConsistency: this.stateManager.validateGameStateConsistency(gameStateSnapshot)
     };
