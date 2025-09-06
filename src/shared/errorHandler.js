@@ -218,6 +218,7 @@ class ChessErrorHandler {
   createSuccess(message = 'Operation successful', data = {}, metadata = {}) {
     return {
       success: true,
+      isValid: true,
       message: message,
       errorCode: null,
       data: data,

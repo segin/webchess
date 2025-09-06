@@ -76,18 +76,18 @@ class ChessGame {
     return board;
   }
 
-  makeMove(moveOrFrom, to, promotion) {
+  makeMove(moveOrFrom, toParam, promotionParam) {
     try {
       // Handle both calling patterns:
       // 1. makeMove({ from: {...}, to: {...}, promotion: '...' })
       // 2. makeMove({ row: 6, col: 4 }, { row: 4, col: 4 }, 'queen')
       let move;
-      if (to !== undefined) {
+      if (toParam !== undefined) {
         // Called with separate parameters
         move = {
           from: moveOrFrom,
-          to: to,
-          promotion: promotion
+          to: toParam,
+          promotion: promotionParam
         };
       } else {
         // Called with single move object
@@ -133,7 +133,7 @@ class ChessGame {
       return this.errorHandler.createError('SYSTEM_ERROR',
         'An unexpected error occurred while executing the move',
         [error.message],
-        { moveOrFrom, to, promotion, error: error.stack }
+        { moveOrFrom, toParam, promotionParam, error: error.stack }
       );
     }
   }

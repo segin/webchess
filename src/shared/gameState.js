@@ -339,6 +339,23 @@ class GameStateManager {
     const errors = [];
     const warnings = [];
 
+    // Handle null or invalid game state
+    if (!gameState) {
+      return {
+        success: false,
+        isValid: false,
+        errors: ['Game state is null or undefined'],
+        warnings: [],
+        validationTimestamp: Date.now(),
+        stateVersion: this.stateVersion
+      };
+    }
+
+    // Ensure moveHistory exists
+    if (!gameState.moveHistory) {
+      gameState.moveHistory = [];
+    }
+
     // Validate turn consistency
     const expectedTurn = this.calculateExpectedTurnFromHistory(gameState.moveHistory);
     if (gameState.currentTurn !== expectedTurn) {
@@ -1260,6 +1277,118 @@ class GameStateManager {
       message: errors.length === 0 ? 'Move added successfully' : 'Invalid move',
       errors
     };
+  }
+
+  /**
+   * Validate state transition between two game states
+   * @param {Object} fromState - Previous game state
+   * @param {Object} toState - New game state
+   * @returns {Object} Validation result
+   */
+  validateStateTransition(fromState, toState) {
+    const errors = [];
+    const warnings = [];
+
+    // Validate turn progression
+    if (fromState.currentTurn === toState.currentTurn) {
+      // Same turn - check if it's a valid same-turn scenario
+      if (fromState.moveHistory.length === toState.moveHistory.length) {
+        warnings.push('No move made but turn unchanged');
+      }
+    } else {
+      // Turn changed - validate it's the correct alternation
+      const expectedTurn = fromState.currentTurn === 'white' ? 'black' : 'white';
+      if (toState.currentTurn !== expectedTurn) {
+        errors.push(`Invalid turn transition: ${fromState.currentTurn} -> ${toState.currentTurn}`);
+      }
+    }
+
+    // Validate move history progression
+    if (toState.moveHistory.length < fromState.moveHistory.length) {
+      errors.push('Move history cannot decrease');
+    }
+
+    // Validate move count progression
+    if (toState.fullMoveNumber < fromState.fullMoveNumber) {
+      errors.push('Full move number cannot decrease');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings,
+      success: errors.length === 0
+    };
+  }
+
+  /**
+   * Clean up old states to manage memory
+   * @param {number} maxStates - Maximum number of states to keep
+   */
+  cleanupOldStates(maxStates = 50) {
+    if (this.positionHistory.length > maxStates) {
+      this.positionHistory = this.positionHistory.slice(-maxStates);
+    }
+  }
+
+  /**
+   * Get memory usage information
+   * @returns {Object} Memory usage statistics
+   */
+  getMemoryUsage() {
+    const positionHistorySize = JSON.stringify(this.positionHistory).length;
+    const metadataSize = JSON.stringify(this.gameMetadata).length;
+    
+    return {
+      positionHistorySize,
+      metadataSize,
+      totalSize: positionHistorySize + metadataSize,
+      positionCount: this.positionHistory.length
+    };
+  }
+
+  /**
+   * Optimize state storage by removing redundant data
+   */
+  optimizeStateStorage() {
+    // Remove duplicate positions from history
+    const uniquePositions = [...new Set(this.positionHistory)];
+    this.positionHistory = uniquePositions;
+
+    // Clean up old metadata if needed
+    if (this.gameMetadata.startTime && Date.now() - this.gameMetadata.startTime > 24 * 60 * 60 * 1000) {
+      // For games older than 24 hours, we can optimize metadata
+      delete this.gameMetadata.intermediateStates;
+    }
+  }
+
+  /**
+   * Restore game state from checkpoint
+   * @param {Object} checkpoint - Saved checkpoint data
+   * @returns {Object} Restoration result
+   */
+  restoreFromCheckpoint(checkpoint) {
+    try {
+      if (!checkpoint || typeof checkpoint !== 'object') {
+        return {
+          success: false,
+          message: 'Invalid checkpoint data'
+        };
+      }
+
+      // The checkpoint should contain gameState and metadata
+      return {
+        success: true,
+        state: checkpoint.gameState,
+        metadata: checkpoint.metadata
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Failed to restore from checkpoint',
+        error: error.message
+      };
+    }
   }
 }
 

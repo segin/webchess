@@ -98,7 +98,7 @@ describe('Comprehensive Boundary Conditions Tests', () => {
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
       game.board[0][0] = { type: 'rook', color: 'white' };
       game.board[7][4] = { type: 'king', color: 'white' };
-      game.board[0][4] = { type: 'king', color: 'black' };
+      game.board[1][4] = { type: 'king', color: 'black' }; // Move black king out of the path
       game.currentTurn = 'white';
       
       // Test movement along top edge
@@ -124,7 +124,7 @@ describe('Comprehensive Boundary Conditions Tests', () => {
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
       game.board[0][3] = { type: 'queen', color: 'white' };
       game.board[7][4] = { type: 'king', color: 'white' };
-      game.board[0][4] = { type: 'king', color: 'black' };
+      game.board[1][7] = { type: 'king', color: 'black' }; // Move black king out of the path
       game.currentTurn = 'white';
       
       // Test valid moves from edge
