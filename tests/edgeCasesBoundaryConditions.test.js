@@ -30,9 +30,10 @@ describe('Edge Cases and Boundary Conditions - Comprehensive Testing', () => {
           const result = game.makeMove({ from: pos, to });
           expect(result.success).toBe(true);
           
-          // Reset board
+          // Reset board and turn
           game.board[to.row][to.col] = null;
           game.board[pos.row][pos.col] = { type: 'queen', color: 'white' };
+          game.currentTurn = 'white';
         });
 
         // Clean up
@@ -58,8 +59,12 @@ describe('Edge Cases and Boundary Conditions - Comprehensive Testing', () => {
     });
 
     test('should handle edge piece movements correctly', () => {
-      // Test rook at edge moving along edge
+      // Clear board and set up minimal pieces
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
       game.board[0][0] = { type: 'rook', color: 'white' };
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[1][4] = { type: 'king', color: 'black' }; // Keep black king out of the path
+      game.currentTurn = 'white';
       
       // Move along top edge
       const result1 = game.makeMove({ from: { row: 0, col: 0 }, to: { row: 0, col: 7 } });
@@ -68,6 +73,7 @@ describe('Edge Cases and Boundary Conditions - Comprehensive Testing', () => {
       // Reset and test along left edge
       game.board[0][7] = null;
       game.board[0][0] = { type: 'rook', color: 'white' };
+      game.currentTurn = 'white';
       
       const result2 = game.makeMove({ from: { row: 0, col: 0 }, to: { row: 7, col: 0 } });
       expect(result2.success).toBe(true);
@@ -78,6 +84,9 @@ describe('Edge Cases and Boundary Conditions - Comprehensive Testing', () => {
     test('should handle maximum distance sliding piece moves', () => {
       // Clear board for maximum distance tests
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[1][4] = { type: 'king', color: 'black' };
+      game.currentTurn = 'white';
       
       // Test queen maximum diagonal
       game.board[0][0] = { type: 'queen', color: 'white' };
@@ -86,13 +95,19 @@ describe('Edge Cases and Boundary Conditions - Comprehensive Testing', () => {
       
       // Reset and test rook maximum horizontal
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[1][4] = { type: 'king', color: 'black' };
       game.board[4][0] = { type: 'rook', color: 'white' };
+      game.currentTurn = 'white';
       const result2 = game.makeMove({ from: { row: 4, col: 0 }, to: { row: 4, col: 7 } });
       expect(result2.success).toBe(true);
       
       // Reset and test bishop maximum diagonal
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[0][4] = { type: 'king', color: 'black' };
       game.board[1][1] = { type: 'bishop', color: 'white' };
+      game.currentTurn = 'white';
       const result3 = game.makeMove({ from: { row: 1, col: 1 }, to: { row: 6, col: 6 } });
       expect(result3.success).toBe(true);
     });
@@ -108,7 +123,10 @@ describe('Edge Cases and Boundary Conditions - Comprehensive Testing', () => {
 
       pieces.forEach(({ type, validMoves }) => {
         game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[7][4] = { type: 'king', color: 'white' };
+        game.board[0][4] = { type: 'king', color: 'black' };
         game.board[4][4] = { type, color: 'white' };
+        game.currentTurn = 'white';
         
         validMoves.forEach(to => {
           const result = game.makeMove({ from: { row: 4, col: 4 }, to });
@@ -117,6 +135,7 @@ describe('Edge Cases and Boundary Conditions - Comprehensive Testing', () => {
           // Reset
           game.board[to.row][to.col] = null;
           game.board[4][4] = { type, color: 'white' };
+          game.currentTurn = 'white';
         });
       });
     });

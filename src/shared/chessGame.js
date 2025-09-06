@@ -257,12 +257,22 @@ class ChessGame {
         errors.push('Move must have a valid "to" square object');
       }
 
-      if (move.from && (typeof move.from.row !== 'number' || typeof move.from.col !== 'number')) {
-        errors.push('From square must have numeric row and col properties');
+      if (move.from && (typeof move.from.row !== 'number' || typeof move.from.col !== 'number' || 
+                        !Number.isInteger(move.from.row) || !Number.isInteger(move.from.col) ||
+                        !Number.isFinite(move.from.row) || !Number.isFinite(move.from.col))) {
+        return this.errorHandler.createError(
+          'INVALID_COORDINATES',
+          'From square must have valid integer row and col properties'
+        );
       }
 
-      if (move.to && (typeof move.to.row !== 'number' || typeof move.to.col !== 'number')) {
-        errors.push('To square must have numeric row and col properties');
+      if (move.to && (typeof move.to.row !== 'number' || typeof move.to.col !== 'number' ||
+                      !Number.isInteger(move.to.row) || !Number.isInteger(move.to.col) ||
+                      !Number.isFinite(move.to.row) || !Number.isFinite(move.to.col))) {
+        return this.errorHandler.createError(
+          'INVALID_COORDINATES',
+          'To square must have valid integer row and col properties'
+        );
       }
 
       if (move.promotion && typeof move.promotion !== 'string') {
