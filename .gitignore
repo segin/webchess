@@ -100,7 +100,6 @@ ehthumbs.db
 Thumbs.db
 
 # Project specific
-package-lock.json
 nginx.tar
 nginx/
 deployment/nginx-http-only.conf
