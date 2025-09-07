@@ -1,4 +1,4 @@
-# Implementation Plan
+  # Implementation Plan
 
 - [x] 1. Analyze current API patterns and create normalization mapping
   - Analyze current ChessGame API response structures and method signatures
@@ -16,7 +16,7 @@
   - Ensure consistent beforeEach/afterEach patterns across all tests
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
 
-- [ ] 3. Normalize tests/chessGame.test.js - Core game functionality tests
+- [x] 3. Normalize tests/chessGame.test.js - Core game functionality tests
   - Update all makeMove calls to use current API response structure
   - Fix game state property access (gameStatus instead of status)
   - Update response validation to expect success/message/data structure
@@ -24,7 +24,7 @@
   - Fix castling rights validation to use current property structure
   - _Requirements: 1.1, 1.2, 1.3, 4.1, 6.1, 6.2_
 
-- [ ] 4. Normalize tests/pawnMovement.test.js - Comprehensive pawn movement tests
+- [x] 4. Normalize tests/pawnMovement.test.js - Comprehensive pawn movement tests
   - Update all pawn move validation to use current makeMove API
   - Fix response validation to expect current success/error structure
   - Update en passant tests to use current enPassantTarget property format
@@ -32,7 +32,7 @@
   - Fix board state validation to use current board representation
   - _Requirements: 1.1, 1.2, 4.1, 5.1, 5.2, 5.3_
 
-- [ ] 5. Normalize tests/knightMovement.test.js - Knight L-shaped movement tests
+- [x] 5. Normalize tests/knightMovement.test.js - Knight L-shaped movement tests
   - Update knight movement validation to use current API patterns
   - Fix L-shaped move validation to expect current response structure
   - Normalize boundary condition tests to use current error handling
@@ -40,7 +40,7 @@
   - Fix knight capture tests to use current capture validation API
   - _Requirements: 1.1, 1.2, 4.2, 3.1, 3.2_
 
-- [ ] 6. Normalize tests/rookMovement.test.js - Rook horizontal/vertical movement tests
+- [x] 6. Normalize tests/rookMovement.test.js - Rook horizontal/vertical movement tests
   - Update rook movement validation to use current API response format
   - Fix path obstruction tests to expect current error codes
   - Normalize horizontal/vertical movement tests to use current validation

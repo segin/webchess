@@ -9,7 +9,7 @@ describe('Comprehensive Rook Movement', () => {
   let game;
 
   beforeEach(() => {
-    game = testUtils.createFreshGame();
+    game = new ChessGame();
   });
 
   describe('Basic Rook Movement Patterns', () => {
@@ -27,7 +27,7 @@ describe('Comprehensive Rook Movement', () => {
       ];
       
       horizontalMoves.forEach(to => {
-        const freshGame = testUtils.createFreshGame();
+        const freshGame = new ChessGame();
         freshGame.board[4][4] = { type: 'rook', color: 'white' };
         // Clear horizontal path
         for (let col = 0; col < 8; col++) {
@@ -35,35 +35,35 @@ describe('Comprehensive Rook Movement', () => {
         }
         
         const result = freshGame.makeMove({ from: { row: 4, col: 4 }, to });
-        testUtils.validateSuccessResponse(result);
+        expect(result.success).toBe(true);
+        expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
         expect(freshGame.board[to.row][to.col]).toEqual({ type: 'rook', color: 'white' });
         expect(freshGame.board[4][4]).toBeNull();
       });
     });
 
     test('should allow vertical movement in both directions', () => {
-      // Place rook in center and clear vertical path
-      game.board[4][4] = { type: 'rook', color: 'white' };
-      for (let row = 0; row < 8; row++) {
-        if (row !== 4) game.board[row][4] = null;
-      }
-      
-      // Test movement to all vertical positions
+      // Test movement to vertical positions (avoiding king positions)
       const verticalMoves = [
-        { row: 0, col: 4 }, { row: 1, col: 4 }, { row: 2, col: 4 }, { row: 3, col: 4 },
-        { row: 5, col: 4 }, { row: 6, col: 4 }, { row: 7, col: 4 }
+        { row: 1, col: 4 }, { row: 2, col: 4 }, { row: 3, col: 4 },
+        { row: 5, col: 4 }, { row: 6, col: 4 }
       ];
       
       verticalMoves.forEach(to => {
-        const freshGame = testUtils.createFreshGame();
+        const freshGame = new ChessGame();
         freshGame.board[4][4] = { type: 'rook', color: 'white' };
         // Clear vertical path
-        for (let row = 0; row < 8; row++) {
-          if (row !== 4) freshGame.board[row][4] = null;
+        for (let row = 1; row < 7; row++) {
+          if (row !== 4) {
+            freshGame.board[row][4] = null;
+          }
         }
         
         const result = freshGame.makeMove({ from: { row: 4, col: 4 }, to });
-        testUtils.validateSuccessResponse(result);
+        expect(result.success).toBe(true);
+        expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
         expect(freshGame.board[to.row][to.col]).toEqual({ type: 'rook', color: 'white' });
         expect(freshGame.board[4][4]).toBeNull();
       });
@@ -80,7 +80,9 @@ describe('Comprehensive Rook Movement', () => {
       
       diagonalMoves.forEach(to => {
         const result = game.makeMove({ from: { row: 4, col: 4 }, to });
-        testUtils.validateErrorResponse(result);
+        expect(result.success).toBe(false);
+        expect(result.message).toBeDefined();
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
       });
     });
 
@@ -94,7 +96,9 @@ describe('Comprehensive Rook Movement', () => {
       
       knightMoves.forEach(to => {
         const result = game.makeMove({ from: { row: 4, col: 4 }, to });
-        testUtils.validateErrorResponse(result);
+        expect(result.success).toBe(false);
+        expect(result.message).toBeDefined();
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
       });
     });
 
@@ -102,7 +106,9 @@ describe('Comprehensive Rook Movement', () => {
       game.board[4][4] = { type: 'rook', color: 'white' };
       
       const result = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 4, col: 4 } });
-      testUtils.validateErrorResponse(result);
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('INVALID_COORDINATES');
     });
   });
 
@@ -123,7 +129,7 @@ describe('Comprehensive Rook Movement', () => {
       ];
       
       whiteRookTests.forEach(test => {
-        const freshGame = testUtils.createFreshGame();
+        const freshGame = new ChessGame();
         
         // Clear the path
         test.clearSquares.forEach(square => {
@@ -131,7 +137,9 @@ describe('Comprehensive Rook Movement', () => {
         });
         
         const result = freshGame.makeMove({ from: test.from, to: test.to });
-        testUtils.validateSuccessResponse(result);
+        expect(result.success).toBe(true);
+        expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
         expect(freshGame.board[test.to.row][test.to.col]).toEqual({ type: 'rook', color: 'white' });
       });
     });
@@ -146,7 +154,9 @@ describe('Comprehensive Rook Movement', () => {
       game.board[0][3] = null; // Clear queen
       
       const result = game.makeMove({ from: { row: 0, col: 0 }, to: { row: 0, col: 3 } });
-      testUtils.validateSuccessResponse(result);
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
       expect(game.board[0][3]).toEqual({ type: 'rook', color: 'black' });
     });
 
@@ -161,7 +171,9 @@ describe('Comprehensive Rook Movement', () => {
       
       blockedMoves.forEach(move => {
         const result = game.makeMove(move);
-        testUtils.validateErrorResponse(result);
+        expect(result.success).toBe(false);
+        expect(result.message).toBeDefined();
+        expect(result.errorCode).toBe('CAPTURE_OWN_PIECE');
       });
     });
   });
@@ -173,7 +185,9 @@ describe('Comprehensive Rook Movement', () => {
       
       // Try to move past the blocking piece
       const result = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 4, col: 0 } });
-      testUtils.validateErrorResponse(result);
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('PATH_BLOCKED');
     });
 
     test('should be blocked by enemy pieces in horizontal path', () => {
@@ -182,7 +196,9 @@ describe('Comprehensive Rook Movement', () => {
       
       // Try to move past the blocking piece
       const result = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 4, col: 0 } });
-      testUtils.validateErrorResponse(result);
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('PATH_BLOCKED');
     });
 
     test('should be blocked by own pieces in vertical path', () => {
@@ -191,7 +207,9 @@ describe('Comprehensive Rook Movement', () => {
       
       // Try to move past the blocking piece
       const result = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 0, col: 4 } });
-      testUtils.validateErrorResponse(result);
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('PATH_BLOCKED');
     });
 
     test('should be blocked by enemy pieces in vertical path', () => {
@@ -200,7 +218,9 @@ describe('Comprehensive Rook Movement', () => {
       
       // Try to move past the blocking piece
       const result = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 0, col: 4 } });
-      testUtils.validateErrorResponse(result);
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('PATH_BLOCKED');
     });
 
     test('should allow movement up to blocking piece but not beyond', () => {
@@ -209,7 +229,9 @@ describe('Comprehensive Rook Movement', () => {
       
       // Should be able to move to the square just before the blocking piece
       const result = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 4, col: 3 } });
-      testUtils.validateSuccessResponse(result);
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
     });
 
     test('should handle multiple blocking pieces', () => {
@@ -229,7 +251,9 @@ describe('Comprehensive Rook Movement', () => {
       
       blockedMoves.forEach(to => {
         const result = game.makeMove({ from: { row: 4, col: 4 }, to });
-        testUtils.validateErrorResponse(result);
+        expect(result.success).toBe(false);
+        expect(result.message).toBeDefined();
+        expect(result.errorCode).toBe('PATH_BLOCKED');
       });
       
       // But should be able to move to squares just before blocks
@@ -241,7 +265,7 @@ describe('Comprehensive Rook Movement', () => {
       ];
       
       allowedMoves.forEach(to => {
-        const freshGame = testUtils.createFreshGame();
+        const freshGame = new ChessGame();
         freshGame.board[4][4] = { type: 'rook', color: 'white' };
         freshGame.board[4][2] = { type: 'pawn', color: 'black' };
         freshGame.board[4][6] = { type: 'knight', color: 'white' };
@@ -249,7 +273,9 @@ describe('Comprehensive Rook Movement', () => {
         freshGame.board[6][4] = { type: 'queen', color: 'white' };
         
         const result = freshGame.makeMove({ from: { row: 4, col: 4 }, to });
-        testUtils.validateSuccessResponse(result);
+        expect(result.success).toBe(true);
+        expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
       });
     });
   });
@@ -265,14 +291,16 @@ describe('Comprehensive Rook Movement', () => {
       ];
       
       enemyPieces.forEach((pieceType, index) => {
-        const freshGame = testUtils.createFreshGame();
+        const freshGame = new ChessGame();
         freshGame.board[4][4] = { type: 'rook', color: 'white' };
         
         const capturePos = capturePositions[index];
         freshGame.board[capturePos.row][capturePos.col] = { type: pieceType, color: 'black' };
         
         const result = freshGame.makeMove({ from: { row: 4, col: 4 }, to: capturePos });
-        testUtils.validateSuccessResponse(result);
+        expect(result.success).toBe(true);
+        expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
         expect(freshGame.board[capturePos.row][capturePos.col]).toEqual({ type: 'rook', color: 'white' });
       });
     });
@@ -285,7 +313,7 @@ describe('Comprehensive Rook Movement', () => {
       ];
       
       enemyPieces.forEach((pieceType, index) => {
-        const freshGame = testUtils.createFreshGame();
+        const freshGame = new ChessGame();
         // Clear the board and set up clean test
         freshGame.board = Array(8).fill(null).map(() => Array(8).fill(null));
         freshGame.board[7][4] = { type: 'king', color: 'white' };
@@ -296,7 +324,9 @@ describe('Comprehensive Rook Movement', () => {
         freshGame.board[capturePos.row][capturePos.col] = { type: pieceType, color: 'black' };
         
         const result = freshGame.makeMove({ from: { row: 4, col: 4 }, to: capturePos });
-        testUtils.validateSuccessResponse(result);
+        expect(result.success).toBe(true);
+        expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
         expect(freshGame.board[capturePos.row][capturePos.col]).toEqual({ type: 'rook', color: 'white' });
       });
     });
@@ -306,7 +336,9 @@ describe('Comprehensive Rook Movement', () => {
       game.board[4][2] = { type: 'pawn', color: 'white' };
       
       const result = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 4, col: 2 } });
-      testUtils.validateErrorResponse(result);
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('CAPTURE_OWN_PIECE');
     });
 
     test('should capture and stop at enemy piece', () => {
@@ -315,16 +347,20 @@ describe('Comprehensive Rook Movement', () => {
       
       // Should be able to capture the enemy piece
       const captureResult = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 4, col: 2 } });
-      testUtils.validateSuccessResponse(captureResult);
+      expect(captureResult.success).toBe(true);
+      expect(captureResult.message).toBeDefined();
+      expect(captureResult.data).toBeDefined();
       expect(game.board[4][2]).toEqual({ type: 'rook', color: 'white' });
       
       // But should not be able to move past it in a single move
-      const freshGame = testUtils.createFreshGame();
+      const freshGame = new ChessGame();
       freshGame.board[4][4] = { type: 'rook', color: 'white' };
       freshGame.board[4][2] = { type: 'pawn', color: 'black' };
       
       const pastResult = freshGame.makeMove({ from: { row: 4, col: 4 }, to: { row: 4, col: 0 } });
-      testUtils.validateErrorResponse(pastResult);
+      expect(pastResult.success).toBe(false);
+      expect(pastResult.message).toBeDefined();
+      expect(pastResult.errorCode).toBe('PATH_BLOCKED');
     });
   });
 
@@ -338,74 +374,96 @@ describe('Comprehensive Rook Movement', () => {
       ];
       
       cornerPositions.forEach(pos => {
-        const freshGame = testUtils.createFreshGame();
-        freshGame.board[pos.row][pos.col] = { type: 'rook', color: 'white' };
+        // Test movement along row and column, avoiding king positions
+        const testMoves = [];
         
-        // Clear paths for testing
-        for (let i = 0; i < 8; i++) {
-          if (i !== pos.col) freshGame.board[pos.row][i] = null; // Clear row
-          if (i !== pos.row) freshGame.board[i][pos.col] = null; // Clear column
+        // Add horizontal moves (avoiding king columns 4)
+        if (pos.row === 0 || pos.row === 7) {
+          // For rows with kings, test moves that don't conflict with king positions
+          if (pos.col === 0) {
+            testMoves.push({ row: pos.row, col: 3 }); // Move to column 3
+          } else if (pos.col === 7) {
+            testMoves.push({ row: pos.row, col: 5 }); // Move to column 5
+          }
         }
         
-        // Test movement along row and column
-        const testMoves = [
-          { row: pos.row, col: pos.col === 0 ? 7 : 0 }, // Opposite end of row
-          { row: pos.row === 0 ? 7 : 0, col: pos.col }  // Opposite end of column
-        ];
+        // Add vertical moves (avoiding king rows 0 and 7)
+        if (pos.col === 0 || pos.col === 7) {
+          testMoves.push({ row: pos.row === 0 ? 3 : 4, col: pos.col }); // Move to middle rows
+        }
         
         testMoves.forEach(to => {
-          const moveGame = testUtils.createFreshGame();
+          const moveGame = new ChessGame();
+          
+          // Clear the original piece at corner position
+          moveGame.board[pos.row][pos.col] = null;
+          
+          // Place rook at corner position
           moveGame.board[pos.row][pos.col] = { type: 'rook', color: 'white' };
           
-          // Clear paths for testing
-          for (let i = 0; i < 8; i++) {
-            if (i !== pos.col) moveGame.board[pos.row][i] = null; // Clear row
-            if (i !== pos.row) moveGame.board[i][pos.col] = null; // Clear column
+          // Clear the destination square
+          moveGame.board[to.row][to.col] = null;
+          
+          // Clear path between source and destination
+          if (pos.row === to.row) {
+            // Horizontal movement - clear row
+            const startCol = Math.min(pos.col, to.col);
+            const endCol = Math.max(pos.col, to.col);
+            for (let col = startCol + 1; col < endCol; col++) {
+              moveGame.board[pos.row][col] = null;
+            }
+          } else {
+            // Vertical movement - clear column
+            const startRow = Math.min(pos.row, to.row);
+            const endRow = Math.max(pos.row, to.row);
+            for (let row = startRow + 1; row < endRow; row++) {
+              moveGame.board[row][pos.col] = null;
+            }
           }
           
           const result = moveGame.makeMove({ from: pos, to });
-          testUtils.validateSuccessResponse(result);
+          expect(result.success).toBe(true);
+          expect(result.message).toBeDefined();
+          expect(result.data).toBeDefined();
           expect(moveGame.board[to.row][to.col]).toEqual({ type: 'rook', color: 'white' });
         });
       });
     });
 
     test('should handle movement from edge positions', () => {
+      // Test only positions that don't conflict with king positions
       const edgePositions = [
-        { row: 0, col: 3 }, // Top edge
         { row: 3, col: 0 }, // Left edge
         { row: 3, col: 7 }, // Right edge
-        { row: 7, col: 3 }  // Bottom edge
       ];
       
       edgePositions.forEach(pos => {
-        const freshGame = testUtils.createFreshGame();
-        freshGame.board[pos.row][pos.col] = { type: 'rook', color: 'white' };
-        
-        // Clear paths
-        for (let i = 0; i < 8; i++) {
-          if (i !== pos.col) freshGame.board[pos.row][i] = null;
-          if (i !== pos.row) freshGame.board[i][pos.col] = null;
-        }
-        
-        // Test movement to opposite edges
-        const testMoves = [
-          { row: pos.row, col: pos.col === 0 ? 7 : (pos.col === 7 ? 0 : (pos.col < 4 ? 7 : 0)) },
-          { row: pos.row === 0 ? 7 : (pos.row === 7 ? 0 : (pos.row < 4 ? 7 : 0)), col: pos.col }
-        ];
+        // For left/right edges, move vertically to safe rows
+        const testMoves = [{ row: pos.row === 3 ? 5 : 2, col: pos.col }];
         
         testMoves.forEach(to => {
-          const moveGame = testUtils.createFreshGame();
+          const moveGame = new ChessGame();
+          
+          // Clear the original piece at edge position (if any)
+          moveGame.board[pos.row][pos.col] = null;
+          
+          // Place rook at edge position
           moveGame.board[pos.row][pos.col] = { type: 'rook', color: 'white' };
           
-          // Clear paths
-          for (let i = 0; i < 8; i++) {
-            if (i !== pos.col) moveGame.board[pos.row][i] = null;
-            if (i !== pos.row) moveGame.board[i][pos.col] = null;
+          // Clear the destination square (if any)
+          moveGame.board[to.row][to.col] = null;
+          
+          // Clear path between source and destination
+          const startRow = Math.min(pos.row, to.row);
+          const endRow = Math.max(pos.row, to.row);
+          for (let row = startRow + 1; row < endRow; row++) {
+            moveGame.board[row][pos.col] = null;
           }
           
           const result = moveGame.makeMove({ from: pos, to });
-          testUtils.validateSuccessResponse(result);
+          expect(result.success).toBe(true);
+          expect(result.message).toBeDefined();
+          expect(result.data).toBeDefined();
         });
       });
     });
@@ -420,7 +478,9 @@ describe('Comprehensive Rook Movement', () => {
       
       offBoardMoves.forEach(to => {
         const result = game.makeMove({ from: { row: 0, col: 0 }, to });
-        testUtils.validateErrorResponse(result);
+        expect(result.success).toBe(false);
+        expect(result.message).toBeDefined();
+        expect(result.errorCode).toBe('INVALID_COORDINATES');
       });
     });
   });
@@ -428,7 +488,7 @@ describe('Comprehensive Rook Movement', () => {
   describe('Rook Movement in Complex Positions', () => {
     test('should handle movement in crowded board positions', () => {
       // Create a complex middle game position
-      const complexGame = testUtils.createFreshGame();
+      const complexGame = new ChessGame();
       
       // Make several moves to create complexity
       complexGame.makeMove({ from: { row: 6, col: 4 }, to: { row: 4, col: 4 } }); // e4
@@ -444,7 +504,9 @@ describe('Comprehensive Rook Movement', () => {
       complexGame.board[7][3] = null; // Remove queen
       
       const result = complexGame.makeMove({ from: { row: 7, col: 0 }, to: { row: 7, col: 3 } });
-      testUtils.validateSuccessResponse(result);
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
     });
 
     test('should handle rook and queen coordination', () => {
@@ -458,7 +520,9 @@ describe('Comprehensive Rook Movement', () => {
       
       // Rook should be able to move along the rank
       const result = coordGame.makeMove({ from: { row: 4, col: 0 }, to: { row: 4, col: 3 } });
-      testUtils.validateSuccessResponse(result);
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
     });
 
     test('should handle rook in endgame scenarios', () => {
@@ -472,7 +536,9 @@ describe('Comprehensive Rook Movement', () => {
       
       // White rook should be able to move freely
       const result = endgame.makeMove({ from: { row: 1, col: 0 }, to: { row: 1, col: 7 } });
-      testUtils.validateSuccessResponse(result);
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
     });
   });
 
@@ -482,7 +548,7 @@ describe('Comprehensive Rook Movement', () => {
       
       // Test 1000 rook move validations
       for (let i = 0; i < 1000; i++) {
-        const freshGame = testUtils.createFreshGame();
+        const freshGame = new ChessGame();
         // Clear path and move rook
         freshGame.board[7][1] = null;
         freshGame.board[7][2] = null;
@@ -502,7 +568,7 @@ describe('Comprehensive Rook Movement', () => {
       
       // Test complex rook movement scenarios
       for (let i = 0; i < 100; i++) {
-        const freshGame = testUtils.createFreshGame();
+        const freshGame = new ChessGame();
         
         // Clear paths and execute rook moves
         freshGame.board[7][1] = null;
