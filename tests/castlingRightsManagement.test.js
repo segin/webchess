@@ -1,39 +1,5 @@
 const ChessGame = require('../src/shared/chessGame');
 
-// Simple test framework for Node.js
-if (typeof describe === 'undefined') {
-  global.describe = (name, fn) => { console.log('\n' + name); fn(); };
-  global.test = (name, fn) => { 
-    try { 
-      fn(); 
-      console.log('✅', name); 
-    } catch(e) { 
-      console.log('❌', name, ':', e.message); 
-    } 
-  };
-  global.beforeEach = (fn) => fn();
-  global.expect = (actual) => ({
-    toBe: (expected) => { 
-      if (actual !== expected) throw new Error(`Expected ${expected}, got ${actual}`); 
-      return { toBe: () => {} };
-    },
-    toEqual: (expected) => { 
-      if (JSON.stringify(actual) !== JSON.stringify(expected)) 
-        throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`); 
-      return { toEqual: () => {} };
-    },
-    toContain: (expected) => { 
-      if (!Array.isArray(actual) || !actual.includes(expected)) 
-        throw new Error(`Expected array to contain ${expected}, got ${JSON.stringify(actual)}`); 
-      return { toContain: () => {} };
-    },
-    toBeDefined: () => { 
-      if (actual === undefined) throw new Error('Expected value to be defined'); 
-      return { toBeDefined: () => {} };
-    }
-  });
-}
-
 describe('Castling Rights Management System', () => {
   let game;
 
@@ -272,10 +238,12 @@ describe('Castling Rights Management System', () => {
   describe('Edge Cases and Error Handling', () => {
     test('should handle invalid parameters in validation methods', () => {
       const invalidSideValidation = game.validateCastlingRightsForSide('white', 'invalid');
-      expect(invalidSideValidation.isValid).toBe(false);
+      expect(invalidSideValidation.success).toBe(false);
+      expect(invalidSideValidation.errorCode).toBe('INVALID_CASTLING');
       
       const invalidColorValidation = game.validateCastlingRightsForSide('invalid', 'kingside');
-      expect(invalidColorValidation.isValid).toBe(false);
+      expect(invalidColorValidation.success).toBe(false);
+      expect(invalidColorValidation.errorCode).toBe('INVALID_COLOR');
     });
 
     test('should maintain castling rights structure integrity', () => {
@@ -311,7 +279,3 @@ describe('Castling Rights Management System', () => {
   });
 });
 
-// Run the tests if this file is executed directly
-if (require.main === module) {
-  console.log('Running Castling Rights Management Tests...');
-}
