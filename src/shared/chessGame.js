@@ -197,6 +197,7 @@ class ChessGame {
     if (!isCastlingAttempt) {
       const captureValidation = this.validateCapture(from, to, piece);
       if (captureValidation.success === false || captureValidation.isValid === false) {
+        console.log('DEBUG: Returning captureValidation error:', captureValidation);
         return captureValidation;
       }
     }
@@ -204,13 +205,31 @@ class ChessGame {
     // Step 9: Special move validation
     const specialMoveValidation = this.validateSpecialMoves(from, to, piece, promotion);
     if (specialMoveValidation.success === false || specialMoveValidation.isValid === false) {
+      console.log('DEBUG: Returning specialMoveValidation error:', specialMoveValidation);
       return specialMoveValidation;
     }
 
-    // Step 10: Check constraint validation
-    const checkValidation = this.validateCheckConstraints(from, to, piece);
-    if (checkValidation.success === false || checkValidation.isValid === false) {
-      return checkValidation;
+    // Step 10: Check validation - either resolution (if in check) or constraint (if not in check)
+    const currentlyInCheck = this.isInCheck(piece.color);
+    console.log('DEBUG: Step 10 - currentlyInCheck =', currentlyInCheck);
+    if (currentlyInCheck) {
+      // When in check, validate that the move resolves the check
+      console.log('DEBUG: Calling validateCheckResolution');
+      const checkResolutionValidation = this.validateCheckResolution(from, to, piece);
+      console.log('DEBUG: checkResolutionValidation =', checkResolutionValidation);
+      if (checkResolutionValidation.success === false || checkResolutionValidation.isValid === false) {
+        console.log('DEBUG: Returning checkResolutionValidation error');
+        return checkResolutionValidation;
+      }
+    } else {
+      // When not in check, validate that the move doesn't put king in check
+      console.log('DEBUG: Calling validateCheckConstraints');
+      const checkValidation = this.validateCheckConstraints(from, to, piece);
+      console.log('DEBUG: checkValidation =', checkValidation);
+      if (checkValidation.success === false || checkValidation.isValid === false) {
+        console.log('DEBUG: Returning checkValidation error');
+        return checkValidation;
+      }
     }
 
     return {
@@ -257,9 +276,9 @@ class ChessGame {
         errors.push('Move must have a valid "to" square object');
       }
 
-      if (move.from && (typeof move.from.row !== 'number' || typeof move.from.col !== 'number' || 
-                        !Number.isInteger(move.from.row) || !Number.isInteger(move.from.col) ||
-                        !Number.isFinite(move.from.row) || !Number.isFinite(move.from.col))) {
+      if (move.from && (typeof move.from.row !== 'number' || typeof move.from.col !== 'number' ||
+        !Number.isInteger(move.from.row) || !Number.isInteger(move.from.col) ||
+        !Number.isFinite(move.from.row) || !Number.isFinite(move.from.col))) {
         return this.errorHandler.createError(
           'INVALID_COORDINATES',
           'From square must have valid integer row and col properties'
@@ -267,8 +286,8 @@ class ChessGame {
       }
 
       if (move.to && (typeof move.to.row !== 'number' || typeof move.to.col !== 'number' ||
-                      !Number.isInteger(move.to.row) || !Number.isInteger(move.to.col) ||
-                      !Number.isFinite(move.to.row) || !Number.isFinite(move.to.col))) {
+        !Number.isInteger(move.to.row) || !Number.isInteger(move.to.col) ||
+        !Number.isFinite(move.to.row) || !Number.isFinite(move.to.col))) {
         return this.errorHandler.createError(
           'INVALID_COORDINATES',
           'To square must have valid integer row and col properties'
@@ -526,11 +545,8 @@ class ChessGame {
     // Castling validation
     if (piece.type === 'king' && Math.abs(to.col - from.col) === 2) {
       const castlingValidation = this.validateCastling(from, to, piece.color);
-      if (!castlingValidation.isValid) {
-        return this.errorHandler.createError(
-          'INVALID_CASTLING',
-          castlingValidation.message || 'Castling is not allowed in this position.'
-        );
+      if (castlingValidation.success === false || castlingValidation.isValid === false) {
+        return castlingValidation;
       }
     }
 
@@ -597,12 +613,21 @@ class ChessGame {
    * @returns {Object} Validation result
    */
   validateCheckConstraints(from, to, piece) {
+    // When king is already in check, skip all check constraint validation
+    // since check resolution validation handles this case
+    const currentlyInCheck = this.isInCheck(piece.color);
+    if (currentlyInCheck) {
+      return { success: true, isValid: true };
+    }
+
     // Check if the piece is pinned
     const pinInfo = this.isPiecePinned(from, piece.color);
+    console.log('DEBUG: Checking pinned piece, isPinned =', pinInfo.isPinned);
 
     if (pinInfo.isPinned) {
       // Check if the pinned piece move is valid
       if (!this.isPinnedPieceMoveValid(from, to, pinInfo)) {
+        console.log('DEBUG: Returning PINNED_PIECE_INVALID_MOVE');
         return this.errorHandler.createError(
           'PINNED_PIECE_INVALID_MOVE',
           'Pinned piece cannot move without exposing king'
@@ -1185,16 +1210,14 @@ class ChessGame {
     }
 
     if (errors.length > 0) {
-      return {
-        isValid: false,
-        message: `Invalid ${castlingSide} castling: ${errors[0]}`
-      };
+      return this.errorHandler.createError(
+        'INVALID_CASTLING',
+        `Invalid ${castlingSide} castling: ${errors[0]}`,
+        errors
+      );
     }
 
-    return {
-      isValid: true,
-      message: `Valid ${castlingSide} castling`
-    };
+    return this.errorHandler.createSuccess(`Valid ${castlingSide} castling`);
   }
 
   /**
@@ -2953,12 +2976,12 @@ class ChessGame {
    */
   validateGameState() {
     const errors = [];
-    
+
     // Check board structure
     if (!Array.isArray(this.board) || this.board.length !== 8) {
       errors.push('Invalid board structure');
     }
-    
+
     // Check for kings
     let whiteKing = false, blackKing = false;
     if (Array.isArray(this.board)) {
@@ -2967,7 +2990,7 @@ class ChessGame {
           errors.push(`Invalid row ${row} structure`);
           continue;
         }
-        
+
         for (let col = 0; col < 8; col++) {
           const piece = this.board[row][col];
           if (piece) {
@@ -2984,7 +3007,7 @@ class ChessGame {
                 errors.push(`Invalid piece color: ${piece.color}`);
               }
             }
-            
+
             // Check for kings
             if (piece.type === 'king') {
               if (piece.color === 'white') whiteKing = true;
@@ -2994,10 +3017,10 @@ class ChessGame {
         }
       }
     }
-    
+
     if (!whiteKing) errors.push('Missing white king');
     if (!blackKing) errors.push('Missing black king');
-    
+
     // Determine appropriate error message
     let message = 'Game state is valid';
     if (errors.length > 0) {
@@ -3007,7 +3030,7 @@ class ChessGame {
         message = 'Invalid board detected';
       }
     }
-    
+
     return {
       success: errors.length === 0,
       message: message,
@@ -3037,13 +3060,13 @@ class ChessGame {
       this.board = validState.board;
       this.currentTurn = validState.currentTurn || 'white';
       this.gameStatus = validState.gameStatus || 'active';
-      
+
       return {
         success: true,
         message: 'Recovered from corruption'
       };
     }
-    
+
     return {
       success: false,
       message: 'Cannot recover from corruption'
@@ -3056,7 +3079,7 @@ class ChessGame {
    */
   validateStateIntegrity() {
     const errors = [];
-    
+
     // Check for invalid pieces
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
@@ -3066,7 +3089,7 @@ class ChessGame {
         }
       }
     }
-    
+
     return {
       success: errors.length === 0,
       message: errors.length === 0 ? 'State integrity is valid' : 'State integrity issues found',
@@ -3080,23 +3103,23 @@ class ChessGame {
    */
   validateCastlingConsistency() {
     const errors = [];
-    
+
     // Check if castling rights match board state
     const whiteKing = this.board[7][4];
     const blackKing = this.board[0][4];
-    
+
     if (!whiteKing || whiteKing.type !== 'king' || whiteKing.color !== 'white') {
       if (this.castlingRights.whiteKingside || this.castlingRights.whiteQueenside) {
         errors.push('Castling rights inconsistent with board state');
       }
     }
-    
+
     if (!blackKing || blackKing.type !== 'king' || blackKing.color !== 'black') {
       if (this.castlingRights.blackKingside || this.castlingRights.blackQueenside) {
         errors.push('Castling rights inconsistent with board state');
       }
     }
-    
+
     return {
       success: errors.length === 0,
       message: errors.length === 0 ? 'Castling consistency is valid' : 'Castling rights inconsistent with board state',
@@ -3111,7 +3134,7 @@ class ChessGame {
    */
   loadFromState(state) {
     const errors = [];
-    
+
     if (!state || typeof state !== 'object') {
       errors.push('Invalid state object');
     } else {
@@ -3122,7 +3145,7 @@ class ChessGame {
         errors.push('Missing current turn in state');
       }
     }
-    
+
     if (errors.length === 0) {
       try {
         this.board = state.board;
@@ -3131,7 +3154,7 @@ class ChessGame {
         this.castlingRights = state.castlingRights || this.getDefaultCastlingRights();
         this.enPassantTarget = state.enPassantTarget || null;
         this.moveHistory = state.moveHistory || [];
-        
+
         return {
           success: true,
           message: 'State loaded successfully'
@@ -3143,7 +3166,7 @@ class ChessGame {
         };
       }
     }
-    
+
     return {
       success: false,
       message: 'Invalid state: ' + errors.join(', '),

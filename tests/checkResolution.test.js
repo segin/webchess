@@ -14,6 +14,7 @@ describe('Check Resolution Validation', () => {
       game.board[4][4] = { type: 'king', color: 'white' };
       game.board[4][0] = { type: 'rook', color: 'black' };
       game.board[6][1] = { type: 'rook', color: 'white' }; // Piece that can block
+      game.board[0][0] = { type: 'king', color: 'black' }; // Add missing black king
       game.currentTurn = 'white';
 
       // Verify king is in check
@@ -34,6 +35,7 @@ describe('Check Resolution Validation', () => {
       game.board[4][4] = { type: 'king', color: 'white' };
       game.board[0][0] = { type: 'bishop', color: 'black' };
       game.board[5][2] = { type: 'knight', color: 'white' }; // Piece that can block
+      game.board[7][0] = { type: 'king', color: 'black' }; // Add missing black king
       game.currentTurn = 'white';
 
       // Verify king is in check
@@ -54,6 +56,7 @@ describe('Check Resolution Validation', () => {
       game.board[4][4] = { type: 'king', color: 'white' };
       game.board[4][0] = { type: 'queen', color: 'black' };
       game.board[5][1] = { type: 'pawn', color: 'white' }; // Piece that can block
+      game.board[0][7] = { type: 'king', color: 'black' }; // Add missing black king
       game.currentTurn = 'white';
 
       // Verify king is in check
@@ -74,6 +77,7 @@ describe('Check Resolution Validation', () => {
       game.board[4][4] = { type: 'king', color: 'white' };
       game.board[4][0] = { type: 'rook', color: 'black' };
       game.board[6][2] = { type: 'bishop', color: 'white' }; // Piece that won't block
+      game.board[0][7] = { type: 'king', color: 'black' }; // Add missing black king
       game.currentTurn = 'white';
 
       // Verify king is in check
@@ -95,6 +99,7 @@ describe('Check Resolution Validation', () => {
       game.board[4][4] = { type: 'king', color: 'white' };
       game.board[2][3] = { type: 'knight', color: 'black' };
       game.board[6][1] = { type: 'rook', color: 'white' }; // Piece that tries to "block"
+      game.board[0][0] = { type: 'king', color: 'black' }; // Add missing black king
       game.currentTurn = 'white';
 
       // Verify king is in check

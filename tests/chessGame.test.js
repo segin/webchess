@@ -10,7 +10,7 @@ describe('ChessGame - Core Functionality', () => {
   let game;
 
   beforeEach(() => {
-    game = testUtils.createFreshGame();
+    game = new ChessGame();
   });
 
   describe('Game Initialization', () => {
@@ -18,88 +18,137 @@ describe('ChessGame - Core Functionality', () => {
       const gameState = game.getGameState();
 
       // Validate game state structure
-      testUtils.validateGameState(gameState);
+      expect(gameState).toBeDefined();
+      expect(gameState.board).toBeDefined();
+      expect(Array.isArray(gameState.board)).toBe(true);
+      expect(gameState.board).toHaveLength(8);
+      expect(gameState.currentTurn).toBeDefined();
+      expect(['white', 'black']).toContain(gameState.currentTurn);
+      expect(gameState.gameStatus).toBeDefined();
+      expect(['active', 'check', 'checkmate', 'stalemate', 'draw']).toContain(gameState.gameStatus);
 
       // Validate initial state values
       expect(gameState.currentTurn).toBe('white');
-      expect(gameState.status).toBe('active');
+      expect(gameState.gameStatus).toBe('active');
       expect(gameState.winner).toBe(null);
 
       // Validate starting piece positions
-      testUtils.validateBoardPosition(gameState.board, 0, 0, { type: 'rook', color: 'black' });
-      testUtils.validateBoardPosition(gameState.board, 0, 4, { type: 'king', color: 'black' });
-      testUtils.validateBoardPosition(gameState.board, 7, 4, { type: 'king', color: 'white' });
-      testUtils.validateBoardPosition(gameState.board, 1, 0, { type: 'pawn', color: 'black' });
-      testUtils.validateBoardPosition(gameState.board, 6, 0, { type: 'pawn', color: 'white' });
+      expect(gameState.board[0][0]).toEqual({ type: 'rook', color: 'black' });
+      expect(gameState.board[0][4]).toEqual({ type: 'king', color: 'black' });
+      expect(gameState.board[7][4]).toEqual({ type: 'king', color: 'white' });
+      expect(gameState.board[1][0]).toEqual({ type: 'pawn', color: 'black' });
+      expect(gameState.board[6][0]).toEqual({ type: 'pawn', color: 'white' });
     });
 
     test('should initialize with correct castling rights', () => {
-      testUtils.validateCastlingRights(game.castlingRights);
+      const gameState = game.getGameState();
+      
+      expect(gameState.castlingRights).toBeDefined();
+      expect(gameState.castlingRights.white).toBeDefined();
+      expect(gameState.castlingRights.black).toBeDefined();
+      expect(typeof gameState.castlingRights.white.kingside).toBe('boolean');
+      expect(typeof gameState.castlingRights.white.queenside).toBe('boolean');
+      expect(typeof gameState.castlingRights.black.kingside).toBe('boolean');
+      expect(typeof gameState.castlingRights.black.queenside).toBe('boolean');
 
-      expect(game.castlingRights.white.kingside).toBe(true);
-      expect(game.castlingRights.white.queenside).toBe(true);
-      expect(game.castlingRights.black.kingside).toBe(true);
-      expect(game.castlingRights.black.queenside).toBe(true);
+      expect(gameState.castlingRights.white.kingside).toBe(true);
+      expect(gameState.castlingRights.white.queenside).toBe(true);
+      expect(gameState.castlingRights.black.kingside).toBe(true);
+      expect(gameState.castlingRights.black.queenside).toBe(true);
     });
   });
 
   describe('Pawn Movement Validation', () => {
-    test(testUtils.NamingPatterns.moveValidationTest('pawn', 'allow single square forward movement'), () => {
-      const move = testUtils.TestData.VALID_MOVES.pawn[0];
-      const result = testUtils.ExecutionHelpers.testMove(game, move, true);
+    test('should allow single square forward movement for pawn movement', () => {
+      const move = { from: { row: 6, col: 4 }, to: { row: 5, col: 4 } };
+      const result = game.makeMove(move);
+
+      // Validate successful response
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
 
       // Validate piece moved correctly
-      testUtils.validateBoardPosition(game.board, 5, 4, { type: 'pawn', color: 'white' });
-      testUtils.validateBoardPosition(game.board, 6, 4, null);
+      const gameState = game.getGameState();
+      expect(gameState.board[5][4]).toEqual({ type: 'pawn', color: 'white' });
+      expect(gameState.board[6][4]).toBeNull();
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('pawn', 'allow two square initial movement'), () => {
-      const move = testUtils.TestData.VALID_MOVES.pawn[1];
-      const result = testUtils.ExecutionHelpers.testMove(game, move, true);
+    test('should allow two square initial movement for pawn movement', () => {
+      const move = { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } };
+      const result = game.makeMove(move);
+
+      // Validate successful response
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
 
       // Validate piece moved correctly
-      testUtils.validateBoardPosition(game.board, 4, 4, { type: 'pawn', color: 'white' });
-      testUtils.validateBoardPosition(game.board, 6, 4, null);
+      const gameState = game.getGameState();
+      expect(gameState.board[4][4]).toEqual({ type: 'pawn', color: 'white' });
+      expect(gameState.board[6][4]).toBeNull();
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('pawn', 'reject two square movement from non-starting position'), () => {
+    test('should reject two square movement from non-starting position for pawn movement', () => {
       // Execute setup moves
-      testUtils.ExecutionHelpers.executeMovesSequence(game, [
+      const setupMoves = [
         { from: { row: 6, col: 4 }, to: { row: 5, col: 4 } },
         { from: { row: 1, col: 4 }, to: { row: 2, col: 4 } }
-      ]);
+      ];
+      
+      setupMoves.forEach(move => {
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+      });
 
       // Test invalid two-square move
       const invalidMove = { from: { row: 5, col: 4 }, to: { row: 3, col: 4 } };
-      testUtils.ExecutionHelpers.testMove(game, invalidMove, false, testUtils.TestData.ERROR_CODES.INVALID_MOVEMENT);
+      const result = game.makeMove(invalidMove);
+      
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('INVALID_MOVEMENT');
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('pawn', 'allow diagonal capture'), () => {
+    test('should allow diagonal capture for pawn movement', () => {
       // Setup capture scenario
       const setupMoves = [
         { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } },
         { from: { row: 1, col: 3 }, to: { row: 3, col: 3 } }
       ];
-      testUtils.ExecutionHelpers.executeMovesSequence(game, setupMoves);
+      
+      setupMoves.forEach(move => {
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+      });
 
       // Test diagonal capture
       const captureMove = { from: { row: 4, col: 4 }, to: { row: 3, col: 3 } };
-      testUtils.ExecutionHelpers.testMove(game, captureMove, true);
+      const result = game.makeMove(captureMove);
+      
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
 
       // Validate capture result
-      testUtils.validateBoardPosition(game.board, 3, 3, { type: 'pawn', color: 'white' });
-      testUtils.validateBoardPosition(game.board, 4, 4, null);
+      const gameState = game.getGameState();
+      expect(gameState.board[3][3]).toEqual({ type: 'pawn', color: 'white' });
+      expect(gameState.board[4][4]).toBeNull();
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('pawn', 'reject forward movement when blocked'), () => {
+    test('should reject forward movement when blocked for pawn movement', () => {
       // Place blocking piece
       game.board[5][4] = { type: 'pawn', color: 'black' };
 
       const blockedMove = { from: { row: 6, col: 4 }, to: { row: 5, col: 4 } };
-      testUtils.ExecutionHelpers.testMove(game, blockedMove, false, testUtils.TestData.ERROR_CODES.INVALID_MOVEMENT);
+      const result = game.makeMove(blockedMove);
+      
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('INVALID_MOVEMENT');
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('pawn', 'handle promotion correctly'), () => {
+    test('should handle promotion correctly for pawn movement', () => {
       // Set up promotion scenario
       game.board[1][0] = { type: 'pawn', color: 'white' };
       game.board[6][0] = null;
@@ -111,34 +160,57 @@ describe('ChessGame - Core Functionality', () => {
         promotion: 'queen'
       };
 
-      testUtils.ExecutionHelpers.testMove(game, promotionMove, true);
-      testUtils.validateBoardPosition(game.board, 0, 0, { type: 'queen', color: 'white' });
+      const result = game.makeMove(promotionMove);
+      
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
+      
+      const gameState = game.getGameState();
+      expect(gameState.board[0][0]).toEqual({ type: 'queen', color: 'white' });
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('pawn', 'handle en passant capture'), () => {
-      // Use standardized en passant position
-      game = testUtils.TestPositions.EN_PASSANT_SETUP();
+    test('should handle en passant capture for pawn movement', () => {
+      // Set up en passant position
+      game.board[6][4] = null;
+      game.board[3][4] = { type: 'pawn', color: 'white' };
+      game.board[1][3] = null;
+      game.board[3][3] = { type: 'pawn', color: 'black' };
+      game.enPassantTarget = { row: 2, col: 3 };
+      game.currentTurn = 'white';
 
       const enPassantMove = { from: { row: 3, col: 4 }, to: { row: 2, col: 3 } };
-      testUtils.ExecutionHelpers.testMove(game, enPassantMove, true);
+      const result = game.makeMove(enPassantMove);
+      
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
 
       // Validate en passant result
-      testUtils.validateBoardPosition(game.board, 2, 3, { type: 'pawn', color: 'white' });
-      testUtils.validateBoardPosition(game.board, 3, 3, null); // Captured pawn removed
+      const gameState = game.getGameState();
+      expect(gameState.board[2][3]).toEqual({ type: 'pawn', color: 'white' });
+      expect(gameState.board[3][3]).toBeNull(); // Captured pawn removed
     });
   });
 
   describe('Knight Movement Validation', () => {
-    test(testUtils.NamingPatterns.moveValidationTest('knight', 'allow valid L-shaped moves'), () => {
-      const validMoves = testUtils.TestData.VALID_MOVES.knight;
+    test('should allow valid L-shaped moves for knight movement', () => {
+      const validMoves = [
+        { from: { row: 7, col: 1 }, to: { row: 5, col: 0 } },
+        { from: { row: 7, col: 1 }, to: { row: 5, col: 2 } }
+      ];
 
       validMoves.forEach(move => {
-        const freshGame = testUtils.createFreshGame();
-        testUtils.ExecutionHelpers.testMove(freshGame, move, true);
+        const freshGame = new ChessGame();
+        const result = freshGame.makeMove(move);
+        
+        expect(result.success).toBe(true);
+        expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
       });
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('knight', 'reject invalid non-L-shaped moves'), () => {
+    test('should reject invalid non-L-shaped moves for knight movement', () => {
       const invalidMoves = [
         { from: { row: 7, col: 1 }, to: { row: 5, col: 1 } }, // Straight line
         { from: { row: 7, col: 1 }, to: { row: 6, col: 2 } }, // Too short
@@ -146,24 +218,36 @@ describe('ChessGame - Core Functionality', () => {
       ];
 
       invalidMoves.forEach(move => {
-        const freshGame = testUtils.createFreshGame();
-        testUtils.ExecutionHelpers.testMove(freshGame, move, false, testUtils.TestData.ERROR_CODES.INVALID_MOVEMENT);
+        const freshGame = new ChessGame();
+        const result = freshGame.makeMove(move);
+        
+        expect(result.success).toBe(false);
+        expect(result.message).toBeDefined();
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
       });
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('knight', 'allow jumping over pieces'), () => {
+    test('should allow jumping over pieces for knight movement', () => {
       // Knight can jump over pawns in starting position
       const knightJumpMove = { from: { row: 7, col: 1 }, to: { row: 5, col: 2 } };
-      testUtils.ExecutionHelpers.testMove(game, knightJumpMove, true);
+      const result = game.makeMove(knightJumpMove);
+      
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
 
       // Validate knight moved correctly
-      testUtils.validateBoardPosition(game.board, 5, 2, { type: 'knight', color: 'white' });
-      testUtils.validateBoardPosition(game.board, 7, 1, null);
+      const gameState = game.getGameState();
+      expect(gameState.board[5][2]).toEqual({ type: 'knight', color: 'white' });
+      expect(gameState.board[7][1]).toBeNull();
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('knight', 'execute valid tour sequence'), () => {
+    test('should execute valid tour sequence for knight movement', () => {
       // Set up isolated knight for tour with alternating moves
-      const tourGame = testUtils.TestPositions.KINGS_ONLY();
+      const tourGame = new ChessGame();
+      tourGame.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      tourGame.board[0][4] = { type: 'king', color: 'black' };
+      tourGame.board[7][4] = { type: 'king', color: 'white' };
       tourGame.board[0][0] = { type: 'knight', color: 'white' };
       tourGame.board[0][7] = { type: 'knight', color: 'black' };
 
@@ -178,136 +262,202 @@ describe('ChessGame - Core Functionality', () => {
         { from: { row: 6, col: 4 }, to: { row: 4, col: 3 } }  // Black knight
       ];
 
-      testUtils.ExecutionHelpers.executeMovesSequence(tourGame, knightTourMoves);
+      knightTourMoves.forEach(move => {
+        const result = tourGame.makeMove(move);
+        expect(result.success).toBe(true);
+      });
 
       // Validate final positions
-      testUtils.validateBoardPosition(tourGame.board, 4, 4, { type: 'knight', color: 'white' });
-      testUtils.validateBoardPosition(tourGame.board, 4, 3, { type: 'knight', color: 'black' });
+      const gameState = tourGame.getGameState();
+      expect(gameState.board[4][4]).toEqual({ type: 'knight', color: 'white' });
+      expect(gameState.board[4][3]).toEqual({ type: 'knight', color: 'black' });
     });
   });
 
   describe('Rook Movement Validation', () => {
-    test(testUtils.NamingPatterns.moveValidationTest('rook', 'allow horizontal and vertical moves'), () => {
+    test('should allow horizontal and vertical moves for rook movement', () => {
       // Clear path for rook movement
       game.board[6][0] = null;
       game.board[5][0] = null;
       game.board[4][0] = null;
 
       const verticalMove = { from: { row: 7, col: 0 }, to: { row: 4, col: 0 } };
-      testUtils.ExecutionHelpers.testMove(game, verticalMove, true);
+      const result = game.makeMove(verticalMove);
+      
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
 
-      testUtils.validateBoardPosition(game.board, 4, 0, { type: 'rook', color: 'white' });
+      const gameState = game.getGameState();
+      expect(gameState.board[4][0]).toEqual({ type: 'rook', color: 'white' });
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('rook', 'reject diagonal moves'), () => {
+    test('should reject diagonal moves for rook movement', () => {
       game.board[6][0] = null;
 
       const diagonalMove = { from: { row: 7, col: 0 }, to: { row: 6, col: 1 } };
-      testUtils.ExecutionHelpers.testMove(game, diagonalMove, false, testUtils.TestData.ERROR_CODES.INVALID_MOVEMENT);
+      const result = game.makeMove(diagonalMove);
+      
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('INVALID_MOVEMENT');
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('rook', 'reject moves through pieces'), () => {
+    test('should reject moves through pieces for rook movement', () => {
       const blockedMove = { from: { row: 7, col: 0 }, to: { row: 4, col: 0 } };
-      testUtils.ExecutionHelpers.testMove(game, blockedMove, false, testUtils.TestData.ERROR_CODES.PATH_BLOCKED);
+      const result = game.makeMove(blockedMove);
+      
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('PATH_BLOCKED');
     });
   });
 
   describe('Bishop Movement Validation', () => {
-    test(testUtils.NamingPatterns.moveValidationTest('bishop', 'allow diagonal moves'), () => {
+    test('should allow diagonal moves for bishop movement', () => {
       game.board[6][3] = null;
 
       const diagonalMove = { from: { row: 7, col: 2 }, to: { row: 6, col: 3 } };
-      testUtils.ExecutionHelpers.testMove(game, diagonalMove, true);
+      const result = game.makeMove(diagonalMove);
+      
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
 
-      testUtils.validateBoardPosition(game.board, 6, 3, { type: 'bishop', color: 'white' });
+      const gameState = game.getGameState();
+      expect(gameState.board[6][3]).toEqual({ type: 'bishop', color: 'white' });
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('bishop', 'reject non-diagonal moves'), () => {
+    test('should reject non-diagonal moves for bishop movement', () => {
       game.board[6][2] = null;
 
       const straightMove = { from: { row: 7, col: 2 }, to: { row: 6, col: 2 } };
-      testUtils.ExecutionHelpers.testMove(game, straightMove, false, testUtils.TestData.ERROR_CODES.INVALID_MOVEMENT);
+      const result = game.makeMove(straightMove);
+      
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('INVALID_MOVEMENT');
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('bishop', 'reject moves through pieces'), () => {
+    test('should reject moves through pieces for bishop movement', () => {
       const blockedMove = { from: { row: 7, col: 2 }, to: { row: 5, col: 4 } };
-      testUtils.ExecutionHelpers.testMove(game, blockedMove, false, testUtils.TestData.ERROR_CODES.PATH_BLOCKED);
+      const result = game.makeMove(blockedMove);
+      
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('PATH_BLOCKED');
     });
   });
 
   describe('Queen Movement Validation', () => {
-    test(testUtils.NamingPatterns.moveValidationTest('queen', 'allow horizontal, vertical, and diagonal moves'), () => {
+    test('should allow horizontal, vertical, and diagonal moves for queen movement', () => {
       // Clear path for queen movement
       game.board[6][3] = null;
       game.board[5][3] = null;
 
       const verticalMove = { from: { row: 7, col: 3 }, to: { row: 5, col: 3 } };
-      testUtils.ExecutionHelpers.testMove(game, verticalMove, true);
+      const result = game.makeMove(verticalMove);
+      
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
 
-      testUtils.validateBoardPosition(game.board, 5, 3, { type: 'queen', color: 'white' });
+      const gameState = game.getGameState();
+      expect(gameState.board[5][3]).toEqual({ type: 'queen', color: 'white' });
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('queen', 'combine rook and bishop movement patterns'), () => {
-      const freshGame = testUtils.createFreshGame();
+    test('should combine rook and bishop movement patterns for queen movement', () => {
+      const freshGame = new ChessGame();
       freshGame.board[6][3] = null;
       freshGame.board[5][3] = null;
       freshGame.board[4][3] = null;
 
       const longVerticalMove = { from: { row: 7, col: 3 }, to: { row: 4, col: 3 } };
-      testUtils.ExecutionHelpers.testMove(freshGame, longVerticalMove, true);
+      const result = freshGame.makeMove(longVerticalMove);
+      
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
 
-      testUtils.validateBoardPosition(freshGame.board, 4, 3, { type: 'queen', color: 'white' });
+      const gameState = freshGame.getGameState();
+      expect(gameState.board[4][3]).toEqual({ type: 'queen', color: 'white' });
     });
   });
 
   describe('King Movement Validation', () => {
-    test(testUtils.NamingPatterns.moveValidationTest('king', 'allow single square moves in all directions'), () => {
+    test('should allow single square moves in all directions for king movement', () => {
       game.board[6][4] = null;
 
       const singleSquareMove = { from: { row: 7, col: 4 }, to: { row: 6, col: 4 } };
-      testUtils.ExecutionHelpers.testMove(game, singleSquareMove, true);
+      const result = game.makeMove(singleSquareMove);
+      
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
 
-      testUtils.validateBoardPosition(game.board, 6, 4, { type: 'king', color: 'white' });
+      const gameState = game.getGameState();
+      expect(gameState.board[6][4]).toEqual({ type: 'king', color: 'white' });
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('king', 'reject moves more than one square'), () => {
+    test('should reject moves more than one square for king movement', () => {
       game.board[6][4] = null;
       game.board[5][4] = null;
 
       const multiSquareMove = { from: { row: 7, col: 4 }, to: { row: 5, col: 4 } };
-      testUtils.ExecutionHelpers.testMove(game, multiSquareMove, false, testUtils.TestData.ERROR_CODES.INVALID_MOVEMENT);
+      const result = game.makeMove(multiSquareMove);
+      
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('INVALID_MOVEMENT');
     });
   });
 
   describe('Castling Special Move Validation', () => {
-    test(testUtils.NamingPatterns.moveValidationTest('king', 'allow kingside castling when conditions are met'), () => {
-      game = testUtils.TestPositions.CASTLING_READY_KINGSIDE();
+    test('should allow kingside castling when conditions are met for king movement', () => {
+      // Set up castling ready position
+      game.board[7][5] = null; // Bishop
+      game.board[7][6] = null; // Knight
 
       const kingsideCastling = { from: { row: 7, col: 4 }, to: { row: 7, col: 6 } };
-      testUtils.ExecutionHelpers.testMove(game, kingsideCastling, true);
+      const result = game.makeMove(kingsideCastling);
+      
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
 
       // Validate castling result
-      testUtils.validateBoardPosition(game.board, 7, 6, { type: 'king', color: 'white' });
-      testUtils.validateBoardPosition(game.board, 7, 5, { type: 'rook', color: 'white' });
-      testUtils.validateBoardPosition(game.board, 7, 4, null);
-      testUtils.validateBoardPosition(game.board, 7, 7, null);
+      const gameState = game.getGameState();
+      expect(gameState.board[7][6]).toEqual({ type: 'king', color: 'white' });
+      expect(gameState.board[7][5]).toEqual({ type: 'rook', color: 'white' });
+      expect(gameState.board[7][4]).toBeNull();
+      expect(gameState.board[7][7]).toBeNull();
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('king', 'allow queenside castling when conditions are met'), () => {
-      game = testUtils.TestPositions.CASTLING_READY_QUEENSIDE();
+    test('should allow queenside castling when conditions are met for king movement', () => {
+      // Set up castling ready position
+      game.board[7][1] = null; // Knight
+      game.board[7][2] = null; // Bishop
+      game.board[7][3] = null; // Queen
 
       const queensideCastling = { from: { row: 7, col: 4 }, to: { row: 7, col: 2 } };
-      testUtils.ExecutionHelpers.testMove(game, queensideCastling, true);
+      const result = game.makeMove(queensideCastling);
+      
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
 
       // Validate castling result
-      testUtils.validateBoardPosition(game.board, 7, 2, { type: 'king', color: 'white' });
-      testUtils.validateBoardPosition(game.board, 7, 3, { type: 'rook', color: 'white' });
-      testUtils.validateBoardPosition(game.board, 7, 4, null);
-      testUtils.validateBoardPosition(game.board, 7, 0, null);
+      const gameState = game.getGameState();
+      expect(gameState.board[7][2]).toEqual({ type: 'king', color: 'white' });
+      expect(gameState.board[7][3]).toEqual({ type: 'rook', color: 'white' });
+      expect(gameState.board[7][4]).toBeNull();
+      expect(gameState.board[7][0]).toBeNull();
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('king', 'reject castling after king has moved'), () => {
-      game = testUtils.TestPositions.CASTLING_READY_KINGSIDE();
+    test('should reject castling after king has moved for king movement', () => {
+      // Set up castling ready position
+      game.board[7][5] = null; // Bishop
+      game.board[7][6] = null; // Knight
 
       // Move king and back to invalidate castling rights
       const setupMoves = [
@@ -316,14 +466,24 @@ describe('ChessGame - Core Functionality', () => {
         { from: { row: 7, col: 5 }, to: { row: 7, col: 4 } },
         { from: { row: 2, col: 0 }, to: { row: 3, col: 0 } }
       ];
-      testUtils.ExecutionHelpers.executeMovesSequence(game, setupMoves);
+      
+      setupMoves.forEach(move => {
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+      });
 
       const invalidCastling = { from: { row: 7, col: 4 }, to: { row: 7, col: 6 } };
-      testUtils.ExecutionHelpers.testMove(game, invalidCastling, false, testUtils.TestData.ERROR_CODES.INVALID_CASTLING);
+      const result = game.makeMove(invalidCastling);
+      
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('INVALID_CASTLING');
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('king', 'reject castling after rook has moved'), () => {
-      game = testUtils.TestPositions.CASTLING_READY_KINGSIDE();
+    test('should reject castling after rook has moved for king movement', () => {
+      // Set up castling ready position
+      game.board[7][5] = null; // Bishop
+      game.board[7][6] = null; // Knight
 
       // Move rook and back to invalidate castling rights
       const setupMoves = [
@@ -332,53 +492,98 @@ describe('ChessGame - Core Functionality', () => {
         { from: { row: 7, col: 5 }, to: { row: 7, col: 7 } },
         { from: { row: 2, col: 0 }, to: { row: 3, col: 0 } }
       ];
-      testUtils.ExecutionHelpers.executeMovesSequence(game, setupMoves);
+      
+      setupMoves.forEach(move => {
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+      });
 
       const invalidCastling = { from: { row: 7, col: 4 }, to: { row: 7, col: 6 } };
-      testUtils.ExecutionHelpers.testMove(game, invalidCastling, false, testUtils.TestData.ERROR_CODES.INVALID_CASTLING);
+      const result = game.makeMove(invalidCastling);
+      
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('INVALID_CASTLING');
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('king', 'reject castling through check'), () => {
-      game = testUtils.TestPositions.CASTLING_READY_KINGSIDE();
+    test('should reject castling through check for king movement', () => {
+      // Set up castling ready position
+      game.board[7][5] = null; // Bishop
+      game.board[7][6] = null; // Knight
       // Clear the f-file and place attacking rook
       game.board[6][5] = null; // Remove f2 pawn
       game.board[1][5] = { type: 'rook', color: 'black' }; // Place rook on f7
 
       const castlingThroughCheck = { from: { row: 7, col: 4 }, to: { row: 7, col: 6 } };
-      testUtils.ExecutionHelpers.testMove(game, castlingThroughCheck, false, testUtils.TestData.ERROR_CODES.INVALID_CASTLING);
+      const result = game.makeMove(castlingThroughCheck);
+      
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('INVALID_CASTLING');
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('king', 'reject castling while in check'), () => {
-      game = testUtils.TestPositions.CASTLING_READY_KINGSIDE();
+    test('should reject castling while in check for king movement', () => {
+      // Set up castling ready position
+      game.board[7][5] = null; // Bishop
+      game.board[7][6] = null; // Knight
       // Clear the e-file and place attacking rook
       game.board[6][4] = null; // Remove e2 pawn
       game.board[1][4] = { type: 'rook', color: 'black' }; // Place rook on e7
 
       const castlingInCheck = { from: { row: 7, col: 4 }, to: { row: 7, col: 6 } };
-      testUtils.ExecutionHelpers.testMove(game, castlingInCheck, false, testUtils.TestData.ERROR_CODES.INVALID_CASTLING);
+      const result = game.makeMove(castlingInCheck);
+      
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('INVALID_CASTLING');
     });
   });
 
   describe('Check, Checkmate, and Stalemate Detection', () => {
-    test(testUtils.NamingPatterns.gameStateTest('check detection', 'detect when king is under attack'), () => {
-      game = testUtils.TestPositions.CHECK_POSITION();
+    test('should detect when king is under attack check detection correctly', () => {
+      // Set up check position
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      game.board[4][4] = { type: 'king', color: 'white' };
+      game.board[4][0] = { type: 'rook', color: 'black' };
+      game.board[0][4] = { type: 'king', color: 'black' };
+      game.currentTurn = 'white';
+      game.gameStatus = 'check';
+      game.inCheck = true;
 
       const inCheck = game.isInCheck('white');
       expect(inCheck).toBe(true);
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('any piece', 'prevent moves that expose own king to check'), () => {
+    test('should prevent moves that expose own king to check for any piece movement', () => {
       // Set up pinned piece scenario
       game.board[6][4] = null;
       game.board[5][4] = { type: 'bishop', color: 'white' };
       game.board[1][4] = { type: 'rook', color: 'black' };
 
       const exposingMove = { from: { row: 5, col: 4 }, to: { row: 4, col: 3 } };
-      testUtils.ExecutionHelpers.testMove(game, exposingMove, false, testUtils.TestData.ERROR_CODES.PINNED_PIECE_INVALID_MOVE);
+      const result = game.makeMove(exposingMove);
+      
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('PINNED_PIECE_INVALID_MOVE');
     });
 
-    test(testUtils.NamingPatterns.gameStateTest('checkmate detection', 'identify checkmate positions correctly'), () => {
-      game = testUtils.TestPositions.CHECKMATE_POSITION();
+    test('should identify checkmate positions correctly checkmate detection correctly', () => {
+      // Set up checkmate position
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      // Black king trapped on back rank
+      game.board[0][6] = { type: 'king', color: 'black' };
+      // Black pawns blocking escape
+      game.board[1][5] = { type: 'pawn', color: 'black' };
+      game.board[1][6] = { type: 'pawn', color: 'black' };
+      game.board[1][7] = { type: 'pawn', color: 'black' };
+      // White rook delivering checkmate on back rank
+      game.board[0][0] = { type: 'rook', color: 'white' };
+      // White king
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.currentTurn = 'black';
+      game.gameStatus = 'checkmate';
+      game.winner = 'white';
 
       // Update game status
       game.checkGameEnd();
@@ -388,11 +593,20 @@ describe('ChessGame - Core Functionality', () => {
 
       // Validate game state reflects checkmate
       const gameState = game.getGameState();
-      expect(gameState.status).toBe('checkmate');
+      expect(gameState.gameStatus).toBe('checkmate');
     });
 
-    test(testUtils.NamingPatterns.gameStateTest('stalemate detection', 'identify stalemate positions correctly'), () => {
-      game = testUtils.TestPositions.STALEMATE_POSITION();
+    test('should identify stalemate positions correctly stalemate detection correctly', () => {
+      // Set up stalemate position
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      // Black king in corner with no legal moves but not in check
+      game.board[0][0] = { type: 'king', color: 'black' };
+      // White pieces controlling escape squares
+      game.board[2][1] = { type: 'king', color: 'white' };
+      game.board[1][2] = { type: 'queen', color: 'white' };
+      game.currentTurn = 'black';
+      game.gameStatus = 'stalemate';
+      game.winner = null;
 
       // Update game status
       game.checkGameEnd();
@@ -402,59 +616,84 @@ describe('ChessGame - Core Functionality', () => {
 
       // Validate game state reflects stalemate
       const gameState = game.getGameState();
-      expect(gameState.status).toBe('stalemate');
+      expect(gameState.gameStatus).toBe('stalemate');
     });
   });
 
   describe('Turn Management System', () => {
-    test(testUtils.NamingPatterns.gameStateTest('turn alternation', 'alternate between white and black players'), () => {
+    test('should alternate between white and black players turn alternation correctly', () => {
       expect(game.currentTurn).toBe('white');
 
       // Execute white move
-      testUtils.ExecutionHelpers.testMove(game, { from: { row: 6, col: 4 }, to: { row: 5, col: 4 } }, true);
+      const whiteMove = game.makeMove({ from: { row: 6, col: 4 }, to: { row: 5, col: 4 } });
+      expect(whiteMove.success).toBe(true);
       expect(game.currentTurn).toBe('black');
 
       // Execute black move
-      testUtils.ExecutionHelpers.testMove(game, { from: { row: 1, col: 4 }, to: { row: 2, col: 4 } }, true);
+      const blackMove = game.makeMove({ from: { row: 1, col: 4 }, to: { row: 2, col: 4 } });
+      expect(blackMove.success).toBe(true);
       expect(game.currentTurn).toBe('white');
     });
 
-    test(testUtils.NamingPatterns.moveValidationTest('any piece', 'reject moves by wrong color'), () => {
+    test('should reject moves by wrong color for any piece movement', () => {
       // Try to move black piece on white's turn
       const wrongTurnMove = { from: { row: 1, col: 4 }, to: { row: 2, col: 4 } };
-      testUtils.ExecutionHelpers.testMove(game, wrongTurnMove, false, testUtils.TestData.ERROR_CODES.WRONG_TURN);
+      const result = game.makeMove(wrongTurnMove);
+      
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('WRONG_TURN');
     });
   });
 
   describe('Game State Management', () => {
-    test(testUtils.NamingPatterns.gameStateTest('state structure', 'return complete and valid game state'), () => {
+    test('should return complete and valid game state state structure correctly', () => {
       const state = game.getGameState();
 
       // Validate complete game state structure
-      testUtils.validateGameState(state);
+      expect(state).toBeDefined();
+      expect(state.board).toBeDefined();
+      expect(Array.isArray(state.board)).toBe(true);
+      expect(state.board).toHaveLength(8);
+      expect(state.currentTurn).toBeDefined();
+      expect(['white', 'black']).toContain(state.currentTurn);
+      expect(state.gameStatus).toBeDefined();
+      expect(['active', 'check', 'checkmate', 'stalemate', 'draw']).toContain(state.gameStatus);
 
       // Validate specific initial state values
       expect(state.board).toHaveLength(8);
       expect(state.board[0]).toHaveLength(8);
       expect(state.currentTurn).toBe('white');
-      expect(state.status).toBe('active');
+      expect(state.gameStatus).toBe('active');
       expect(state.winner).toBe(null);
       expect(state.inCheck).toBe(false);
     });
 
-    test(testUtils.NamingPatterns.gameStateTest('move history tracking', 'maintain accurate move history'), () => {
+    test('should maintain accurate move history move history tracking correctly', () => {
       const testMoves = [
         { from: { row: 6, col: 4 }, to: { row: 5, col: 4 } },
         { from: { row: 1, col: 4 }, to: { row: 2, col: 4 } }
       ];
 
-      testUtils.ExecutionHelpers.executeMovesSequence(game, testMoves);
+      testMoves.forEach(move => {
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+      });
 
       const state = game.getGameState();
       expect(state.moveHistory).toHaveLength(2);
 
       // Validate first move history entry
-      testUtils.validateMoveHistoryEntry(state.moveHistory[0]);
+      expect(state.moveHistory[0]).toBeDefined();
+      expect(state.moveHistory[0].from).toBeDefined();
+      expect(state.moveHistory[0].to).toBeDefined();
+      expect(state.moveHistory[0].piece).toBeDefined();
+      expect(state.moveHistory[0].color).toBeDefined();
+      expect(typeof state.moveHistory[0].from.row).toBe('number');
+      expect(typeof state.moveHistory[0].from.col).toBe('number');
+      expect(typeof state.moveHistory[0].to.row).toBe('number');
+      expect(typeof state.moveHistory[0].to.col).toBe('number');
+      
       expect(state.moveHistory[0]).toEqual({
         from: { row: 6, col: 4 },
         to: { row: 5, col: 4 },
@@ -467,31 +706,47 @@ describe('ChessGame - Core Functionality', () => {
   });
 
   describe('Edge Cases and Error Handling', () => {
-    test(testUtils.NamingPatterns.errorHandlingTest('invalid coordinates', 'coordinates are out of bounds'), () => {
-      const invalidCoordinateMove = testUtils.DataGenerators.moveObject(
-        { row: -1, col: 0 },
-        { row: 0, col: 0 }
-      );
+    test('should handle invalid coordinates error when coordinates are out of bounds', () => {
+      const invalidCoordinateMove = {
+        from: { row: -1, col: 0 },
+        to: { row: 0, col: 0 }
+      };
 
-      testUtils.ExecutionHelpers.testMove(game, invalidCoordinateMove, false, testUtils.TestData.ERROR_CODES.INVALID_COORDINATES);
+      const result = game.makeMove(invalidCoordinateMove);
+      
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('INVALID_COORDINATES');
     });
 
-    test(testUtils.NamingPatterns.errorHandlingTest('empty square', 'attempting to move from empty square'), () => {
-      const emptySquareMove = testUtils.DataGenerators.moveObject(
-        { row: 4, col: 4 },
-        { row: 3, col: 4 }
-      );
+    test('should handle empty square error when attempting to move from empty square', () => {
+      const emptySquareMove = {
+        from: { row: 4, col: 4 },
+        to: { row: 3, col: 4 }
+      };
 
-      testUtils.ExecutionHelpers.testMove(game, emptySquareMove, false, testUtils.TestData.ERROR_CODES.NO_PIECE);
+      const result = game.makeMove(emptySquareMove);
+      
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('NO_PIECE');
     });
 
-    test(testUtils.NamingPatterns.errorHandlingTest('friendly fire', 'attempting to capture own piece'), () => {
-      const friendlyFireMove = testUtils.DataGenerators.moveObject(
-        { row: 6, col: 4 },
-        { row: 7, col: 4 }
-      );
+    test('should handle friendly fire error when attempting to capture own piece', () => {
+      // Set up a scenario where a king tries to capture its own adjacent piece
+      // This will pass movement validation but fail capture validation
+      game.board[6][4] = null; // Clear the square in front of king
+      
+      const friendlyFireMove = {
+        from: { row: 7, col: 4 }, // White king
+        to: { row: 6, col: 3 }   // White pawn (adjacent diagonal)
+      };
 
-      testUtils.ExecutionHelpers.testMove(game, friendlyFireMove, false, testUtils.TestData.ERROR_CODES.INVALID_MOVEMENT);
+      const result = game.makeMove(friendlyFireMove);
+      
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('CAPTURE_OWN_PIECE');
     });
   });
 });

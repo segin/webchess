@@ -61,12 +61,40 @@ global.testUtils = {
   
   // Create a fresh game instance
   createFreshGame: () => {
-    return TestPositions.STARTING_POSITION();
+    const ChessGame = require('../src/shared/chessGame');
+    return new ChessGame();
   },
   
   // Helper to execute a sequence of moves
   executeMovesSequence: (game, moves, expectAllSuccess = true) => {
     return ExecutionHelpers.executeMovesSequence(game, moves, expectAllSuccess);
+  },
+  
+  // API normalization helpers for backward compatibility
+  validateMoveResponse: (response, shouldSucceed = true, expectedErrorCode = null) => {
+    if (shouldSucceed) {
+      global.testUtils.validateSuccessResponse(response);
+    } else {
+      global.testUtils.validateErrorResponse(response);
+      if (expectedErrorCode) {
+        expect(response.errorCode).toBe(expectedErrorCode);
+      }
+    }
+  },
+  
+  // Helper to validate board position with current API
+  validateBoardPosition: (board, row, col, expectedPiece) => {
+    AssertionPatterns.validateBoardPosition(board, row, col, expectedPiece);
+  },
+  
+  // Helper to validate game state with current API
+  validateGameState: (gameState) => {
+    AssertionPatterns.validateGameState(gameState);
+  },
+  
+  // Helper to validate castling rights with current API
+  validateCastlingRights: (castlingRights) => {
+    AssertionPatterns.validateCastlingRights(castlingRights);
   },
   
   // validateErrorResponse and validateSuccessResponse are already in errorSuppressionUtils

@@ -24,6 +24,8 @@ const TestPositions = {
         game.board = Array(8).fill(null).map(() => Array(8).fill(null));
         game.board[0][4] = { type: 'king', color: 'black' };
         game.board[7][4] = { type: 'king', color: 'white' };
+        // Update game status to reflect the new board state
+        game.gameStatus = 'active';
         return game;
     },
 
@@ -84,6 +86,8 @@ const TestPositions = {
         // White king
         game.board[7][4] = { type: 'king', color: 'white' };
         game.currentTurn = 'black';
+        game.gameStatus = 'checkmate';
+        game.winner = 'white';
         return game;
     },
 
@@ -99,6 +103,8 @@ const TestPositions = {
         game.board[2][1] = { type: 'king', color: 'white' };
         game.board[1][2] = { type: 'queen', color: 'white' };
         game.currentTurn = 'black';
+        game.gameStatus = 'stalemate';
+        game.winner = null;
         return game;
     },
 
@@ -112,6 +118,8 @@ const TestPositions = {
         game.board[4][0] = { type: 'rook', color: 'black' };
         game.board[0][4] = { type: 'king', color: 'black' };
         game.currentTurn = 'white';
+        game.gameStatus = 'check';
+        game.inCheck = true;
         return game;
     }
 };

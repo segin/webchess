@@ -334,12 +334,13 @@ const testUtils = {
   },
 
   /**
-   * Validate error response structure
+   * Validate error response structure using current API
    * @param {Object} response - Response to validate
    */
   validateErrorResponse(response) {
     expect(response).toBeDefined();
     expect(response.success).toBe(false);
+    expect(response.isValid).toBe(false);
     expect(response.errorCode).toBeDefined();
     expect(response.message).toBeDefined();
     expect(typeof response.message).toBe('string');
@@ -347,12 +348,13 @@ const testUtils = {
   },
 
   /**
-   * Validate success response structure
+   * Validate success response structure using current API
    * @param {Object} response - Response to validate
    */
   validateSuccessResponse(response) {
     expect(response).toBeDefined();
     expect(response.success).toBe(true);
+    expect(response.isValid).toBe(true);
     expect(response.errorCode).toBeNull();
   },
 

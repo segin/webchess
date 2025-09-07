@@ -8,25 +8,27 @@
  */
 const AssertionPatterns = {
   /**
-   * Validate a successful move response
+   * Validate a successful move response using current API structure
    * @param {Object} response - Move response to validate
    */
   validateSuccessfulMove(response) {
     expect(response).toBeDefined();
     expect(response.success).toBe(true);
+    expect(response.isValid).toBe(true);
     expect(response.errorCode).toBeNull();
     expect(response.message).toBeDefined();
     expect(typeof response.message).toBe('string');
   },
 
   /**
-   * Validate a failed move response
+   * Validate a failed move response using current API structure
    * @param {Object} response - Move response to validate
    * @param {string} expectedErrorCode - Expected error code (optional)
    */
   validateFailedMove(response, expectedErrorCode = null) {
     expect(response).toBeDefined();
     expect(response.success).toBe(false);
+    expect(response.isValid).toBe(false);
     expect(response.errorCode).toBeDefined();
     expect(response.message).toBeDefined();
     expect(typeof response.message).toBe('string');
@@ -38,7 +40,7 @@ const AssertionPatterns = {
   },
 
   /**
-   * Validate game state structure
+   * Validate game state structure using current API property names
    * @param {Object} gameState - Game state to validate
    */
   validateGameState(gameState) {
@@ -48,10 +50,18 @@ const AssertionPatterns = {
     expect(gameState.board).toHaveLength(8);
     expect(gameState.currentTurn).toBeDefined();
     expect(['white', 'black']).toContain(gameState.currentTurn);
-    expect(gameState.status).toBeDefined();
-    expect(['active', 'check', 'checkmate', 'stalemate', 'draw']).toContain(gameState.status);
+    
+    // Current API provides both status and gameStatus for backward compatibility
+    expect(gameState.gameStatus).toBeDefined();
+    expect(['active', 'check', 'checkmate', 'stalemate', 'draw']).toContain(gameState.gameStatus);
+    expect(gameState.status).toBe(gameState.gameStatus); // Should be the same
+    
     expect(gameState.moveHistory).toBeDefined();
     expect(Array.isArray(gameState.moveHistory)).toBe(true);
+    expect(gameState.winner).toBeDefined();
+    expect(gameState.castlingRights).toBeDefined();
+    expect(gameState.inCheck).toBeDefined();
+    expect(typeof gameState.inCheck).toBe('boolean');
   },
 
   /**
