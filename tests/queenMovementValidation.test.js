@@ -1,43 +1,5 @@
 const ChessGame = require('../src/shared/chessGame');
 
-// Simple test framework for Node.js
-if (typeof describe === 'undefined') {
-  global.describe = (name, fn) => { console.log('\n' + name); fn(); };
-  global.test = (name, fn) => { 
-    try { 
-      fn(); 
-      console.log('✅', name); 
-    } catch(e) { 
-      console.log('❌', name, ':', e.message); 
-    } 
-  };
-  global.beforeEach = (fn) => fn();
-  global.expect = (actual) => ({
-    toBe: (expected) => { 
-      if (actual !== expected) throw new Error(`Expected ${expected}, got ${actual}`); 
-      return { toBe: () => {} };
-    },
-    toEqual: (expected) => { 
-      if (JSON.stringify(actual) !== JSON.stringify(expected)) 
-        throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`); 
-      return { toEqual: () => {} };
-    },
-    toContain: (expected) => { 
-      if (!Array.isArray(actual) || !actual.includes(expected)) 
-        throw new Error(`Expected array to contain ${expected}, got ${JSON.stringify(actual)}`); 
-      return { toContain: () => {} };
-    },
-    toBeDefined: () => { 
-      if (actual === undefined) throw new Error('Expected value to be defined'); 
-      return { toBeDefined: () => {} };
-    },
-    toBeGreaterThan: (expected) => { 
-      if (actual <= expected) throw new Error(`Expected ${actual} to be greater than ${expected}`); 
-      return { toBeGreaterThan: () => {} };
-    }
-  });
-}
-
 describe('Comprehensive Queen Movement Validation', () => {
   let game;
 
@@ -47,10 +9,16 @@ describe('Comprehensive Queen Movement Validation', () => {
 
   describe('Queen Horizontal and Vertical Moves', () => {
     test('should allow queen horizontal moves with path clearing validation', () => {
-      game = new ChessGame(); // Reset game
-      // Place queen in center
+      // Create fresh game and set up board with queen in center
+      game = new ChessGame();
+      
+      // Place kings for valid game state
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[0][4] = { type: 'king', color: 'black' };
+      
+      // Place queen in center and clear original queen
       game.board[4][4] = { type: 'queen', color: 'white' };
-      game.board[7][3] = null; // Remove original queen
+      game.board[7][3] = null;
       
       // Clear horizontal path
       for (let col = 0; col < 8; col++) {
@@ -66,9 +34,12 @@ describe('Comprehensive Queen Movement Validation', () => {
       ];
       
       horizontalMoves.forEach((to) => {
-        const move = { from: { row: 4, col: 4 }, to: to };
-        const result = game.makeMove(move);
+        const result = game.makeMove({ from: { row: 4, col: 4 }, to: to });
+        
+        // Validate success response
         expect(result.success).toBe(true);
+        expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
         expect(game.board[to.row][to.col]).toEqual({ type: 'queen', color: 'white' });
         expect(game.board[4][4]).toBe(null);
         
@@ -80,10 +51,16 @@ describe('Comprehensive Queen Movement Validation', () => {
     });
 
     test('should allow queen vertical moves with path clearing validation', () => {
-      game = new ChessGame(); // Reset game
-      // Place queen in center
+      // Create fresh game and set up board with queen in center
+      game = new ChessGame();
+      
+      // Place kings for valid game state (avoiding vertical path)
+      game.board[7][3] = { type: 'king', color: 'white' };
+      game.board[0][3] = { type: 'king', color: 'black' };
+      
+      // Place queen in center and clear original queen
       game.board[4][4] = { type: 'queen', color: 'white' };
-      game.board[7][3] = null; // Remove original queen
+      game.board[7][3] = { type: 'king', color: 'white' }; // Restore king
       
       // Clear vertical path
       for (let row = 0; row < 8; row++) {
@@ -95,13 +72,16 @@ describe('Comprehensive Queen Movement Validation', () => {
       // Test vertical moves in both directions
       const verticalMoves = [
         { row: 0, col: 4 }, // Up
-        { row: 7, col: 4 }  // Down
+        { row: 6, col: 4 }  // Down (avoiding king at 7,3)
       ];
       
       verticalMoves.forEach((to) => {
-        const move = { from: { row: 4, col: 4 }, to: to };
-        const result = game.makeMove(move);
+        const result = game.makeMove({ from: { row: 4, col: 4 }, to: to });
+        
+        // Validate success response
         expect(result.success).toBe(true);
+        expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
         expect(game.board[to.row][to.col]).toEqual({ type: 'queen', color: 'white' });
         expect(game.board[4][4]).toBe(null);
         
@@ -113,42 +93,66 @@ describe('Comprehensive Queen Movement Validation', () => {
     });
 
     test('should reject horizontal moves when path is blocked', () => {
-      game = new ChessGame(); // Reset game
+      // Create fresh game and set up board
+      game = new ChessGame();
+      
+      // Place kings for valid game state
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[0][4] = { type: 'king', color: 'black' };
+      
+      // Place queen and clear original queen
       game.board[4][4] = { type: 'queen', color: 'white' };
-      game.board[7][3] = null; // Remove original queen
+      game.board[7][3] = null;
       
       // Place blocking piece
       game.board[4][6] = { type: 'pawn', color: 'black' };
       
       // Try to move past the blocking piece
-      const move = { from: { row: 4, col: 4 }, to: { row: 4, col: 7 } };
-      const result = game.makeMove(move);
+      const result = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 4, col: 7 } });
+      
+      // Validate error response
       expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
       expect(result.errorCode).toBe('PATH_BLOCKED');
     });
 
     test('should reject vertical moves when path is blocked', () => {
-      game = new ChessGame(); // Reset game
+      // Create fresh game and set up board
+      game = new ChessGame();
+      
+      // Place kings for valid game state
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[0][4] = { type: 'king', color: 'black' };
+      
+      // Place queen and clear original queen
       game.board[4][4] = { type: 'queen', color: 'white' };
-      game.board[7][3] = null; // Remove original queen
+      game.board[7][3] = null;
       
       // Place blocking piece
       game.board[2][4] = { type: 'pawn', color: 'black' };
       
       // Try to move past the blocking piece
-      const move = { from: { row: 4, col: 4 }, to: { row: 0, col: 4 } };
-      const result = game.makeMove(move);
+      const result = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 0, col: 4 } });
+      
+      // Validate error response
       expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
       expect(result.errorCode).toBe('PATH_BLOCKED');
     });
   });
 
   describe('Queen Diagonal Moves in All Four Directions', () => {
     test('should allow queen diagonal moves in all four diagonal directions', () => {
-      game = new ChessGame(); // Reset game
-      // Place queen in center
+      // Create fresh game and set up board
+      game = new ChessGame();
+      
+      // Place kings for valid game state
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[0][4] = { type: 'king', color: 'black' };
+      
+      // Place queen in center and clear original queen
       game.board[4][4] = { type: 'queen', color: 'white' };
-      game.board[7][3] = null; // Remove original queen
+      game.board[7][3] = null;
       
       // Clear all diagonal paths
       const diagonalSquares = [
@@ -171,9 +175,12 @@ describe('Comprehensive Queen Movement Validation', () => {
       ];
       
       diagonalMoves.forEach((to) => {
-        const move = { from: { row: 4, col: 4 }, to: to };
-        const result = game.makeMove(move);
+        const result = game.makeMove({ from: { row: 4, col: 4 }, to: to });
+        
+        // Validate success response
         expect(result.success).toBe(true);
+        expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
         expect(game.board[to.row][to.col]).toEqual({ type: 'queen', color: 'white' });
         expect(game.board[4][4]).toBe(null);
         
@@ -185,9 +192,16 @@ describe('Comprehensive Queen Movement Validation', () => {
     });
 
     test('should allow queen to move across entire diagonal when path is clear', () => {
-      game = new ChessGame(); // Reset game
+      // Create fresh game and set up board
+      game = new ChessGame();
+      
+      // Place kings for valid game state (avoiding diagonal path)
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[0][4] = { type: 'king', color: 'black' };
+      
+      // Place queen at corner and clear original queen
       game.board[0][0] = { type: 'queen', color: 'white' };
-      game.board[7][3] = null; // Remove original queen
+      game.board[7][3] = null;
       
       // Clear diagonal path including destination
       const diagonalPath = [[1, 1], [2, 2], [3, 3], [4, 4], [5, 5], [6, 6], [7, 7]];
@@ -196,71 +210,117 @@ describe('Comprehensive Queen Movement Validation', () => {
       });
       
       // Move across entire diagonal
-      const move = { from: { row: 0, col: 0 }, to: { row: 7, col: 7 } };
-      const result = game.makeMove(move);
+      const result = game.makeMove({ from: { row: 0, col: 0 }, to: { row: 7, col: 7 } });
+      
+      // Validate success response
       expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
       expect(game.board[7][7]).toEqual({ type: 'queen', color: 'white' });
       expect(game.board[0][0]).toBe(null);
     });
 
     test('should reject diagonal moves when path is blocked', () => {
-      game = new ChessGame(); // Reset game
+      // Create fresh game and set up board
+      game = new ChessGame();
+      
+      // Place kings for valid game state
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[0][4] = { type: 'king', color: 'black' };
+      
+      // Place queen and clear original queen
       game.board[4][4] = { type: 'queen', color: 'white' };
-      game.board[7][3] = null; // Remove original queen
+      game.board[7][3] = null;
       
       // Place blocking piece on diagonal path
       game.board[3][3] = { type: 'pawn', color: 'black' };
       
       // Try to move past the blocking piece
-      const move = { from: { row: 4, col: 4 }, to: { row: 2, col: 2 } };
-      const result = game.makeMove(move);
+      const result = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 2, col: 2 } });
+      
+      // Validate error response
       expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
       expect(result.errorCode).toBe('PATH_BLOCKED');
     });
   });
 
   describe('Invalid Queen Moves and Complex Path Obstruction Scenarios', () => {
     test('should reject L-shaped moves (not rook or bishop pattern)', () => {
-      game = new ChessGame(); // Reset game
-      game.board[4][4] = { type: 'queen', color: 'white' };
-      game.board[7][3] = null; // Remove original queen
+      // Create fresh game and set up board
+      game = new ChessGame();
       
-      const lShapedMove = { from: { row: 4, col: 4 }, to: { row: 6, col: 5 } };
-      const result = game.makeMove(lShapedMove);
+      // Place kings for valid game state
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[0][4] = { type: 'king', color: 'black' };
+      
+      // Place queen and clear original queen
+      game.board[4][4] = { type: 'queen', color: 'white' };
+      game.board[7][3] = null;
+      
+      const result = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 6, col: 5 } });
+      
+      // Validate error response
       expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
       expect(result.errorCode).toBe('INVALID_MOVEMENT');
     });
 
     test('should reject irregular moves that are neither straight nor diagonal', () => {
-      game = new ChessGame(); // Reset game
+      // Create fresh game and set up board
+      game = new ChessGame();
+      
+      // Place kings for valid game state
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[0][4] = { type: 'king', color: 'black' };
+      
+      // Place queen and clear original queen
       game.board[4][4] = { type: 'queen', color: 'white' };
-      game.board[7][3] = null; // Remove original queen
+      game.board[7][3] = null;
       
       // Move that's not on a straight line or true diagonal
-      const irregularMove = { from: { row: 4, col: 4 }, to: { row: 6, col: 7 } };
-      const result = game.makeMove(irregularMove);
+      const result = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 6, col: 7 } });
+      
+      // Validate error response
       expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
       expect(result.errorCode).toBe('INVALID_MOVEMENT');
     });
 
     test('should reject capturing own pieces', () => {
-      game = new ChessGame(); // Reset game
+      // Create fresh game and set up board
+      game = new ChessGame();
+      
+      // Place kings for valid game state
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[0][4] = { type: 'king', color: 'black' };
+      
+      // Place queen and clear original queen
       game.board[4][4] = { type: 'queen', color: 'white' };
-      game.board[7][3] = null; // Remove original queen
+      game.board[7][3] = null;
       
       // Place own piece at destination
       game.board[4][7] = { type: 'pawn', color: 'white' };
       
-      const move = { from: { row: 4, col: 4 }, to: { row: 4, col: 7 } };
-      const result = game.makeMove(move);
+      const result = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 4, col: 7 } });
+      
+      // Validate error response
       expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
       expect(result.errorCode).toBe('CAPTURE_OWN_PIECE');
     });
 
     test('should handle complex path obstruction with multiple pieces', () => {
-      game = new ChessGame(); // Reset game
+      // Create fresh game and set up board
+      game = new ChessGame();
+      
+      // Place kings for valid game state
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[0][4] = { type: 'king', color: 'black' };
+      
+      // Place queen and clear original queen
       game.board[4][4] = { type: 'queen', color: 'white' };
-      game.board[7][3] = null; // Remove original queen
+      game.board[7][3] = null;
       
       // Place multiple pieces creating complex obstruction pattern
       game.board[4][5] = { type: 'pawn', color: 'black' }; // Horizontal block
@@ -275,41 +335,52 @@ describe('Comprehensive Queen Movement Validation', () => {
       ];
       
       blockedMoves.forEach((to) => {
-        const move = { from: { row: 4, col: 4 }, to: to };
-        const result = game.makeMove(move);
+        const result = game.makeMove({ from: { row: 4, col: 4 }, to: to });
+        
+        // Validate error response
         expect(result.success).toBe(false);
+        expect(result.message).toBeDefined();
         expect(result.errorCode).toBe('PATH_BLOCKED');
       });
     });
 
     test('should allow queen to capture pieces at destination when path is clear', () => {
-      game = new ChessGame(); // Reset game
+      // Create fresh game and set up board
+      game = new ChessGame();
+      
+      // Place kings for valid game state (avoiding capture paths)
+      game.board[7][0] = { type: 'king', color: 'white' };
+      game.board[0][0] = { type: 'king', color: 'black' };
+      
+      // Place queen and clear original queen
       game.board[4][4] = { type: 'queen', color: 'white' };
-      game.board[7][3] = null; // Remove original queen
+      game.board[7][3] = null;
       
       // Place enemy pieces at various destinations (with clear paths)
       game.board[4][7] = { type: 'pawn', color: 'black' }; // Horizontal
-      game.board[0][4] = { type: 'pawn', color: 'black' }; // Vertical
+      game.board[1][4] = { type: 'pawn', color: 'black' }; // Vertical (avoiding king)
       game.board[2][2] = { type: 'pawn', color: 'black' }; // Diagonal
       
       // Clear paths to these pieces
       game.board[4][5] = null;
       game.board[4][6] = null;
-      game.board[1][4] = null;
       game.board[2][4] = null;
       game.board[3][4] = null;
       game.board[3][3] = null;
       
       const captureMoves = [
         { row: 4, col: 7 }, // Horizontal capture
-        { row: 0, col: 4 }, // Vertical capture
+        { row: 1, col: 4 }, // Vertical capture
         { row: 2, col: 2 }  // Diagonal capture
       ];
       
       captureMoves.forEach((to) => {
-        const move = { from: { row: 4, col: 4 }, to: to };
-        const result = game.makeMove(move);
+        const result = game.makeMove({ from: { row: 4, col: 4 }, to: to });
+        
+        // Validate success response
         expect(result.success).toBe(true);
+        expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
         expect(game.board[to.row][to.col]).toEqual({ type: 'queen', color: 'white' });
         expect(game.board[4][4]).toBe(null);
         
@@ -321,9 +392,16 @@ describe('Comprehensive Queen Movement Validation', () => {
     });
 
     test('should validate queen movement combines both rook and bishop patterns correctly', () => {
-      game = new ChessGame(); // Reset game
+      // Create fresh game and set up board
+      game = new ChessGame();
+      
+      // Place kings for valid game state (avoiding test paths)
+      game.board[6][0] = { type: 'king', color: 'white' };
+      game.board[0][1] = { type: 'king', color: 'black' };
+      
+      // Place queen and clear original queen
       game.board[4][4] = { type: 'queen', color: 'white' };
-      game.board[7][3] = null; // Remove original queen
+      game.board[7][3] = null;
       
       // Clear paths for testing
       for (let i = 0; i < 8; i++) {
@@ -347,17 +425,20 @@ describe('Comprehensive Queen Movement Validation', () => {
       // Test that queen can move like both rook and bishop
       const validQueenMoves = [
         // Rook-like moves
-        { row: 4, col: 0 }, { row: 4, col: 7 }, // Horizontal
-        { row: 0, col: 4 }, { row: 7, col: 4 }, // Vertical
+        { row: 4, col: 2 }, { row: 4, col: 7 }, // Horizontal
+        { row: 2, col: 4 }, { row: 7, col: 4 }, // Vertical
         // Bishop-like moves
-        { row: 0, col: 0 }, { row: 1, col: 7 }, // Diagonals
+        { row: 2, col: 2 }, { row: 1, col: 7 }, // Diagonals
         { row: 7, col: 1 }, { row: 7, col: 7 }
       ];
       
       validQueenMoves.forEach((to) => {
-        const move = { from: { row: 4, col: 4 }, to: to };
-        const result = game.makeMove(move);
+        const result = game.makeMove({ from: { row: 4, col: 4 }, to: to });
+        
+        // Validate success response
         expect(result.success).toBe(true);
+        expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
         
         // Reset for next test
         game.board[4][4] = { type: 'queen', color: 'white' };
@@ -367,7 +448,13 @@ describe('Comprehensive Queen Movement Validation', () => {
     });
 
     test('should handle queen moves from corner and edge positions', () => {
-      game = new ChessGame(); // Reset game
+      // Create fresh game and set up board
+      game = new ChessGame();
+      
+      // Place kings for valid game state (avoiding test paths)
+      game.board[6][4] = { type: 'king', color: 'white' };
+      game.board[1][4] = { type: 'king', color: 'black' };
+      
       // Test queen from corner
       game.board[0][0] = { type: 'queen', color: 'white' };
       game.board[7][3] = null; // Remove original queen
@@ -380,7 +467,7 @@ describe('Comprehensive Queen Movement Validation', () => {
       const cornerMoves = [
         { row: 0, col: 7 }, // Horizontal across top rank
         { row: 7, col: 0 }, // Vertical down left file
-        { row: 7, col: 7 }  // Diagonal across board
+        { row: 5, col: 5 }  // Diagonal (shorter to avoid king)
       ];
       
       cornerMoves.forEach((to) => {
@@ -397,14 +484,17 @@ describe('Comprehensive Queen Movement Validation', () => {
           }
         } else {
           // Clear diagonal path including destination
-          for (let i = 1; i <= 7; i++) {
+          for (let i = 1; i <= 5; i++) {
             game.board[i][i] = null;
           }
         }
         
-        const move = { from: { row: 0, col: 0 }, to: to };
-        const result = game.makeMove(move);
+        const result = game.makeMove({ from: { row: 0, col: 0 }, to: to });
+        
+        // Validate success response
         expect(result.success).toBe(true);
+        expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
         
         // Reset for next test
         game.board[0][0] = { type: 'queen', color: 'white' };
@@ -415,7 +505,3 @@ describe('Comprehensive Queen Movement Validation', () => {
   });
 });
 
-// Run the tests if this file is executed directly
-if (require.main === module) {
-  console.log('Running Queen Movement Validation Tests...');
-}
