@@ -65,7 +65,7 @@ describe('Comprehensive Special Moves Integration Tests', () => {
         game.board[7][6] = null;
         const result = game.makeMove({ from: { row: 7, col: 4 }, to: { row: 7, col: 6 } });
         
-        expect(result.isValid).toBe(false);
+        expect(result.success).toBe(false);
         expect(result.errorCode).toBe('INVALID_CASTLING');
       });
 
@@ -81,7 +81,7 @@ describe('Comprehensive Special Moves Integration Tests', () => {
         game.board[7][5] = null;
         const result = game.makeMove({ from: { row: 7, col: 4 }, to: { row: 7, col: 6 } });
         
-        expect(result.isValid).toBe(false);
+        expect(result.success).toBe(false);
         expect(result.errorCode).toBe('INVALID_CASTLING');
       });
 
@@ -96,7 +96,7 @@ describe('Comprehensive Special Moves Integration Tests', () => {
         
         const result = game.makeMove({ from: { row: 7, col: 4 }, to: { row: 7, col: 6 } });
         
-        expect(result.isValid).toBe(false);
+        expect(result.success).toBe(false);
         expect(result.errorCode).toBe('INVALID_CASTLING');
       });
     });
@@ -165,7 +165,7 @@ describe('Comprehensive Special Moves Integration Tests', () => {
         
         const result = game.makeMove({ from: { row: 3, col: 4 }, to: { row: 2, col: 3 } });
         
-        expect(result.isValid).toBe(false);
+        expect(result.success).toBe(false);
       });
 
       test('should reject en passant to wrong square', () => {
@@ -178,7 +178,7 @@ describe('Comprehensive Special Moves Integration Tests', () => {
         // Try to capture to wrong square
         const result = game.makeMove({ from: { row: 3, col: 4 }, to: { row: 2, col: 2 } });
         
-        expect(result.isValid).toBe(false);
+        expect(result.success).toBe(false);
       });
     });
   });
@@ -268,7 +268,7 @@ describe('Comprehensive Special Moves Integration Tests', () => {
           promotion: 'king' 
         });
         
-        expect(result.isValid).toBe(false);
+        expect(result.success).toBe(false);
         // The error could be INVALID_FORMAT or INVALID_PROMOTION depending on validation order
         expect(['INVALID_FORMAT', 'INVALID_PROMOTION']).toContain(result.errorCode);
       });
@@ -283,7 +283,7 @@ describe('Comprehensive Special Moves Integration Tests', () => {
           promotion: 'queen' 
         });
         
-        expect(result.isValid).toBe(false);
+        expect(result.success).toBe(false);
       });
     });
   });
