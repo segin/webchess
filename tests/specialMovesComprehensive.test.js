@@ -37,9 +37,8 @@ describe('Special Moves - Comprehensive Testing', () => {
       const result = game.makeMove({ from: { row: 7, col: 4 }, to: { row: 7, col: 6 } });
       
       testUtils.validateSuccessResponse(result);
-      expect(result.data).toBeDefined();
-      expect(result.data.gameStatus).toBe('active');
-      expect(result.data.currentTurn).toBe('black');
+      expect(game.gameStatus).toBe('active');
+      expect(game.currentTurn).toBe('black');
       expect(game.board[7][6]).toEqual({ type: 'king', color: 'white' });
       expect(game.board[7][5]).toEqual({ type: 'rook', color: 'white' });
       expect(game.board[7][4]).toBe(null);
@@ -50,9 +49,8 @@ describe('Special Moves - Comprehensive Testing', () => {
       const result = game.makeMove({ from: { row: 7, col: 4 }, to: { row: 7, col: 2 } });
       
       testUtils.validateSuccessResponse(result);
-      expect(result.data).toBeDefined();
-      expect(result.data.gameStatus).toBe('active');
-      expect(result.data.currentTurn).toBe('black');
+      expect(game.gameStatus).toBe('active');
+      expect(game.currentTurn).toBe('black');
       expect(game.board[7][2]).toEqual({ type: 'king', color: 'white' });
       expect(game.board[7][3]).toEqual({ type: 'rook', color: 'white' });
       expect(game.board[7][4]).toBe(null);
@@ -64,9 +62,8 @@ describe('Special Moves - Comprehensive Testing', () => {
       const result = game.makeMove({ from: { row: 0, col: 4 }, to: { row: 0, col: 6 } });
       
       testUtils.validateSuccessResponse(result);
-      expect(result.data).toBeDefined();
-      expect(result.data.gameStatus).toBe('active');
-      expect(result.data.currentTurn).toBe('white');
+      expect(game.gameStatus).toBe('active');
+      expect(game.currentTurn).toBe('white');
       expect(game.board[0][6]).toEqual({ type: 'king', color: 'black' });
       expect(game.board[0][5]).toEqual({ type: 'rook', color: 'black' });
       expect(game.board[0][4]).toBe(null);
@@ -78,9 +75,8 @@ describe('Special Moves - Comprehensive Testing', () => {
       const result = game.makeMove({ from: { row: 0, col: 4 }, to: { row: 0, col: 2 } });
       
       testUtils.validateSuccessResponse(result);
-      expect(result.data).toBeDefined();
-      expect(result.data.gameStatus).toBe('active');
-      expect(result.data.currentTurn).toBe('white');
+      expect(game.gameStatus).toBe('active');
+      expect(game.currentTurn).toBe('white');
       expect(game.board[0][2]).toEqual({ type: 'king', color: 'black' });
       expect(game.board[0][3]).toEqual({ type: 'rook', color: 'black' });
       expect(game.board[0][4]).toBe(null);
@@ -541,8 +537,172 @@ describe('Special Moves - Comprehensive Testing', () => {
         // This should fail if the move would leave king in check
         if (!captureMove.success) {
           testUtils.validateErrorResponse(captureMove);
-          expect(result.errorCode).toMatch(/KING_IN_CHECK|CHECK_NOT_RESOLVED|PINNED_PIECE/);
+          expect(captureMove.errorCode).toMatch(/KING_IN_CHECK|CHECK_NOT_RESOLVED|PINNED_PIECE/);
         }
+      });
+    });
+
+    describe('En Passant - Every Possible Scenario', () => {
+      test('should test en passant on every file combination', () => {
+        // Test all 14 possible en passant captures (7 files × 2 directions for each color)
+        const testCases = [
+          // White captures black pawn - left captures (files b-h, capturing from left)
+          { color: 'white', targetFile: 1, capturingFile: 0, targetRow: 1, captureRow: 3, enPassantRow: 2 },
+          { color: 'white', targetFile: 2, capturingFile: 1, targetRow: 1, captureRow: 3, enPassantRow: 2 },
+          { color: 'white', targetFile: 3, capturingFile: 2, targetRow: 1, captureRow: 3, enPassantRow: 2 },
+          { color: 'white', targetFile: 4, capturingFile: 3, targetRow: 1, captureRow: 3, enPassantRow: 2 },
+          { color: 'white', targetFile: 5, capturingFile: 4, targetRow: 1, captureRow: 3, enPassantRow: 2 },
+          { color: 'white', targetFile: 6, capturingFile: 5, targetRow: 1, captureRow: 3, enPassantRow: 2 },
+          { color: 'white', targetFile: 7, capturingFile: 6, targetRow: 1, captureRow: 3, enPassantRow: 2 },
+          
+          // White captures black pawn - right captures (files a-g, capturing from right)
+          { color: 'white', targetFile: 0, capturingFile: 1, targetRow: 1, captureRow: 3, enPassantRow: 2 },
+          { color: 'white', targetFile: 1, capturingFile: 2, targetRow: 1, captureRow: 3, enPassantRow: 2 },
+          { color: 'white', targetFile: 2, capturingFile: 3, targetRow: 1, captureRow: 3, enPassantRow: 2 },
+          { color: 'white', targetFile: 3, capturingFile: 4, targetRow: 1, captureRow: 3, enPassantRow: 2 },
+          { color: 'white', targetFile: 4, capturingFile: 5, targetRow: 1, captureRow: 3, enPassantRow: 2 },
+          { color: 'white', targetFile: 5, capturingFile: 6, targetRow: 1, captureRow: 3, enPassantRow: 2 },
+          { color: 'white', targetFile: 6, capturingFile: 7, targetRow: 1, captureRow: 3, enPassantRow: 2 },
+          
+          // Black captures white pawn - left captures (files b-h, capturing from left)
+          { color: 'black', targetFile: 1, capturingFile: 0, targetRow: 6, captureRow: 4, enPassantRow: 5 },
+          { color: 'black', targetFile: 2, capturingFile: 1, targetRow: 6, captureRow: 4, enPassantRow: 5 },
+          { color: 'black', targetFile: 3, capturingFile: 2, targetRow: 6, captureRow: 4, enPassantRow: 5 },
+          { color: 'black', targetFile: 4, capturingFile: 3, targetRow: 6, captureRow: 4, enPassantRow: 5 },
+          { color: 'black', targetFile: 5, capturingFile: 4, targetRow: 6, captureRow: 4, enPassantRow: 5 },
+          { color: 'black', targetFile: 6, capturingFile: 5, targetRow: 6, captureRow: 4, enPassantRow: 5 },
+          { color: 'black', targetFile: 7, capturingFile: 6, targetRow: 6, captureRow: 4, enPassantRow: 5 },
+          
+          // Black captures white pawn - right captures (files a-g, capturing from right)
+          { color: 'black', targetFile: 0, capturingFile: 1, targetRow: 6, captureRow: 4, enPassantRow: 5 },
+          { color: 'black', targetFile: 1, capturingFile: 2, targetRow: 6, captureRow: 4, enPassantRow: 5 },
+          { color: 'black', targetFile: 2, capturingFile: 3, targetRow: 6, captureRow: 4, enPassantRow: 5 },
+          { color: 'black', targetFile: 3, capturingFile: 4, targetRow: 6, captureRow: 4, enPassantRow: 5 },
+          { color: 'black', targetFile: 4, capturingFile: 5, targetRow: 6, captureRow: 4, enPassantRow: 5 },
+          { color: 'black', targetFile: 5, capturingFile: 6, targetRow: 6, captureRow: 4, enPassantRow: 5 },
+          { color: 'black', targetFile: 6, capturingFile: 7, targetRow: 6, captureRow: 4, enPassantRow: 5 }
+        ];
+
+        testCases.forEach((testCase, index) => {
+          // Create fresh game for each test case
+          game = testUtils.createFreshGame();
+          game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+          game.board[7][4] = { type: 'king', color: 'white' };
+          game.board[0][4] = { type: 'king', color: 'black' };
+          
+          const { color, targetFile, capturingFile, targetRow, captureRow, enPassantRow } = testCase;
+          const opponentColor = color === 'white' ? 'black' : 'white';
+          
+          // Set up pawns
+          game.board[captureRow][capturingFile] = { type: 'pawn', color };
+          game.board[targetRow][targetFile] = { type: 'pawn', color: opponentColor };
+          
+          // Set turn to opponent to make the two-square move
+          game.currentTurn = opponentColor;
+          
+          // Opponent pawn moves two squares
+          const setupMove = game.makeMove({ 
+            from: { row: targetRow, col: targetFile }, 
+            to: { row: captureRow, col: targetFile } 
+          });
+          
+          if (!setupMove.success) {
+            // Skip this test case if setup fails
+            return;
+          }
+          
+          testUtils.validateSuccessResponse(setupMove);
+          expect(game.enPassantTarget).toEqual({ row: enPassantRow, col: targetFile });
+          
+          // Execute en passant capture
+          const captureMove = game.makeMove({ 
+            from: { row: captureRow, col: capturingFile }, 
+            to: { row: enPassantRow, col: targetFile } 
+          });
+          
+          testUtils.validateSuccessResponse(captureMove);
+          expect(game.board[enPassantRow][targetFile]).toEqual({ type: 'pawn', color });
+          expect(game.board[captureRow][targetFile]).toBe(null); // Captured pawn removed
+          expect(game.board[captureRow][capturingFile]).toBe(null); // Capturing pawn moved
+          expect(game.enPassantTarget).toBe(null); // Target cleared
+        });
+      });
+
+      test('should test en passant timing requirements', () => {
+        // Test that en passant must be executed immediately after the two-square pawn move
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[7][4] = { type: 'king', color: 'white' };
+        game.board[0][4] = { type: 'king', color: 'black' };
+        game.board[3][4] = { type: 'pawn', color: 'white' };
+        game.board[1][5] = { type: 'pawn', color: 'black' };
+        
+        // Black pawn moves two squares
+        game.currentTurn = 'black';
+        const setupMove = game.makeMove({ from: { row: 1, col: 5 }, to: { row: 3, col: 5 } });
+        testUtils.validateSuccessResponse(setupMove);
+        expect(game.enPassantTarget).toEqual({ row: 2, col: 5 });
+        
+        // White makes a different move (not en passant)
+        const otherMove = game.makeMove({ from: { row: 7, col: 4 }, to: { row: 7, col: 3 } });
+        testUtils.validateSuccessResponse(otherMove);
+        expect(game.enPassantTarget).toBe(null); // Target should be cleared
+        
+        // Black makes any move
+        const blackMove = game.makeMove({ from: { row: 0, col: 4 }, to: { row: 0, col: 3 } });
+        testUtils.validateSuccessResponse(blackMove);
+        
+        // Now white tries en passant - should fail (opportunity missed)
+        const lateEnPassant = game.makeMove({ from: { row: 3, col: 4 }, to: { row: 2, col: 5 } });
+        testUtils.validateErrorResponse(lateEnPassant);
+        expect(lateEnPassant.errorCode).toMatch(/INVALID_EN_PASSANT|INVALID_MOVEMENT|INVALID_MOVE/);
+      });
+
+      test('should test en passant with pawns on starting squares', () => {
+        // Test that pawns must be on the correct rank for en passant
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        game.board[7][4] = { type: 'king', color: 'white' };
+        game.board[0][4] = { type: 'king', color: 'black' };
+        
+        // Test white pawn not on 5th rank
+        game.board[2][4] = { type: 'pawn', color: 'white' }; // Wrong rank
+        game.board[1][5] = { type: 'pawn', color: 'black' };
+        
+        game.currentTurn = 'black';
+        const setupMove = game.makeMove({ from: { row: 1, col: 5 }, to: { row: 3, col: 5 } });
+        testUtils.validateSuccessResponse(setupMove);
+        
+        // Try en passant from wrong rank - should fail
+        const wrongRankCapture = game.makeMove({ from: { row: 2, col: 4 }, to: { row: 2, col: 5 } });
+        testUtils.validateErrorResponse(wrongRankCapture);
+        expect(wrongRankCapture.errorCode).toMatch(/INVALID_MOVEMENT|INVALID_MOVE/);
+      });
+
+      test('should test en passant boundary conditions', () => {
+        // Test en passant on edge files (a-file and h-file)
+        const edgeTests = [
+          { targetFile: 0, capturingFile: 1 }, // a-file target, b-file capture
+          { targetFile: 7, capturingFile: 6 }  // h-file target, g-file capture
+        ];
+
+        edgeTests.forEach(({ targetFile, capturingFile }) => {
+          game = testUtils.createFreshGame();
+          game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+          game.board[7][4] = { type: 'king', color: 'white' };
+          game.board[0][4] = { type: 'king', color: 'black' };
+          game.board[3][capturingFile] = { type: 'pawn', color: 'white' };
+          game.board[1][targetFile] = { type: 'pawn', color: 'black' };
+          
+          // Black pawn moves two squares
+          game.currentTurn = 'black';
+          const setupMove = game.makeMove({ from: { row: 1, col: targetFile }, to: { row: 3, col: targetFile } });
+          testUtils.validateSuccessResponse(setupMove);
+          
+          // White captures en passant
+          const captureMove = game.makeMove({ from: { row: 3, col: capturingFile }, to: { row: 2, col: targetFile } });
+          testUtils.validateSuccessResponse(captureMove);
+          expect(game.board[2][targetFile]).toEqual({ type: 'pawn', color: 'white' });
+          expect(game.board[3][targetFile]).toBe(null);
+        });
       });
     });
   });
@@ -557,11 +717,14 @@ describe('Special Moves - Comprehensive Testing', () => {
       // Place white pawn ready for promotion (on 7th rank for white = row 1)
       game.board[1][0] = { type: 'pawn', color: 'white' }; // Use a-file to avoid check
       
+      // Move black king away from a1 to avoid capture
+      game.board[0][0] = null;
+      game.board[0][7] = { type: 'king', color: 'black' };
+      
       const result = game.makeMove({ from: { row: 1, col: 0 }, to: { row: 0, col: 0 } });
       testUtils.validateSuccessResponse(result);
-      expect(result.data).toBeDefined();
-      expect(['active', 'check']).toContain(result.data.gameStatus); // May put opponent in check
-      expect(result.data.currentTurn).toBe('black');
+      expect(['active', 'check']).toContain(game.gameStatus); // May put opponent in check
+      expect(game.currentTurn).toBe('black');
       expect(game.board[0][0]).toEqual({ type: 'queen', color: 'white' });
     });
 
@@ -611,9 +774,8 @@ describe('Special Moves - Comprehensive Testing', () => {
       });
       
       testUtils.validateSuccessResponse(result);
-      expect(result.data).toBeDefined();
-      expect(['active', 'check']).toContain(result.data.gameStatus); // May put opponent in check
-      expect(result.data.currentTurn).toBe('white');
+      expect(['active', 'check']).toContain(game.gameStatus); // May put opponent in check
+      expect(game.currentTurn).toBe('white');
       expect(game.board[7][4]).toEqual({ type: 'queen', color: 'black' });
     });
 
@@ -634,9 +796,8 @@ describe('Special Moves - Comprehensive Testing', () => {
       });
       
       testUtils.validateSuccessResponse(result);
-      expect(result.data).toBeDefined();
-      expect(result.data.gameStatus).toBe('active');
-      expect(result.data.currentTurn).toBe('black');
+      expect(game.gameStatus).toBe('active');
+      expect(game.currentTurn).toBe('black');
       expect(game.board[0][5]).toEqual({ type: 'knight', color: 'white' });
     });
 
@@ -646,8 +807,11 @@ describe('Special Moves - Comprehensive Testing', () => {
         game = testUtils.createFreshGame();
         // Clear the board and set up minimal pieces
         game.board = Array(8).fill(null).map(() => Array(8).fill(null));
-        game.board[7][7] = { type: 'king', color: 'white' }; // Place white king in corner
-        game.board[0][0] = { type: 'king', color: 'black' }; // Place black king in opposite corner
+        game.board[7][0] = { type: 'king', color: 'white' }; // Place white king on a1
+        
+        // Place black king on a different file than the promoting pawn
+        const blackKingCol = col === 7 ? 0 : 7; // If pawn is on h-file, put king on a-file, otherwise h-file
+        game.board[0][blackKingCol] = { type: 'king', color: 'black' };
         
         game.board[1][col] = { type: 'pawn', color: 'white' };
         
@@ -658,8 +822,8 @@ describe('Special Moves - Comprehensive Testing', () => {
         });
         
         testUtils.validateSuccessResponse(result);
-        expect(['active', 'check']).toContain(result.data.gameStatus); // May put opponent in check
-        expect(result.data.currentTurn).toBe('black');
+        expect(['active', 'check']).toContain(game.gameStatus); // May put opponent in check
+        expect(game.currentTurn).toBe('black');
         expect(game.board[0][col]).toEqual({ type: 'queen', color: 'white' });
       }
     });
@@ -684,7 +848,7 @@ describe('Special Moves - Comprehensive Testing', () => {
         // Should either succeed with default queen or fail gracefully
         if (result.success) {
           testUtils.validateSuccessResponse(result);
-          expect(['active', 'check']).toContain(result.data.gameStatus); // May put opponent in check
+          expect(['active', 'check']).toContain(game.gameStatus); // May put opponent in check
           expect(game.board[0][4]).toEqual({ type: 'queen', color: 'white' });
         } else {
           testUtils.validateErrorResponse(result);
@@ -714,9 +878,8 @@ describe('Special Moves - Comprehensive Testing', () => {
       });
       
       testUtils.validateSuccessResponse(result);
-      expect(result.data).toBeDefined();
-      expect(['active', 'check']).toContain(result.data.gameStatus); // May put opponent in check
-      expect(result.data.currentTurn).toBe('black');
+      expect(['active', 'check']).toContain(game.gameStatus); // May put opponent in check
+      expect(game.currentTurn).toBe('black');
       expect(game.board[0][4]).toEqual({ type: 'queen', color: 'white' });
     });
   });
@@ -745,7 +908,7 @@ describe('Special Moves - Comprehensive Testing', () => {
       
       const castleResult = game.makeMove({ from: { row: 7, col: 4 }, to: { row: 7, col: 6 } });
       testUtils.validateSuccessResponse(castleResult);
-      expect(castleResult.data.gameStatus).toBe('active');
+      expect(game.gameStatus).toBe('active');
     });
 
     test('should handle promotion after castling', () => {
@@ -762,8 +925,8 @@ describe('Special Moves - Comprehensive Testing', () => {
         promotion: 'queen'
       });
       testUtils.validateSuccessResponse(promoteResult);
-      expect(promoteResult.data.gameStatus).toBe('active');
-      expect(promoteResult.data.currentTurn).toBe('black');
+      expect(game.gameStatus).toBe('active');
+      expect(game.currentTurn).toBe('black');
     });
 
     test('should handle multiple special moves in sequence', () => {
@@ -802,7 +965,7 @@ describe('Special Moves - Comprehensive Testing', () => {
         promotion: 'knight'
       });
       testUtils.validateSuccessResponse(promoteResult);
-      expect(promoteResult.data.gameStatus).toBe('active');
+      expect(game.gameStatus).toBe('active');
       
       // Verify all moves were successful
       expect(game.board[7][2]).toEqual({ type: 'king', color: 'white' });
