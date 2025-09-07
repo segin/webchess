@@ -28,6 +28,12 @@ npm test
 - `npm test` - Run complete test suite (unit + integration + comprehensive)
 - `npm run test:watch` - Run tests in watch mode during development
 
+### One-Off Code Execution
+- **Use `devTemp.js` for exploratory code** - Instead of `node -e "code"`, write code to `devTemp.js` and run with `node devTemp.js`
+- This file is for temporary development code, debugging, and one-off testing
+- Replace all contents each time - it's not meant to be preserved
+- Useful for testing game logic, debugging board states, or exploring API behavior
+
 ### Testing Standards
 - **All testing should be done via `npm test`** - This runs the complete test suite
 - Tests are automatically discovered and run by Jest
@@ -171,6 +177,7 @@ npm run test:watch
 - Visualize piece positions in console
 - Trace move validation logic step by step
 - Verify game state transitions
+- **Use `devTemp.js` for debugging code** - Write debugging scripts to `devTemp.js` and run with `node devTemp.js` instead of using `node -e`
 
 ## Performance Optimization
 
