@@ -27,7 +27,7 @@ describe('Simple Special Moves Test', () => {
       const result = game.makeMove(move);
       
       expect(result).toBeDefined();
-      expect(result.isValid).toBe(false);
+      expect(result.success).toBe(false);
       expect(result.errorCode).toBe('INVALID_CASTLING');
     });
   });

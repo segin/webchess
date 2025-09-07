@@ -80,7 +80,7 @@
   - Fix king boundary tests to use current error handling patterns
   - _Requirements: 1.1, 1.2, 4.6, 3.5, 6.5_
 
-- [ ] 11. Normalize tests/castlingValidation.test.js - Basic castling tests
+- [x] 11. Normalize tests/castlingValidation.test.js - Basic castling tests
   - Update castling validation to use current castling API
   - Fix castling rights tests to use current castlingRights property structure
   - Normalize kingside/queenside castling to expect current response format
@@ -88,7 +88,7 @@
   - Fix castling state updates to use current game state properties
   - _Requirements: 1.1, 1.2, 5.1, 3.1, 6.4_
 
-- [ ] 12. Normalize tests/castlingRightsManagement.test.js - Castling rights tracking
+- [x] 12. Normalize tests/castlingRightsManagement.test.js - Castling rights tracking
   - Update castling rights tracking to use current property structure
   - Fix rights invalidation tests to expect current state updates
   - Normalize rights validation to use current API response format
@@ -96,7 +96,7 @@
   - Fix rights edge cases to use current error handling patterns
   - _Requirements: 1.1, 1.2, 5.1, 6.4, 6.5_
 
-- [ ] 13. Normalize tests/specialMovesComprehensive.test.js - All special moves
+- [x] 13. Normalize tests/specialMovesComprehensive.test.js - All special moves
   - Update comprehensive special move tests to use current API
   - Fix castling, en passant, promotion tests to expect current responses
   - Normalize special move validation to use current error codes
@@ -104,7 +104,7 @@
   - Fix special move edge cases to use current validation patterns
   - _Requirements: 1.1, 1.2, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
 
-- [ ] 14. Normalize tests/specialMovesIntegration.test.js - Special move integration
+- [x] 14. Normalize tests/specialMovesIntegration.test.js - Special move integration
   - Update special move integration tests to use current API patterns
   - Fix combined special move scenarios to expect current responses
   - Normalize special move sequences to use current validation
@@ -112,7 +112,7 @@
   - Fix special move error handling to use current error patterns
   - _Requirements: 1.1, 1.2, 5.1, 5.2, 5.3_
 
-- [ ] 15. Normalize tests/specialMovesSimple.test.js - Simple special move tests
+- [x] 15. Normalize tests/specialMovesSimple.test.js - Simple special move tests
   - Update simple special move tests to use current API structure
   - Fix basic castling tests to expect current response format
   - Normalize basic en passant tests to use current validation
