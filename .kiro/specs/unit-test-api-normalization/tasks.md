@@ -128,7 +128,7 @@
   - Fix en passant edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 5.2, 6.4, 6.6_
 
-- [-] 17. Normalize tests/checkDetection.test.js - Check detection tests
+- [x] 17. Normalize tests/checkDetection.test.js - Check detection tests
   - Update check detection to use current inCheck property and checkDetails
   - Fix check validation tests to expect current response structure
   - Normalize check resolution tests to use current API patterns
@@ -136,7 +136,7 @@
   - Fix check edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 6.6, 3.5, 3.6_
 
-- [ ] 18. Normalize tests/checkmateDetection.test.js - Checkmate detection tests
+- [-] 18. Normalize tests/checkmateDetection.test.js - Checkmate detection tests
   - Update checkmate detection to use current gameStatus property
   - Fix checkmate validation tests to expect current response format
   - Normalize checkmate scenarios to use current state management

@@ -2971,10 +2971,10 @@ class ChessGame {
   }
 
   /**
-   * Validate game state
+   * Validate game state structure
    * @returns {Object} Validation result
    */
-  validateGameState() {
+  validateGameStateStructure() {
     const errors = [];
 
     // Check board structure

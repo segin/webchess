@@ -26,12 +26,12 @@ describe('Comprehensive Checkmate Detection System', () => {
       
       game.currentTurn = 'white';
       
-      // Verify checkmate detection
+      // Verify checkmate detection using current API
       expect(game.isInCheck('white')).toBe(true);
       expect(game.isCheckmate('white')).toBe(true);
       expect(game.hasValidMoves('white')).toBe(false);
       
-      // Test game ending logic
+      // Test game ending logic using current gameStatus property
       game.checkGameEnd();
       expect(game.gameStatus).toBe('checkmate');
       expect(game.winner).toBe('black');
@@ -50,12 +50,12 @@ describe('Comprehensive Checkmate Detection System', () => {
       
       game.currentTurn = 'white';
       
-      // Verify checkmate detection
+      // Verify checkmate detection using current API
       expect(game.isInCheck('white')).toBe(true);
       expect(game.isCheckmate('white')).toBe(true);
       expect(game.hasValidMoves('white')).toBe(false);
       
-      // Test game ending logic
+      // Test game ending logic using current gameStatus property
       game.checkGameEnd();
       expect(game.gameStatus).toBe('checkmate');
       expect(game.winner).toBe('black');
@@ -74,12 +74,12 @@ describe('Comprehensive Checkmate Detection System', () => {
       
       game.currentTurn = 'white';
       
-      // Verify checkmate detection
+      // Verify checkmate detection using current API
       expect(game.isInCheck('white')).toBe(true);
       expect(game.isCheckmate('white')).toBe(true);
       expect(game.hasValidMoves('white')).toBe(false);
       
-      // Test game ending logic
+      // Test game ending logic using current gameStatus property
       game.checkGameEnd();
       expect(game.gameStatus).toBe('checkmate');
       expect(game.winner).toBe('black');
@@ -101,12 +101,12 @@ describe('Comprehensive Checkmate Detection System', () => {
       
       game.currentTurn = 'white';
       
-      // Verify checkmate detection
+      // Verify checkmate detection using current API
       expect(game.isInCheck('white')).toBe(true);
       expect(game.isCheckmate('white')).toBe(true);
       expect(game.hasValidMoves('white')).toBe(false);
       
-      // Test game ending logic
+      // Test game ending logic using current gameStatus property
       game.checkGameEnd();
       expect(game.gameStatus).toBe('checkmate');
       expect(game.winner).toBe('black');
@@ -125,12 +125,12 @@ describe('Comprehensive Checkmate Detection System', () => {
       
       game.currentTurn = 'white';
       
-      // Verify checkmate detection
+      // Verify checkmate detection using current API
       expect(game.isInCheck('white')).toBe(true);
       expect(game.isCheckmate('white')).toBe(true);
       expect(game.hasValidMoves('white')).toBe(false);
       
-      // Test game ending logic
+      // Test game ending logic using current gameStatus property
       game.checkGameEnd();
       expect(game.gameStatus).toBe('checkmate');
       expect(game.winner).toBe('black');
@@ -139,7 +139,7 @@ describe('Comprehensive Checkmate Detection System', () => {
 
   describe('Checkmate Detection with Different Pieces', () => {
     test('should detect knight checkmate', () => {
-      // Set up knight checkmate scenario - back rank mate with knight
+      // Set up knight checkmate scenario - back rank mate with queen
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
       
       // White king trapped on back rank
@@ -156,14 +156,12 @@ describe('Comprehensive Checkmate Detection System', () => {
       
       game.currentTurn = 'white';
       
-
-      
-      // Verify checkmate detection
+      // Verify checkmate detection using current API
       expect(game.isInCheck('white')).toBe(true);
       expect(game.isCheckmate('white')).toBe(true);
       expect(game.hasValidMoves('white')).toBe(false);
       
-      // Test game ending logic
+      // Test game ending logic using current gameStatus property
       game.checkGameEnd();
       expect(game.gameStatus).toBe('checkmate');
       expect(game.winner).toBe('black');
@@ -187,12 +185,12 @@ describe('Comprehensive Checkmate Detection System', () => {
       
       game.currentTurn = 'white';
       
-      // Verify checkmate detection
+      // Verify checkmate detection using current API
       expect(game.isInCheck('white')).toBe(true);
       expect(game.isCheckmate('white')).toBe(true);
       expect(game.hasValidMoves('white')).toBe(false);
       
-      // Test game ending logic
+      // Test game ending logic using current gameStatus property
       game.checkGameEnd();
       expect(game.gameStatus).toBe('checkmate');
       expect(game.winner).toBe('black');
@@ -218,12 +216,12 @@ describe('Comprehensive Checkmate Detection System', () => {
       
       game.currentTurn = 'white';
       
-      // Verify NOT checkmate
+      // Verify NOT checkmate using current API
       expect(game.isInCheck('white')).toBe(true);
       expect(game.isCheckmate('white')).toBe(false);
       expect(game.hasValidMoves('white')).toBe(true);
       
-      // Test game status remains check, not checkmate
+      // Test game status remains check, not checkmate using current gameStatus property
       game.checkGameEnd();
       expect(game.gameStatus).toBe('check');
       expect(game.winner).toBeNull();
@@ -245,12 +243,12 @@ describe('Comprehensive Checkmate Detection System', () => {
       
       game.currentTurn = 'white';
       
-      // Verify NOT checkmate
+      // Verify NOT checkmate using current API
       expect(game.isInCheck('white')).toBe(true);
       expect(game.isCheckmate('white')).toBe(false);
       expect(game.hasValidMoves('white')).toBe(true);
       
-      // Test game status remains check, not checkmate
+      // Test game status remains check, not checkmate using current gameStatus property
       game.checkGameEnd();
       expect(game.gameStatus).toBe('check');
       expect(game.winner).toBeNull();
@@ -272,12 +270,12 @@ describe('Comprehensive Checkmate Detection System', () => {
       
       game.currentTurn = 'white';
       
-      // Verify NOT checkmate
+      // Verify NOT checkmate using current API
       expect(game.isInCheck('white')).toBe(true);
       expect(game.isCheckmate('white')).toBe(false);
       expect(game.hasValidMoves('white')).toBe(true);
       
-      // Test game status remains check, not checkmate
+      // Test game status remains check, not checkmate using current gameStatus property
       game.checkGameEnd();
       expect(game.gameStatus).toBe('check');
       expect(game.winner).toBeNull();
@@ -300,12 +298,12 @@ describe('Comprehensive Checkmate Detection System', () => {
       
       game.currentTurn = 'white';
       
-      // Verify NOT checkmate (pinned rook can block)
+      // Verify NOT checkmate (pinned rook can block) using current API
       expect(game.isInCheck('white')).toBe(true);
       expect(game.isCheckmate('white')).toBe(false);
       expect(game.hasValidMoves('white')).toBe(true);
       
-      // Test game status remains check, not checkmate
+      // Test game status remains check, not checkmate using current gameStatus property
       game.checkGameEnd();
       expect(game.gameStatus).toBe('check');
       expect(game.winner).toBeNull();
@@ -324,13 +322,13 @@ describe('Comprehensive Checkmate Detection System', () => {
       
       game.currentTurn = 'white';
       
-      // Verify NOT checkmate (this is stalemate)
+      // Verify NOT checkmate (this is stalemate) using current API
       expect(game.isInCheck('white')).toBe(false);
       expect(game.isCheckmate('white')).toBe(false);
       expect(game.isStalemate('white')).toBe(true);
       expect(game.hasValidMoves('white')).toBe(false);
       
-      // Test game status becomes stalemate, not checkmate
+      // Test game status becomes stalemate, not checkmate using current gameStatus property
       game.checkGameEnd();
       expect(game.gameStatus).toBe('stalemate');
       expect(game.winner).toBeNull();
@@ -356,13 +354,13 @@ describe('Comprehensive Checkmate Detection System', () => {
       
       game.currentTurn = 'white';
       
-      // Verify this is checkmate, not stalemate
+      // Verify this is checkmate, not stalemate using current API
       expect(game.isInCheck('white')).toBe(true);
       expect(game.isCheckmate('white')).toBe(true);
       expect(game.isStalemate('white')).toBe(false);
       expect(game.hasValidMoves('white')).toBe(false);
       
-      // Test game ending logic
+      // Test game ending logic using current gameStatus property
       game.checkGameEnd();
       expect(game.gameStatus).toBe('checkmate');
       expect(game.winner).toBe('black');
@@ -381,13 +379,13 @@ describe('Comprehensive Checkmate Detection System', () => {
       
       game.currentTurn = 'white';
       
-      // Verify this is stalemate, not checkmate
+      // Verify this is stalemate, not checkmate using current API
       expect(game.isInCheck('white')).toBe(false);
       expect(game.isCheckmate('white')).toBe(false);
       expect(game.isStalemate('white')).toBe(true);
       expect(game.hasValidMoves('white')).toBe(false);
       
-      // Test game ending logic
+      // Test game ending logic using current gameStatus property
       game.checkGameEnd();
       expect(game.gameStatus).toBe('stalemate');
       expect(game.winner).toBeNull();
@@ -410,7 +408,7 @@ describe('Comprehensive Checkmate Detection System', () => {
       
       game.currentTurn = 'white';
       
-      // Verify that hasValidMoves correctly identifies available moves
+      // Verify that hasValidMoves correctly identifies available moves using current API
       expect(game.isInCheck('white')).toBe(true);
       expect(game.hasValidMoves('white')).toBe(true);
       expect(game.isCheckmate('white')).toBe(false);
@@ -434,7 +432,7 @@ describe('Comprehensive Checkmate Detection System', () => {
       
       game.currentTurn = 'white';
       
-      // Verify no legal moves available
+      // Verify no legal moves available using current API
       expect(game.isInCheck('white')).toBe(true);
       expect(game.hasValidMoves('white')).toBe(false);
       expect(game.isCheckmate('white')).toBe(true);
@@ -460,16 +458,16 @@ describe('Comprehensive Checkmate Detection System', () => {
       
       game.currentTurn = 'white';
       
-      // Test game ending logic
+      // Test game ending logic using current gameStatus property
       game.checkGameEnd();
       
       expect(game.gameStatus).toBe('checkmate');
       expect(game.winner).toBe('black');
       expect(game.inCheck).toBe(true);
       
-      // Verify game state includes checkmate information
+      // Verify game state includes checkmate information using current API
       const gameState = game.getGameState();
-      expect(gameState.status).toBe('checkmate');
+      expect(gameState.gameStatus).toBe('checkmate'); // Use gameStatus property
       expect(gameState.winner).toBe('black');
       expect(gameState.inCheck).toBe(true);
     });
@@ -492,16 +490,16 @@ describe('Comprehensive Checkmate Detection System', () => {
       
       game.currentTurn = 'black';
       
-      // Test game ending logic
+      // Test game ending logic using current gameStatus property
       game.checkGameEnd();
       
       expect(game.gameStatus).toBe('checkmate');
       expect(game.winner).toBe('white');
       expect(game.inCheck).toBe(true);
       
-      // Verify game state includes checkmate information
+      // Verify game state includes checkmate information using current API
       const gameState = game.getGameState();
-      expect(gameState.status).toBe('checkmate');
+      expect(gameState.gameStatus).toBe('checkmate'); // Use gameStatus property
       expect(gameState.winner).toBe('white');
       expect(gameState.inCheck).toBe(true);
     });
@@ -525,15 +523,16 @@ describe('Comprehensive Checkmate Detection System', () => {
       game.currentTurn = 'white';
       game.checkGameEnd();
       
-      // Attempt to make a move after checkmate
+      // Attempt to make a move after checkmate using current API
       const moveResult = game.makeMove({
         from: { row: 7, col: 4 },
         to: { row: 7, col: 3 }
       });
       
+      // Validate error response using current response structure
       expect(moveResult.success).toBe(false);
       expect(moveResult.errorCode).toBe('GAME_NOT_ACTIVE');
-      expect(moveResult.message).toBe('Game is not active');
+      expect(moveResult.message).toContain('Game is not active');
     });
   });
 });
