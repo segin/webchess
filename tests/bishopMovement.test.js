@@ -9,7 +9,7 @@ describe('Comprehensive Bishop Movement', () => {
   let game;
 
   beforeEach(() => {
-    game = testUtils.createFreshGame();
+    game = new ChessGame();
   });
 
   describe('Basic Bishop Movement Patterns', () => {
@@ -42,7 +42,7 @@ describe('Comprehensive Bishop Movement', () => {
       ];
 
       diagonalMoves.forEach(to => {
-        const freshGame = testUtils.createFreshGame();
+        const freshGame = new ChessGame();
         freshGame.board[4][4] = { type: 'bishop', color: 'white' };
 
         // Clear diagonal paths
@@ -51,7 +51,9 @@ describe('Comprehensive Bishop Movement', () => {
         });
 
         const result = freshGame.makeMove({ from: { row: 4, col: 4 }, to });
-        testUtils.validateSuccessResponse(result);
+        expect(result.success).toBe(true);
+        expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
         expect(freshGame.board[to.row][to.col]).toEqual({ type: 'bishop', color: 'white' });
         expect(freshGame.board[4][4]).toBeNull();
       });
@@ -67,7 +69,9 @@ describe('Comprehensive Bishop Movement', () => {
 
       horizontalMoves.forEach(to => {
         const result = game.makeMove({ from: { row: 4, col: 4 }, to });
-        testUtils.validateErrorResponse(result);
+        expect(result.success).toBe(false);
+        expect(result.message).toBeDefined();
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
       });
     });
 
@@ -81,7 +85,9 @@ describe('Comprehensive Bishop Movement', () => {
 
       verticalMoves.forEach(to => {
         const result = game.makeMove({ from: { row: 4, col: 4 }, to });
-        testUtils.validateErrorResponse(result);
+        expect(result.success).toBe(false);
+        expect(result.message).toBeDefined();
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
       });
     });
 
@@ -95,7 +101,9 @@ describe('Comprehensive Bishop Movement', () => {
 
       knightMoves.forEach(to => {
         const result = game.makeMove({ from: { row: 4, col: 4 }, to });
-        testUtils.validateErrorResponse(result);
+        expect(result.success).toBe(false);
+        expect(result.message).toBeDefined();
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
       });
     });
 
@@ -111,7 +119,7 @@ describe('Comprehensive Bishop Movement', () => {
           const colDiff = Math.abs(col - 4);
           const isValidBishopMove = rowDiff === colDiff && rowDiff > 0;
 
-          const freshGame = testUtils.createFreshGame();
+          const freshGame = new ChessGame();
           freshGame.board[4][4] = { type: 'bishop', color: 'white' };
 
           // Clear diagonal paths
@@ -129,9 +137,13 @@ describe('Comprehensive Bishop Movement', () => {
           const result = freshGame.makeMove({ from: { row: 4, col: 4 }, to: { row, col } });
 
           if (isValidBishopMove) {
-            testUtils.validateSuccessResponse(result);
+            expect(result.success).toBe(true);
+            expect(result.message).toBeDefined();
+            expect(result.data).toBeDefined();
           } else {
-            testUtils.validateErrorResponse(result);
+            expect(result.success).toBe(false);
+            expect(result.message).toBeDefined();
+            expect(result.errorCode).toBe('INVALID_MOVEMENT');
           }
         }
       }
@@ -155,7 +167,7 @@ describe('Comprehensive Bishop Movement', () => {
       ];
 
       whiteBishopTests.forEach(test => {
-        const freshGame = testUtils.createFreshGame();
+        const freshGame = new ChessGame();
 
         // Clear the path
         test.clearSquares.forEach(square => {
@@ -163,7 +175,9 @@ describe('Comprehensive Bishop Movement', () => {
         });
 
         const result = freshGame.makeMove({ from: test.from, to: test.to });
-        testUtils.validateSuccessResponse(result);
+        expect(result.success).toBe(true);
+        expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
         expect(freshGame.board[test.to.row][test.to.col]).toEqual({ type: 'bishop', color: 'white' });
       });
     });
@@ -176,22 +190,36 @@ describe('Comprehensive Bishop Movement', () => {
       game.board[1][3] = null; // Clear d7 pawn
 
       const result = game.makeMove({ from: { row: 0, col: 2 }, to: { row: 2, col: 4 } });
-      testUtils.validateSuccessResponse(result);
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
       expect(game.board[2][4]).toEqual({ type: 'bishop', color: 'black' });
     });
 
     test('should be blocked by pieces in starting position', () => {
       // Bishops should not be able to move initially due to blocking pawns
-      const blockedMoves = [
-        { from: { row: 7, col: 2 }, to: { row: 6, col: 3 } }, // Blocked by pawn
-        { from: { row: 7, col: 5 }, to: { row: 6, col: 4 } }, // Blocked by pawn
-        { from: { row: 7, col: 2 }, to: { row: 5, col: 4 } }, // Blocked by pawn
-        { from: { row: 7, col: 5 }, to: { row: 5, col: 3 } }  // Blocked by pawn
+      const captureOwnPieceMoves = [
+        { from: { row: 7, col: 2 }, to: { row: 6, col: 3 } }, // Bishop trying to capture own pawn
+        { from: { row: 7, col: 5 }, to: { row: 6, col: 4 } }, // Bishop trying to capture own pawn
       ];
 
-      blockedMoves.forEach(move => {
+      const pathBlockedMoves = [
+        { from: { row: 7, col: 2 }, to: { row: 5, col: 4 } }, // Bishop blocked by pawn
+        { from: { row: 7, col: 5 }, to: { row: 5, col: 3 } }  // Bishop blocked by pawn
+      ];
+
+      captureOwnPieceMoves.forEach(move => {
         const result = game.makeMove(move);
-        testUtils.validateErrorResponse(result);
+        expect(result.success).toBe(false);
+        expect(result.message).toBeDefined();
+        expect(result.errorCode).toBe('CAPTURE_OWN_PIECE');
+      });
+
+      pathBlockedMoves.forEach(move => {
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.message).toBeDefined();
+        expect(result.errorCode).toBe('PATH_BLOCKED');
       });
     });
   });
@@ -203,7 +231,9 @@ describe('Comprehensive Bishop Movement', () => {
 
       // Try to move past the blocking piece
       const result = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 2, col: 2 } });
-      testUtils.validateErrorResponse(result);
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('PATH_BLOCKED');
     });
 
     test('should be blocked by enemy pieces in diagonal path', () => {
@@ -212,7 +242,9 @@ describe('Comprehensive Bishop Movement', () => {
 
       // Try to move past the blocking piece
       const result = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 2, col: 2 } });
-      testUtils.validateErrorResponse(result);
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('PATH_BLOCKED');
     });
 
     test('should allow movement up to blocking piece but not beyond', () => {
@@ -221,7 +253,9 @@ describe('Comprehensive Bishop Movement', () => {
 
       // Should be able to move to the square just before the blocking piece
       const result = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 3, col: 3 } });
-      testUtils.validateSuccessResponse(result);
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
     });
 
     test('should handle blocking in all diagonal directions', () => {
@@ -241,7 +275,9 @@ describe('Comprehensive Bishop Movement', () => {
 
       blockedMoves.forEach(to => {
         const result = game.makeMove({ from: { row: 4, col: 4 }, to });
-        testUtils.validateErrorResponse(result);
+        expect(result.success).toBe(false);
+        expect(result.message).toBeDefined();
+        expect(result.errorCode).toBe('PATH_BLOCKED');
       });
     });
 
@@ -252,11 +288,15 @@ describe('Comprehensive Bishop Movement', () => {
 
       // Should not be able to move past first blocking piece
       const result1 = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 2, col: 2 } });
-      testUtils.validateErrorResponse(result1);
+      expect(result1.success).toBe(false);
+      expect(result1.message).toBeDefined();
+      expect(result1.errorCode).toBe('PATH_BLOCKED');
 
       // Should not be able to move past first blocking piece to any square beyond
       const result2 = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 1, col: 1 } });
-      testUtils.validateErrorResponse(result2);
+      expect(result2.success).toBe(false);
+      expect(result2.message).toBeDefined();
+      expect(result2.errorCode).toBe('PATH_BLOCKED');
     });
   });
 
@@ -271,14 +311,16 @@ describe('Comprehensive Bishop Movement', () => {
       ];
 
       enemyPieces.forEach((pieceType, index) => {
-        const freshGame = testUtils.createFreshGame();
+        const freshGame = new ChessGame();
         freshGame.board[4][4] = { type: 'bishop', color: 'white' };
 
         const capturePos = capturePositions[index];
         freshGame.board[capturePos.row][capturePos.col] = { type: pieceType, color: 'black' };
 
         const result = freshGame.makeMove({ from: { row: 4, col: 4 }, to: capturePos });
-        testUtils.validateSuccessResponse(result);
+        expect(result.success).toBe(true);
+        expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
         expect(freshGame.board[capturePos.row][capturePos.col]).toEqual({ type: 'bishop', color: 'white' });
       });
     });
@@ -288,7 +330,9 @@ describe('Comprehensive Bishop Movement', () => {
       game.board[3][3] = { type: 'pawn', color: 'white' };
 
       const result = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 3, col: 3 } });
-      testUtils.validateErrorResponse(result);
+      expect(result.success).toBe(false);
+      expect(result.message).toBeDefined();
+      expect(result.errorCode).toBe('CAPTURE_OWN_PIECE');
     });
 
     test('should capture and stop at enemy piece', () => {
@@ -297,21 +341,25 @@ describe('Comprehensive Bishop Movement', () => {
 
       // Should be able to capture the enemy piece
       const captureResult = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 3, col: 3 } });
-      testUtils.validateSuccessResponse(captureResult);
+      expect(captureResult.success).toBe(true);
+      expect(captureResult.message).toBeDefined();
+      expect(captureResult.data).toBeDefined();
       expect(game.board[3][3]).toEqual({ type: 'bishop', color: 'white' });
 
       // But should not be able to move past it in a single move
-      const freshGame = testUtils.createFreshGame();
+      const freshGame = new ChessGame();
       freshGame.board[4][4] = { type: 'bishop', color: 'white' };
       freshGame.board[3][3] = { type: 'pawn', color: 'black' };
 
       const pastResult = freshGame.makeMove({ from: { row: 4, col: 4 }, to: { row: 2, col: 2 } });
-      testUtils.validateErrorResponse(pastResult);
+      expect(pastResult.success).toBe(false);
+      expect(pastResult.message).toBeDefined();
+      expect(pastResult.errorCode).toBe('PATH_BLOCKED');
     });
 
     test('should handle captures at maximum diagonal range', () => {
       // Test long-range diagonal captures
-      const longRangeGame = testUtils.createFreshGame();
+      const longRangeGame = new ChessGame();
       longRangeGame.board[7][0] = { type: 'bishop', color: 'white' };
       longRangeGame.board[0][7] = { type: 'queen', color: 'black' }; // Enemy piece at opposite corner
 
@@ -322,7 +370,9 @@ describe('Comprehensive Bishop Movement', () => {
       });
 
       const result = longRangeGame.makeMove({ from: { row: 7, col: 0 }, to: { row: 0, col: 7 } });
-      testUtils.validateSuccessResponse(result);
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
       expect(longRangeGame.board[0][7]).toEqual({ type: 'bishop', color: 'white' });
     });
   });
@@ -373,7 +423,7 @@ describe('Comprehensive Bishop Movement', () => {
       ];
 
       darkSquareMoves.forEach(to => {
-        const freshGame = testUtils.createFreshGame();
+        const freshGame = new ChessGame();
         freshGame.board[4][3] = { type: 'bishop', color: 'white' };
 
         // Clear diagonal paths
@@ -382,7 +432,9 @@ describe('Comprehensive Bishop Movement', () => {
         });
 
         const result = freshGame.makeMove({ from: { row: 4, col: 3 }, to });
-        testUtils.validateSuccessResponse(result);
+        expect(result.success).toBe(true);
+        expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
 
         const sum = to.row + to.col;
         expect(sum % 2).toBe(1); // Should be odd (dark square)
@@ -400,7 +452,9 @@ describe('Comprehensive Bishop Movement', () => {
 
       darkSquares.forEach(to => {
         const result = game.makeMove({ from: { row: 4, col: 4 }, to });
-        testUtils.validateErrorResponse(result);
+        expect(result.success).toBe(false);
+        expect(result.message).toBeDefined();
+        expect(result.errorCode).toBe('INVALID_MOVEMENT');
       });
     });
   });
@@ -415,7 +469,7 @@ describe('Comprehensive Bishop Movement', () => {
       ];
 
       cornerPositions.forEach(pos => {
-        const freshGame = testUtils.createFreshGame();
+        const freshGame = new ChessGame();
 
         // Clear the entire board first
         for (let row = 0; row < 8; row++) {
@@ -442,7 +496,7 @@ describe('Comprehensive Bishop Movement', () => {
 
         possibleMoves.forEach(to => {
           // Create a fresh game for each move test
-          const testGame = testUtils.createFreshGame();
+          const testGame = new ChessGame();
 
           // Clear the entire board
           for (let row = 0; row < 8; row++) {
@@ -462,7 +516,9 @@ describe('Comprehensive Bishop Movement', () => {
           if (!result.success) {
             throw new Error(`Bishop move failed from ${JSON.stringify(pos)} to ${JSON.stringify(to)}: ${result.message} (${result.errorCode})`);
           }
-          testUtils.validateSuccessResponse(result);
+          expect(result.success).toBe(true);
+          expect(result.message).toBeDefined();
+          expect(result.data).toBeDefined();
         });
       });
     });
@@ -477,7 +533,9 @@ describe('Comprehensive Bishop Movement', () => {
 
       offBoardMoves.forEach(to => {
         const result = game.makeMove({ from: { row: 0, col: 0 }, to });
-        testUtils.validateErrorResponse(result);
+        expect(result.success).toBe(false);
+        expect(result.message).toBeDefined();
+        expect(result.errorCode).toBe('INVALID_COORDINATES');
       });
     });
   });
@@ -485,7 +543,7 @@ describe('Comprehensive Bishop Movement', () => {
   describe('Bishop Movement in Complex Positions', () => {
     test('should handle fianchetto positions', () => {
       // Set up fianchetto (bishop on long diagonal)
-      const fianchettoGame = testUtils.createFreshGame();
+      const fianchettoGame = new ChessGame();
 
       const move1 = fianchettoGame.makeMove({ from: { row: 6, col: 6 }, to: { row: 5, col: 6 } }); // g3
       if (!move1.success) throw new Error(`Move 1 failed: ${move1.message}`);
@@ -506,12 +564,14 @@ describe('Comprehensive Bishop Movement', () => {
       // Should be able to move along the diagonal
       const result = fianchettoGame.makeMove({ from: { row: 6, col: 6 }, to: { row: 5, col: 5 } });
       if (!result.success) throw new Error(`Final move failed: ${result.message}`);
-      testUtils.validateSuccessResponse(result);
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
     });
 
     test('should handle bishop pair coordination', () => {
       // Set up both bishops working together
-      const bishopPairGame = testUtils.createFreshGame();
+      const bishopPairGame = new ChessGame();
       bishopPairGame.board = Array(8).fill(null).map(() => Array(8).fill(null));
       bishopPairGame.board[0][4] = { type: 'king', color: 'black' };
       bishopPairGame.board[7][4] = { type: 'king', color: 'white' };
@@ -520,12 +580,14 @@ describe('Comprehensive Bishop Movement', () => {
 
       // Both bishops should be able to move
       const lightResult = bishopPairGame.makeMove({ from: { row: 4, col: 2 }, to: { row: 2, col: 0 } });
-      testUtils.validateSuccessResponse(lightResult);
+      expect(lightResult.success).toBe(true);
+      expect(lightResult.message).toBeDefined();
+      expect(lightResult.data).toBeDefined();
     });
 
     test('should handle bishop in endgame scenarios', () => {
       // Create bishop endgame
-      const endgame = testUtils.createFreshGame();
+      const endgame = new ChessGame();
       endgame.board = Array(8).fill(null).map(() => Array(8).fill(null));
       endgame.board[0][4] = { type: 'king', color: 'black' };
       endgame.board[7][4] = { type: 'king', color: 'white' };
@@ -535,7 +597,9 @@ describe('Comprehensive Bishop Movement', () => {
       // White bishop should be able to move freely
       const result = endgame.makeMove({ from: { row: 2, col: 1 }, to: { row: 4, col: 3 } });
       if (!result.success) throw new Error(`Endgame move failed: ${result.message}`);
-      testUtils.validateSuccessResponse(result);
+      expect(result.success).toBe(true);
+      expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
     });
   });
 
@@ -545,7 +609,7 @@ describe('Comprehensive Bishop Movement', () => {
 
       // Test 1000 bishop move validations
       for (let i = 0; i < 1000; i++) {
-        const freshGame = testUtils.createFreshGame();
+        const freshGame = new ChessGame();
         // Clear path and move bishop
         freshGame.board[6][3] = null; // Clear d2 pawn
         freshGame.makeMove({ from: { row: 7, col: 2 }, to: { row: 5, col: 4 } });
@@ -563,7 +627,7 @@ describe('Comprehensive Bishop Movement', () => {
 
       // Test complex bishop movement scenarios
       for (let i = 0; i < 100; i++) {
-        const freshGame = testUtils.createFreshGame();
+        const freshGame = new ChessGame();
 
         // Clear paths and execute bishop moves
         freshGame.board[6][3] = null; // Clear d2
