@@ -69,6 +69,37 @@ npm test
 - Address code review feedback
 - Merge to main after approval
 
+## Git Workflow Requirements
+
+### Mandatory Git Operations
+- **ALWAYS commit and push after completing each task** - This is a critical requirement
+- Use descriptive commit messages that explain what was accomplished
+- Push changes immediately after committing to ensure work is preserved
+- Never leave completed work uncommitted
+
+### Commit Message Standards
+```bash
+# Good commit messages
+git commit -m "feat: normalize rook movement tests to use current API"
+git commit -m "fix: update error code expectations in path blocking tests"
+git commit -m "test: add comprehensive rook boundary condition validation"
+
+# Task completion format
+git commit -m "task: complete normalization of rookMovement.test.js API patterns"
+```
+
+### Required Git Commands After Each Task
+```bash
+# Stage all changes
+git add .
+
+# Commit with descriptive message
+git commit -m "task: [brief description of completed task]"
+
+# Push to remote repository
+git push origin main
+```
+
 ## Code Organization Guidelines
 
 ### File Structure Standards
