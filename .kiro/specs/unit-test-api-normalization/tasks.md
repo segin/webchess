@@ -120,7 +120,7 @@
   - Fix simple special move errors to use current error codes
   - _Requirements: 1.1, 1.2, 5.1, 5.2, 5.3_
 
-- [-] 16. Normalize tests/enPassantTargetManagement.test.js - En passant tracking
+- [x] 16. Normalize tests/enPassantTargetManagement.test.js - En passant tracking
   - Update en passant target tracking to use current enPassantTarget property
   - Fix en passant setup tests to expect current state updates
   - Normalize en passant validation to use current API response format
@@ -128,7 +128,7 @@
   - Fix en passant edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 5.2, 6.4, 6.6_
 
-- [ ] 17. Normalize tests/checkDetection.test.js - Check detection tests
+- [-] 17. Normalize tests/checkDetection.test.js - Check detection tests
   - Update check detection to use current inCheck property and checkDetails
   - Fix check validation tests to expect current response structure
   - Normalize check resolution tests to use current API patterns
