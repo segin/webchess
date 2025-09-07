@@ -120,7 +120,7 @@
   - Fix simple special move errors to use current error codes
   - _Requirements: 1.1, 1.2, 5.1, 5.2, 5.3_
 
-- [ ] 16. Normalize tests/enPassantTargetManagement.test.js - En passant tracking
+- [-] 16. Normalize tests/enPassantTargetManagement.test.js - En passant tracking
   - Update en passant target tracking to use current enPassantTarget property
   - Fix en passant setup tests to expect current state updates
   - Normalize en passant validation to use current API response format

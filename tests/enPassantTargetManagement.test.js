@@ -234,7 +234,7 @@ describe('En Passant Target Management', () => {
       const result = game.makeMove({ from: { row: 3, col: 4 }, to: { row: 2, col: 3 } });
       
       expect(result.success).toBe(false);
-      expect(result.message).toContain('Invalid');
+      expect(result.message).toContain('cannot move');
     });
 
     test('should reject en passant attempt to wrong square', () => {
@@ -302,7 +302,7 @@ describe('En Passant Target Management', () => {
       const result = game.makeMove({ from: { row: 3, col: 4 }, to: { row: 2, col: 3 } });
       
       expect(result.success).toBe(false);
-      expect(result.message).toContain('en passant');
+      expect(result.message).toContain('Invalid en passant target');
     });
   });
 
