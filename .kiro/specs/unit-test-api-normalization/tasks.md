@@ -48,7 +48,7 @@
   - Fix boundary condition tests to use current error handling patterns
   - _Requirements: 1.1, 1.2, 4.3, 3.3, 3.4_
 
-- [ ] 7. Normalize tests/bishopMovement.test.js - Bishop diagonal movement tests
+- [x] 7. Normalize tests/bishopMovement.test.js - Bishop diagonal movement tests
   - Update bishop movement validation to use current API structure
   - Fix diagonal movement tests to expect current response format
   - Normalize path blocking tests to use current error codes
@@ -56,7 +56,7 @@
   - Fix color square consistency tests to use current board representation
   - _Requirements: 1.1, 1.2, 4.4, 3.1, 3.2_
 
-- [ ] 8. Normalize tests/queenMovement.test.js - Queen combined movement tests
+- [x] 8. Normalize tests/queenMovement.test.js - Queen combined movement tests
   - Update queen movement validation to use current API patterns
   - Fix combined rook/bishop movement tests to expect current responses
   - Normalize long-range movement tests to use current validation
@@ -64,7 +64,7 @@
   - Fix path obstruction tests to use current error handling
   - _Requirements: 1.1, 1.2, 4.5, 3.3, 3.4_
 
-- [ ] 9. Normalize tests/queenMovementValidation.test.js - Additional queen tests
+- [x] 9. Normalize tests/queenMovementValidation.test.js - Additional queen tests
   - Update additional queen movement scenarios to use current API
   - Fix queen power validation tests to expect current response structure
   - Normalize complex queen movement patterns to use current validation
@@ -72,7 +72,7 @@
   - Fix queen vs multiple pieces tests to use current board representation
   - _Requirements: 1.1, 1.2, 4.5, 6.3, 6.4_
 
-- [ ] 10. Normalize tests/kingMovement.test.js - King single-square movement tests
+- [x] 10. Normalize tests/kingMovement.test.js - King single-square movement tests
   - Update king movement validation to use current API response format
   - Fix single-square movement tests to expect current validation
   - Normalize king safety tests to use current check detection API
