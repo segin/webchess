@@ -216,7 +216,7 @@
   - Fix error edge cases to use current error handling patterns
   - _Requirements: 1.1, 1.2, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
-- [ ] 28. Normalize tests/errorHandlingComprehensive.test.js - Comprehensive error handling
+- [x] 28. Normalize tests/errorHandlingComprehensive.test.js - Comprehensive error handling
   - Update comprehensive error tests to use current error API
   - Fix complex error scenarios to expect current response structure
   - Normalize error categorization to use current error codes

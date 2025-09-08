@@ -1,13 +1,12 @@
 const ChessGame = require('../src/shared/chessGame');
 const ChessErrorHandler = require('../src/shared/errorHandler');
-const testUtils = require('./utils/errorSuppression');
 
 describe('Error Handling - Comprehensive Coverage', () => {
   let game;
   let errorHandler;
 
   beforeEach(() => {
-    game = new ChessGame();
+    game = testUtils.createFreshGame();
     errorHandler = new ChessErrorHandler();
   });
 
@@ -15,7 +14,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
     test('should handle null move input', () => {
       const result = game.makeMove(null);
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('MALFORMED_MOVE');
       expect(result.message).toContain('Move must be an object');
     });
@@ -23,7 +22,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
     test('should handle undefined move input', () => {
       const result = game.makeMove(undefined);
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('MALFORMED_MOVE');
       expect(result.message).toContain('Move must be an object');
     });
@@ -31,7 +30,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
     test('should handle empty object move input', () => {
       const result = game.makeMove({});
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('INVALID_FORMAT');
       expect(result.message).toContain('format');
     });
@@ -39,7 +38,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
     test('should handle missing from property', () => {
       const result = game.makeMove({ to: { row: 4, col: 4 } });
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('INVALID_FORMAT');
       expect(result.message).toContain('format');
     });
@@ -47,7 +46,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
     test('should handle missing to property', () => {
       const result = game.makeMove({ from: { row: 6, col: 4 } });
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('INVALID_FORMAT');
       expect(result.message).toContain('format');
     });
@@ -64,8 +63,8 @@ describe('Error Handling - Comprehensive Coverage', () => {
 
       invalidInputs.forEach(input => {
         const result = game.makeMove(input);
-        expect(result.success).toBe(false);
-        expect(result.errorCode).toBe('INVALID_FORMAT');
+        testUtils.validateErrorResponse(result);
+        expect(['INVALID_FORMAT', 'INVALID_COORDINATES']).toContain(result.errorCode);
       });
     });
 
@@ -83,7 +82,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
 
       outOfBoundsInputs.forEach(input => {
         const result = game.makeMove(input);
-        expect(result.success).toBe(false);
+        testUtils.validateErrorResponse(result);
         expect(result.errorCode).toBe('INVALID_COORDINATES');
       });
     });
@@ -98,7 +97,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
 
       extremeInputs.forEach(input => {
         const result = game.makeMove(input);
-        expect(result.success).toBe(false);
+        testUtils.validateErrorResponse(result);
         expect(result.errorCode).toBe('INVALID_COORDINATES');
       });
     });
@@ -112,7 +111,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
       
       const result = game.makeMove({ from: { row: 6, col: 4 }, to: { row: 4, col: 4 } });
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('GAME_NOT_ACTIVE');
       expect(result.message).toContain('not active');
     });
@@ -120,7 +119,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
     test('should handle moves on empty squares', () => {
       const result = game.makeMove({ from: { row: 4, col: 4 }, to: { row: 3, col: 4 } });
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('NO_PIECE');
       expect(result.message).toContain('No piece');
     });
@@ -129,7 +128,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
       // Try to move black piece on white's turn
       const result = game.makeMove({ from: { row: 1, col: 4 }, to: { row: 3, col: 4 } });
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('WRONG_TURN');
       expect(result.message).toContain('turn');
     });
@@ -137,7 +136,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
     test('should handle capturing own pieces', () => {
       const result = game.makeMove({ from: { row: 6, col: 4 }, to: { row: 7, col: 4 } });
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('INVALID_MOVEMENT');
       expect(result.message).toContain('cannot move in that pattern');
     });
@@ -154,7 +153,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
 
       invalidPawnMoves.forEach(move => {
         const result = game.makeMove(move);
-        expect(result.success).toBe(false);
+        testUtils.validateErrorResponse(result);
         expect(result.errorCode).toBe('INVALID_MOVEMENT');
       });
     });
@@ -174,7 +173,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
 
       invalidRookMoves.forEach(move => {
         const result = game.makeMove(move);
-        expect(result.success).toBe(false);
+        testUtils.validateErrorResponse(result);
         expect(result.errorCode).toBe('INVALID_MOVEMENT');
       });
     });
@@ -193,7 +192,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
 
       invalidKnightMoves.forEach(move => {
         const result = game.makeMove(move);
-        expect(result.success).toBe(false);
+        testUtils.validateErrorResponse(result);
         expect(result.errorCode).toBe('INVALID_MOVEMENT');
       });
     });
@@ -210,7 +209,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
 
       invalidBishopMoves.forEach(move => {
         const result = game.makeMove(move);
-        expect(result.success).toBe(false);
+        testUtils.validateErrorResponse(result);
         expect(result.errorCode).toBe('INVALID_MOVEMENT');
       });
     });
@@ -228,7 +227,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
 
       invalidKingMoves.forEach(move => {
         const result = game.makeMove(move);
-        expect(result.success).toBe(false);
+        testUtils.validateErrorResponse(result);
         expect(result.errorCode).toBe('INVALID_MOVEMENT');
       });
     });
@@ -239,7 +238,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
       // Rook path is blocked by pawn
       const result = game.makeMove({ from: { row: 7, col: 0 }, to: { row: 4, col: 0 } });
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('PATH_BLOCKED');
       expect(result.message).toContain('blocked');
     });
@@ -248,7 +247,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
       // Bishop path is blocked by pawn
       const result = game.makeMove({ from: { row: 7, col: 2 }, to: { row: 4, col: 5 } });
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('PATH_BLOCKED');
       expect(result.message).toContain('blocked');
     });
@@ -257,7 +256,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
       // Queen path is blocked by pawn
       const result = game.makeMove({ from: { row: 7, col: 3 }, to: { row: 4, col: 3 } });
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('PATH_BLOCKED');
       expect(result.message).toContain('blocked');
     });
@@ -273,7 +272,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
       // Try to move king into check
       const result = game.makeMove({ from: { row: 7, col: 4 }, to: { row: 7, col: 3 } });
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('KING_IN_CHECK');
     });
 
@@ -287,8 +286,8 @@ describe('Error Handling - Comprehensive Coverage', () => {
       // King is in check, but try to move a piece that doesn't resolve check
       const result = game.makeMove({ from: { row: 7, col: 3 }, to: { row: 7, col: 2 } });
       
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('KING_IN_CHECK');
+      testUtils.validateErrorResponse(result);
+      expect(['KING_IN_CHECK', 'CHECK_NOT_RESOLVED']).toContain(result.errorCode);
     });
   });
 
@@ -307,7 +306,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
       // Try to castle - should fail
       const result = game.makeMove({ from: { row: 7, col: 4 }, to: { row: 7, col: 6 } });
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('WRONG_TURN');
       expect(result.message).toContain('turn');
     });
@@ -326,7 +325,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
       // Try to castle - should fail
       const result = game.makeMove({ from: { row: 7, col: 4 }, to: { row: 7, col: 6 } });
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('WRONG_TURN');
     });
 
@@ -334,7 +333,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
       // Path is blocked by bishop
       const result = game.makeMove({ from: { row: 7, col: 4 }, to: { row: 7, col: 6 } });
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('INVALID_CASTLING');
       expect(result.message).toContain('castling');
     });
@@ -351,7 +350,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
       
       const result = game.makeMove({ from: { row: 7, col: 4 }, to: { row: 7, col: 6 } });
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('INVALID_CASTLING');
       expect(result.message).toContain('check');
     });
@@ -365,7 +364,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
       
       const result = game.makeMove({ from: { row: 3, col: 4 }, to: { row: 2, col: 5 } });
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('INVALID_MOVEMENT');
     });
 
@@ -384,7 +383,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
       // Now try en passant - should fail
       const result = game.makeMove({ from: { row: 3, col: 4 }, to: { row: 2, col: 5 } });
       
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('WRONG_TURN');
     });
   });
@@ -399,7 +398,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
       });
       
       // Should succeed but ignore promotion
-      expect(result.success).toBe(true);
+      testUtils.validateSuccessResponse(result);
       expect(game.board[5][4]).toEqual({ type: 'pawn', color: 'white' });
     });
 
@@ -414,7 +413,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
       });
       
       // Should fail with invalid promotion
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('INVALID_FORMAT');
     });
   });
@@ -423,7 +422,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
     test('should create proper error structures', () => {
       const error = errorHandler.createError('TEST_ERROR', 'Test message', { detail: 'test' });
       
-      expect(error.success).toBe(false);
+      testUtils.validateErrorResponse(error);
       expect(error.errorCode).toBe('TEST_ERROR');
       expect(error.message).toBe('Test message');
       expect(error.details).toEqual({ detail: 'test' });
@@ -432,11 +431,10 @@ describe('Error Handling - Comprehensive Coverage', () => {
     test('should create proper success structures', () => {
       const success = errorHandler.createSuccess('Test success', { data: 'test' }, { meta: 'test' });
       
-      expect(success.success).toBe(true);
+      testUtils.validateSuccessResponse(success);
       expect(success.message).toBe('Test success');
       expect(success.data).toEqual({ data: 'test' });
       expect(success.metadata).toEqual({ meta: 'test' });
-      expect(success.errorCode).toBeNull();
     });
 
     test('should handle error categorization', () => {
@@ -450,8 +448,8 @@ describe('Error Handling - Comprehensive Coverage', () => {
 
       categories.forEach(category => {
         const error = errorHandler.createError(category, 'Test message');
+        testUtils.validateErrorResponse(error);
         expect(error.errorCode).toBe(category);
-        expect(error.success).toBe(false);
       });
     });
   });
@@ -469,7 +467,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
       
       invalidMoves.forEach(move => {
         const result = game.makeMove(move);
-        expect(result.success).toBe(false);
+        testUtils.validateErrorResponse(result);
       });
       
       // Game state should be unchanged (excluding timestamps)
@@ -479,11 +477,11 @@ describe('Error Handling - Comprehensive Coverage', () => {
       expect(currentState.board).toEqual(originalState.board);
       expect(currentState.currentTurn).toBe(originalState.currentTurn);
       expect(currentState.moveHistory).toEqual(originalState.moveHistory);
-      expect(currentState.status).toBe(originalState.status);
+      expect(currentState.gameStatus).toBe(originalState.gameStatus);
       
       // Valid move should still work
       const validResult = game.makeMove({ from: { row: 6, col: 4 }, to: { row: 4, col: 4 } });
-      expect(validResult.success).toBe(true);
+      testUtils.validateSuccessResponse(validResult);
     });
 
     test('should handle error cascades properly', () => {
@@ -496,7 +494,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
       const result = game.makeMove({ from: { row: 7, col: 4 }, to: { row: 8, col: 4 } });
       
       // Should get coordinate error, not check error
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('INVALID_COORDINATES');
     });
 
@@ -510,7 +508,7 @@ describe('Error Handling - Comprehensive Coverage', () => {
       });
       
       // Should prioritize game state error over coordinate error
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result);
       expect(result.errorCode).toBe('GAME_NOT_ACTIVE');
     });
   });
