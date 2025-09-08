@@ -12,7 +12,7 @@ describe('Game State Management', () => {
 
   beforeEach(() => {
     game = new ChessGame();
-    stateManager = new GameStateManager();
+    stateManager = game.stateManager; // Use the game's state manager instead of creating a new one
   });
 
   describe('Game State Initialization', () => {
@@ -241,7 +241,7 @@ describe('Game State Management', () => {
 
     test('should detect status-winner inconsistency', () => {
       const gameState = game.getGameState();
-      gameState.gameStatus = 'checkmate';
+      gameState.gameStatus = 'checkmate'; // Use gameStatus instead of status
       gameState.winner = null; // Should have winner for checkmate
       
       const validation = stateManager.validateGameStateConsistency(gameState);
@@ -288,10 +288,10 @@ describe('Game State Management', () => {
     });
 
     test('should update game state after capture', () => {
-      // Set up a capture scenario
-      game.board[5][4] = { type: 'pawn', color: 'black' };
+      // Set up a capture scenario - pawn captures diagonally
+      game.board[5][5] = { type: 'pawn', color: 'black' };
       
-      const result = game.makeMove({ from: { row: 6, col: 4 }, to: { row: 5, col: 4 } });
+      const result = game.makeMove({ from: { row: 6, col: 4 }, to: { row: 5, col: 5 } });
       expect(result.success).toBe(true);
       
       const gameState = game.getGameState();
@@ -394,7 +394,7 @@ describe('Game State Management', () => {
       // Core game state
       expect(gameState.board).toBeDefined();
       expect(gameState.currentTurn).toBe('white');
-      expect(gameState.status).toBe('active');
+      expect(gameState.gameStatus).toBe('active'); // Use gameStatus instead of status
       expect(gameState.winner).toBeNull();
       expect(gameState.moveHistory).toBeDefined();
       
