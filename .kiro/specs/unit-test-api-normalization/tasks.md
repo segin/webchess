@@ -224,7 +224,7 @@
   - Fix comprehensive error edge cases to use current patterns
   - _Requirements: 1.1, 1.2, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
-- [ ] 29. Normalize tests/errorRecovery.test.js - Error recovery tests
+- [x] 29. Normalize tests/errorRecovery.test.js - Error recovery tests
   - Update error recovery tests to use current error handling API
   - Fix recovery scenarios to expect current response format
   - Normalize recovery validation to use current error patterns
@@ -272,7 +272,7 @@
   - Fix movement pattern edge cases to use current error codes
   - _Requirements: 1.1, 1.2, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 
-- [ ] 35. Normalize tests/gameFlow.test.js - Complete game flow
+- [x] 35. Normalize tests/gameFlow.test.js - Complete game flow
   - Update game flow tests to use current API patterns throughout
   - Fix complete game scenarios to expect current response structure
   - Normalize game progression to use current state management
