@@ -232,7 +232,7 @@
   - Fix recovery edge cases to use current error codes
   - _Requirements: 1.1, 1.2, 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 30. Normalize tests/invalidInputHandling.test.js - Invalid input handling
+- [-] 30. Normalize tests/invalidInputHandling.test.js - Invalid input handling
   - Update invalid input tests to use current validation API
   - Fix input validation to expect current error response structure
   - Normalize malformed input tests to use current error codes
@@ -256,7 +256,7 @@
   - Fix piece movement edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 
-- [ ] 33. Normalize tests/pieceMovement.part2.test.js - Additional piece movement
+- [x] 33. Normalize tests/pieceMovement.part2.test.js - Additional piece movement
   - Update additional piece movement tests to use current API
   - Fix extended movement scenarios to expect current responses
   - Normalize complex piece interactions to use current validation
