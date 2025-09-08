@@ -192,7 +192,7 @@
   - Fix validation edge cases to use current error codes
   - _Requirements: 1.1, 1.2, 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 25. Normalize tests/gameStateConsistency.test.js - Game state consistency
+- [x] 25. Normalize tests/gameStateConsistency.test.js - Game state consistency
   - Update state consistency tests to use current property names
   - Fix consistency validation to expect current response structure
   - Normalize consistency checking to use current API patterns
@@ -200,7 +200,7 @@
   - Fix consistency edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 26. Normalize tests/gameStateManagerExpansion.test.js - Extended state management
+- [x] 26. Normalize tests/gameStateManagerExpansion.test.js - Extended state management
   - Update extended state management to use current API patterns
   - Fix advanced state tests to expect current response format
   - Normalize state manager integration to use current validation
@@ -208,7 +208,7 @@
   - Fix state manager edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6_
 
-- [ ] 27. Normalize tests/errorHandling.test.js - Basic error handling
+- [x] 27. Normalize tests/errorHandling.test.js - Basic error handling
   - Update error handling tests to use current error response structure
   - Fix error validation to expect current error codes and messages
   - Normalize error scenarios to use current API patterns
