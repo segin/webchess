@@ -143,13 +143,13 @@ describe('Game State Management Validation', () => {
       const game = new ChessGame();
       const initialState = game.getGameState();
       
-      // Make a move
+      // Make a move using current API
       const result = game.makeMove({ from: { row: 6, col: 4 }, to: { row: 5, col: 4 } });
       expect(result.success).toBe(true);
       
       const newState = game.getGameState();
       
-      // Verify state updates
+      // Verify state updates using current property names
       expect(newState.currentTurn).toBe('black');
       expect(newState.gameMetadata.totalMoves).toBe(1);
       expect(newState.stateVersion).toBeGreaterThan(initialState.stateVersion);
@@ -165,7 +165,7 @@ describe('Game State Management Validation', () => {
       const stateManager = new GameStateManager();
       const game = new ChessGame();
       
-      // Test starting position FEN
+      // Test starting position FEN using current API
       const startingFEN = stateManager.getFENPosition(
         game.board,
         game.currentTurn,
@@ -176,6 +176,113 @@ describe('Game State Management Validation', () => {
       expect(startingFEN).toContain('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR');
       expect(startingFEN).toContain(' w ');
       expect(startingFEN).toContain('KQkq');
+    });
+  });
+
+  describe('Game State Property Validation', () => {
+    test('should validate game state properties use current API structure', () => {
+      const game = new ChessGame();
+      const gameState = game.getGameState();
+      
+      // Verify current property names are used
+      expect(gameState).toHaveProperty('gameStatus'); // Current API uses gameStatus
+      expect(gameState).toHaveProperty('currentTurn');
+      expect(gameState).toHaveProperty('winner');
+      expect(gameState).toHaveProperty('moveHistory');
+      expect(gameState).toHaveProperty('castlingRights');
+      expect(gameState).toHaveProperty('enPassantTarget');
+      expect(gameState).toHaveProperty('inCheck');
+      expect(gameState).toHaveProperty('checkDetails');
+      
+      // Verify initial values match current implementation
+      expect(gameState.gameStatus).toBe('active');
+      expect(gameState.currentTurn).toBe('white');
+      expect(gameState.winner).toBeNull();
+      expect(gameState.moveHistory).toEqual([]);
+      expect(gameState.inCheck).toBe(false);
+      expect(gameState.checkDetails).toBeNull();
+    });
+
+    test('should validate state consistency validation uses current error format', () => {
+      const game = new ChessGame();
+      
+      // Use a real game state which will have proper position history
+      const gameState = game.getGameStateForSnapshot();
+      const validation = game.stateManager.validateGameStateConsistency(gameState);
+      
+      expect(validation.success).toBe(true);
+      expect(validation.errors).toEqual([]);
+      expect(validation.details).toBeDefined();
+      expect(validation.details.kingCount).toEqual({ white: 1, black: 1 });
+    });
+
+    test('should handle invalid state validation with current error structure', () => {
+      const stateManager = new GameStateManager();
+      
+      // Test with invalid state (missing kings)
+      const invalidState = {
+        currentTurn: 'white',
+        moveHistory: [],
+        gameStatus: 'active',
+        winner: null,
+        fullMoveNumber: 1,
+        halfMoveClock: 0,
+        board: Array(8).fill(null).map(() => Array(8).fill(null)),
+        castlingRights: { white: { kingside: true, queenside: true }, black: { kingside: true, queenside: true } },
+        enPassantTarget: null
+      };
+      
+      const validation = stateManager.validateGameStateConsistency(invalidState);
+      expect(validation.success).toBe(false);
+      expect(validation.errors.length).toBeGreaterThan(0);
+      expect(validation.errors).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('Invalid white king count'),
+          expect.stringContaining('Invalid black king count')
+        ])
+      );
+    });
+  });
+
+  describe('Move Validation Integration', () => {
+    test('should validate moves return current response structure', () => {
+      const game = new ChessGame();
+      
+      // Test valid move
+      const validResult = game.makeMove({ from: { row: 6, col: 4 }, to: { row: 5, col: 4 } });
+      expect(validResult.success).toBe(true);
+      expect(validResult.message).toBeDefined();
+      expect(validResult.data).toBeDefined();
+      expect(validResult.data.gameStatus).toBe('active');
+      expect(validResult.data.currentTurn).toBe('black');
+      
+      // Test invalid move
+      const invalidResult = game.makeMove({ from: { row: 5, col: 4 }, to: { row: 3, col: 4 } });
+      expect(invalidResult.success).toBe(false);
+      expect(invalidResult.message).toBeDefined();
+      expect(invalidResult.errorCode).toBeDefined();
+    });
+
+    test('should maintain state consistency after moves', () => {
+      const game = new ChessGame();
+      
+      // Make several moves
+      const moves = [
+        { from: { row: 6, col: 4 }, to: { row: 5, col: 4 } }, // e4
+        { from: { row: 1, col: 4 }, to: { row: 2, col: 4 } }, // e5
+        { from: { row: 6, col: 3 }, to: { row: 4, col: 3 } }, // d4
+        { from: { row: 1, col: 3 }, to: { row: 3, col: 3 } }  // d5
+      ];
+      
+      moves.forEach((move, index) => {
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        
+        const gameState = game.getGameState();
+        expect(gameState.moveHistory.length).toBe(index + 1);
+        expect(gameState.stateConsistency.success).toBe(true);
+        expect(gameState.currentTurn).toBe(index % 2 === 0 ? 'black' : 'white');
+      });
     });
   });
 });

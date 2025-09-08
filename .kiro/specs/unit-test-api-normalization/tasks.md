@@ -136,7 +136,7 @@
   - Fix check edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 6.6, 3.5, 3.6_
 
-- [-] 18. Normalize tests/checkmateDetection.test.js - Checkmate detection tests
+- [x] 18. Normalize tests/checkmateDetection.test.js - Checkmate detection tests
   - Update checkmate detection to use current gameStatus property
   - Fix checkmate validation tests to expect current response format
   - Normalize checkmate scenarios to use current state management
@@ -144,7 +144,7 @@
   - Fix checkmate edge cases to use current validation patterns
   - _Requirements: 1.1, 1.2, 6.2, 6.3, 3.5_
 
-- [ ] 19. Normalize tests/stalemateDetection.test.js - Stalemate detection tests
+- [x] 19. Normalize tests/stalemateDetection.test.js - Stalemate detection tests
   - Update stalemate detection to use current gameStatus property
   - Fix stalemate validation tests to expect current response structure
   - Normalize stalemate scenarios to use current state management
@@ -152,7 +152,7 @@
   - Fix stalemate edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 6.2, 6.3, 3.5_
 
-- [ ] 20. Normalize tests/checkResolution.test.js - Check resolution tests
+- [x] 20. Normalize tests/checkResolution.test.js - Check resolution tests
   - Update check resolution tests to use current check detection API
   - Fix resolution validation to expect current response format
   - Normalize resolution methods to use current validation patterns
@@ -160,7 +160,7 @@
   - Fix resolution edge cases to use current error codes
   - _Requirements: 1.1, 1.2, 3.5, 3.6, 6.6_
 
-- [ ] 21. Normalize tests/selfCheckPrevention.test.js - Self-check prevention
+- [x] 21. Normalize tests/selfCheckPrevention.test.js - Self-check prevention
   - Update self-check prevention to use current validation API
   - Fix pinned piece tests to expect current error responses
   - Normalize king safety tests to use current check detection
@@ -168,7 +168,7 @@
   - Fix self-check edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 3.5, 3.6, 6.6_
 
-- [ ] 22. Normalize tests/comprehensiveCheckCheckmateTests.test.js - Comprehensive check/checkmate
+- [x] 22. Normalize tests/comprehensiveCheckCheckmateTests.test.js - Comprehensive check/checkmate
   - Update comprehensive check/checkmate tests to use current API
   - Fix complex check scenarios to expect current response structure
   - Normalize checkmate patterns to use current state management
@@ -176,7 +176,7 @@
   - Fix complex edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 6.2, 6.6, 3.5_
 
-- [ ] 23. Normalize tests/gameStateManagement.test.js - Game state management
+- [x] 23. Normalize tests/gameStateManagement.test.js - Game state management
   - Update game state management to use current property names
   - Fix state transition tests to expect current response format
   - Normalize state validation to use current API structure
@@ -184,7 +184,7 @@
   - Fix state edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6_
 
-- [ ] 24. Normalize tests/gameStateValidation.test.js - Game state validation
+- [x] 24. Normalize tests/gameStateValidation.test.js - Game state validation
   - Update game state validation to use current property structure
   - Fix validation tests to expect current response format
   - Normalize state checking to use current API patterns
