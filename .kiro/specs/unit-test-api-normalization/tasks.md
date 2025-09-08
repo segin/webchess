@@ -232,7 +232,7 @@
   - Fix recovery edge cases to use current error codes
   - _Requirements: 1.1, 1.2, 3.1, 3.2, 3.3, 3.4_
 
-- [-] 30. Normalize tests/invalidInputHandling.test.js - Invalid input handling
+- [ ] 30. Normalize tests/invalidInputHandling.test.js - Invalid input handling
   - Update invalid input tests to use current validation API
   - Fix input validation to expect current error response structure
   - Normalize malformed input tests to use current error codes

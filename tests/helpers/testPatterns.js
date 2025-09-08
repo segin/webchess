@@ -14,7 +14,6 @@ const AssertionPatterns = {
   validateSuccessfulMove(response) {
     expect(response).toBeDefined();
     expect(response.success).toBe(true);
-    expect(response.isValid).toBe(true);
     expect(response.errorCode).toBeNull();
     expect(response.message).toBeDefined();
     expect(typeof response.message).toBe('string');
@@ -28,7 +27,6 @@ const AssertionPatterns = {
   validateFailedMove(response, expectedErrorCode = null) {
     expect(response).toBeDefined();
     expect(response.success).toBe(false);
-    expect(response.isValid).toBe(false);
     expect(response.errorCode).toBeDefined();
     expect(response.message).toBeDefined();
     expect(typeof response.message).toBe('string');
