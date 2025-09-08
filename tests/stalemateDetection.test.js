@@ -1,10 +1,22 @@
-const ChessGame = require('../src/shared/chessGame.js');
+/**
+ * Comprehensive Stalemate Detection Tests
+ * Tests all stalemate detection scenarios using current API patterns
+ * 
+ * This test file has been normalized to use the current API patterns:
+ * - Uses current gameStatus property (not status)
+ * - Validates game state using current property names
+ * - Uses current error handling patterns
+ * - Tests stalemate scenarios using current state management
+ * - Uses standardized test utilities for consistency
+ */
+
+const ChessGame = require('../src/shared/chessGame');
 
 describe('Stalemate Detection System', () => {
   let game;
 
   beforeEach(() => {
-    game = new ChessGame();
+    game = testUtils.createFreshGame();
   });
 
   describe('Basic Stalemate Detection', () => {
@@ -16,6 +28,7 @@ describe('Stalemate Detection System', () => {
       game.board[2][1] = { type: 'king', color: 'white' };  // White king on b6
       game.currentTurn = 'black';
 
+      // Validate stalemate detection using current API
       expect(game.isInCheck('black')).toBe(false);
       expect(game.hasValidMoves('black')).toBe(false);
       expect(game.isStalemate('black')).toBe(true);
@@ -31,6 +44,7 @@ describe('Stalemate Detection System', () => {
       game.board[2][1] = { type: 'king', color: 'white' };  // White king on b6
       game.currentTurn = 'black';
 
+      // Validate checkmate vs stalemate distinction using current API
       expect(game.isInCheck('black')).toBe(true);
       expect(game.hasValidMoves('black')).toBe(false);
       expect(game.isStalemate('black')).toBe(false);
@@ -45,6 +59,7 @@ describe('Stalemate Detection System', () => {
       game.board[7][7] = { type: 'king', color: 'white' };  // White king on h1
       game.currentTurn = 'black';
 
+      // Validate that active game is not stalemate using current API
       expect(game.isInCheck('black')).toBe(false);
       expect(game.hasValidMoves('black')).toBe(true);
       expect(game.isStalemate('black')).toBe(false);
@@ -61,8 +76,10 @@ describe('Stalemate Detection System', () => {
       game.board[2][1] = { type: 'king', color: 'white' };  // White king on b6
       game.currentTurn = 'black';
 
+      // Validate stalemate detection using current API
       expect(game.isStalemate('black')).toBe(true);
       
+      // Test game ending logic using current gameStatus property
       game.checkGameEnd();
       expect(game.gameStatus).toBe('stalemate');
       expect(game.winner).toBeNull();
@@ -76,8 +93,10 @@ describe('Stalemate Detection System', () => {
       game.board[0][2] = { type: 'king', color: 'white' };  // White king on c8 (controls b8, b7)
       game.currentTurn = 'black';
 
+      // Validate stalemate detection using current API
       expect(game.isStalemate('black')).toBe(true);
       
+      // Test game ending logic using current gameStatus property
       game.checkGameEnd();
       expect(game.gameStatus).toBe('stalemate');
       expect(game.winner).toBeNull();
@@ -91,8 +110,10 @@ describe('Stalemate Detection System', () => {
       game.board[2][1] = { type: 'king', color: 'white' };  // White king on b6 (controls a7, b7, b8)
       game.currentTurn = 'black';
 
+      // Validate stalemate detection using current API
       expect(game.isStalemate('black')).toBe(true);
       
+      // Test game ending logic using current gameStatus property
       game.checkGameEnd();
       expect(game.gameStatus).toBe('stalemate');
       expect(game.winner).toBeNull();
@@ -108,7 +129,7 @@ describe('Stalemate Detection System', () => {
       game.board[2][1] = { type: 'king', color: 'white' };    // White king on b6 (controls a7, b7, b8)
       game.currentTurn = 'black';
 
-      // Verify the king is not in check but has no legal moves
+      // Verify stalemate detection with multiple pieces using current API
       expect(game.isInCheck('black')).toBe(false);
       expect(game.hasValidMoves('black')).toBe(false);
       expect(game.isStalemate('black')).toBe(true);
@@ -124,6 +145,7 @@ describe('Stalemate Detection System', () => {
       game.board[2][1] = { type: 'king', color: 'white' };    // White king on b6 (controls a7, b7, b8)
       game.currentTurn = 'black';
 
+      // Validate stalemate detection with pinned pieces using current API
       expect(game.isInCheck('black')).toBe(false);
       expect(game.hasValidMoves('black')).toBe(false);
       expect(game.isStalemate('black')).toBe(true);
@@ -137,7 +159,7 @@ describe('Stalemate Detection System', () => {
       game.board[2][1] = { type: 'king', color: 'white' };    // White king on b6 (controls a7, b7, b8)
       game.currentTurn = 'black';
 
-      // Even without en passant, this should be stalemate
+      // Validate stalemate detection with en passant considerations using current API
       expect(game.isStalemate('black')).toBe(true);
     });
   });
@@ -151,7 +173,7 @@ describe('Stalemate Detection System', () => {
       game.board[2][2] = { type: 'king', color: 'white' };    // White king on c6
       game.currentTurn = 'black';
 
-      // King can move to a8, a7, b7, c8, c7
+      // Validate that king with legal moves is not stalemate using current API
       expect(game.hasValidMoves('black')).toBe(true);
       expect(game.isStalemate('black')).toBe(false);
     });
@@ -165,7 +187,7 @@ describe('Stalemate Detection System', () => {
       game.board[2][1] = { type: 'king', color: 'white' };    // White king on b6
       game.currentTurn = 'black';
 
-      // Rook has legal moves even though king is trapped
+      // Validate that other pieces with legal moves prevent stalemate using current API
       expect(game.hasValidMoves('black')).toBe(true);
       expect(game.isStalemate('black')).toBe(false);
     });
@@ -179,7 +201,7 @@ describe('Stalemate Detection System', () => {
       game.board[2][1] = { type: 'king', color: 'white' };    // White king on b6
       game.currentTurn = 'black';
 
-      // Pawn can move forward
+      // Validate that pawn with legal moves prevents stalemate using current API
       expect(game.hasValidMoves('black')).toBe(true);
       expect(game.isStalemate('black')).toBe(false);
     });
@@ -194,7 +216,7 @@ describe('Stalemate Detection System', () => {
       game.board[2][1] = { type: 'king', color: 'white' };    // White king on b6
       game.currentTurn = 'black';
 
-      // Black rook can capture white rook
+      // Validate that capture possibilities prevent stalemate using current API
       expect(game.hasValidMoves('black')).toBe(true);
       expect(game.isStalemate('black')).toBe(false);
     });
@@ -209,6 +231,7 @@ describe('Stalemate Detection System', () => {
       game.board[2][1] = { type: 'king', color: 'white' };
       game.currentTurn = 'black';
 
+      // Test game state management using current gameStatus property
       game.checkGameEnd();
       
       expect(game.gameStatus).toBe('stalemate');
@@ -223,8 +246,10 @@ describe('Stalemate Detection System', () => {
       game.board[5][1] = { type: 'king', color: 'black' };    // Black king on b3
       game.currentTurn = 'white';
 
+      // Validate stalemate detection for white player using current API
       expect(game.isStalemate('white')).toBe(true);
       
+      // Test game state management using current gameStatus property
       game.checkGameEnd();
       expect(game.gameStatus).toBe('stalemate');
       expect(game.winner).toBeNull();
@@ -238,12 +263,13 @@ describe('Stalemate Detection System', () => {
       game.board[2][1] = { type: 'king', color: 'white' };
       game.currentTurn = 'black';
       
-      // Add some move history
+      // Add some move history using current format
       game.moveHistory = [
         { from: { row: 6, col: 4 }, to: { row: 4, col: 4 }, piece: 'pawn', color: 'white' },
         { from: { row: 1, col: 4 }, to: { row: 3, col: 4 }, piece: 'pawn', color: 'black' }
       ];
 
+      // Test game state management preserves history using current API
       game.checkGameEnd();
       
       expect(game.gameStatus).toBe('stalemate');
@@ -257,6 +283,7 @@ describe('Stalemate Detection System', () => {
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
       game.currentTurn = 'white';
 
+      // Validate edge case handling using current API
       expect(game.hasValidMoves('white')).toBe(false);
       expect(game.isInCheck('white')).toBe(false); // No king means no check
       // This is a degenerate case, but should not crash
@@ -268,6 +295,7 @@ describe('Stalemate Detection System', () => {
       game.board[4][4] = { type: 'king', color: 'white' };
       game.currentTurn = 'white';
 
+      // Validate single king edge case using current API
       expect(game.hasValidMoves('white')).toBe(true); // King can move
       expect(game.isStalemate('white')).toBe(false);
     });
@@ -288,7 +316,7 @@ describe('Stalemate Detection System', () => {
       game.board[7][7] = { type: 'king', color: 'black' };
       game.currentTurn = 'white';
 
-      // King has no moves, but pawns might have moves
+      // Validate edge case with surrounded king using current API
       const hasValidMoves = game.hasValidMoves('white');
       if (!hasValidMoves) {
         expect(game.isStalemate('white')).toBe(true);
@@ -314,6 +342,7 @@ describe('Stalemate Detection System', () => {
       
       game.currentTurn = 'black';
 
+      // Test performance of stalemate detection using current API
       const startTime = Date.now();
       const isStalemate = game.isStalemate('black');
       const endTime = Date.now();
