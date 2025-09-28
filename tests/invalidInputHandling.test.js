@@ -1,7 +1,6 @@
 const ChessGame = require('../src/shared/chessGame');
 const GameStateManager = require('../src/shared/gameState');
 const GameManager = require('../src/server/gameManager');
-const { AssertionPatterns } = require('./helpers/testPatterns');
 
 describe('Comprehensive Invalid Input Handling Tests', () => {
   let game;
@@ -9,7 +8,7 @@ describe('Comprehensive Invalid Input Handling Tests', () => {
   let gameManager;
 
   beforeEach(() => {
-    game = new ChessGame();
+    game = testUtils.createFreshGame();
     gameState = new GameStateManager();
     gameManager = new GameManager();
   });
@@ -27,7 +26,7 @@ describe('Comprehensive Invalid Input Handling Tests', () => {
 
       invalidInputs.forEach(({ from, to }) => {
         const result = game.makeMove(from, to);
-        AssertionPatterns.validateFailedMove(result);
+        testUtils.validateErrorResponse(result);
         expect(['MALFORMED_MOVE', 'INVALID_FORMAT', 'INVALID_COORDINATES']).toContain(result.errorCode);
       });
     });
@@ -46,7 +45,7 @@ describe('Comprehensive Invalid Input Handling Tests', () => {
 
       malformedCoords.forEach(({ from, to }) => {
         const result = game.makeMove(from, to);
-        AssertionPatterns.validateFailedMove(result);
+        testUtils.validateErrorResponse(result);
         expect(['INVALID_COORDINATES', 'INVALID_FORMAT']).toContain(result.errorCode);
       });
     });
@@ -65,7 +64,7 @@ describe('Comprehensive Invalid Input Handling Tests', () => {
 
       nonNumericCoords.forEach(({ from, to }) => {
         const result = game.makeMove(from, to);
-        AssertionPatterns.validateFailedMove(result);
+        testUtils.validateErrorResponse(result);
         expect(['INVALID_COORDINATES', 'INVALID_FORMAT']).toContain(result.errorCode);
       });
     });
@@ -83,7 +82,7 @@ describe('Comprehensive Invalid Input Handling Tests', () => {
       invalidPromotions.forEach(promotion => {
         const result = game.makeMove({ row: 1, col: 0 }, { row: 0, col: 0 }, promotion);
         if (promotion && !['queen', 'rook', 'bishop', 'knight'].includes(promotion)) {
-          AssertionPatterns.validateFailedMove(result);
+          testUtils.validateErrorResponse(result);
           expect(['INVALID_FORMAT', 'INVALID_PROMOTION']).toContain(result.errorCode);
         }
       });
@@ -92,11 +91,11 @@ describe('Comprehensive Invalid Input Handling Tests', () => {
     test('should handle method calls with wrong number of arguments', () => {
       // Test makeMove with insufficient arguments
       const result1 = game.makeMove();
-      AssertionPatterns.validateFailedMove(result1);
+      testUtils.validateErrorResponse(result1);
       expect(['MALFORMED_MOVE', 'INVALID_FORMAT']).toContain(result1.errorCode);
       
       const result2 = game.makeMove({ row: 0, col: 0 });
-      AssertionPatterns.validateFailedMove(result2);
+      testUtils.validateErrorResponse(result2);
       expect(['MALFORMED_MOVE', 'INVALID_FORMAT']).toContain(result2.errorCode);
       
       // Test with too many arguments - should still work (extra args ignored)
@@ -108,7 +107,7 @@ describe('Comprehensive Invalid Input Handling Tests', () => {
         'arguments'
       );
       // This should succeed as it's a valid pawn move
-      AssertionPatterns.validateSuccessfulMove(result3);
+      testUtils.validateSuccessResponse(result3);
     });
 
     test('should handle circular reference objects', () => {
@@ -120,7 +119,7 @@ describe('Comprehensive Invalid Input Handling Tests', () => {
 
       const result = game.makeMove(circularFrom, circularTo);
       // Should fail due to no piece at source or invalid move
-      AssertionPatterns.validateFailedMove(result);
+      testUtils.validateErrorResponse(result);
     });
 
     test('should handle extremely large objects as coordinates', () => {
@@ -131,7 +130,7 @@ describe('Comprehensive Invalid Input Handling Tests', () => {
 
       const result = game.makeMove(largeObject, { row: 1, col: 1 });
       // Should fail due to no piece at source or invalid move
-      AssertionPatterns.validateFailedMove(result);
+      testUtils.validateErrorResponse(result);
     });
   });
 
@@ -364,7 +363,7 @@ describe('Comprehensive Invalid Input Handling Tests', () => {
 
       const result = game.makeMove(oversizedMove.from, oversizedMove.to);
       // Should fail due to no piece at source or wrong turn
-      AssertionPatterns.validateFailedMove(result);
+      testUtils.validateErrorResponse(result);
       expect(['NO_PIECE', 'WRONG_TURN']).toContain(result.errorCode);
     });
 
@@ -379,7 +378,7 @@ describe('Comprehensive Invalid Input Handling Tests', () => {
 
       incompleteRequests.forEach(request => {
         const result = game.makeMove(request.from, request.to);
-        AssertionPatterns.validateFailedMove(result);
+        testUtils.validateErrorResponse(result);
         expect(['MALFORMED_MOVE', 'INVALID_FORMAT', 'INVALID_COORDINATES']).toContain(result.errorCode);
       });
     });
@@ -421,7 +420,7 @@ describe('Comprehensive Invalid Input Handling Tests', () => {
 
       coercionAttempts.forEach(({ from, to }) => {
         const result = game.makeMove(from, to);
-        AssertionPatterns.validateFailedMove(result);
+        testUtils.validateErrorResponse(result);
       });
     });
 
