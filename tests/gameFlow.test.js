@@ -29,14 +29,16 @@ describe('Comprehensive Game Flow', () => {
         const result = game.makeMove(scholarsMate[i]);
         expect(result.success).toBe(true);
         expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
       }
       
       // Execute checkmate move
       const checkmateResult = game.makeMove(scholarsMate[scholarsMate.length - 1]);
       expect(checkmateResult.success).toBe(true);
       expect(checkmateResult.message).toBeDefined();
+      expect(checkmateResult.data).toBeDefined();
       
-      // Verify game is in checkmate
+      // Verify game is in checkmate using current API properties
       expect(game.gameStatus).toBe('checkmate');
       expect(game.winner).toBe('white');
     });
@@ -54,9 +56,10 @@ describe('Comprehensive Game Flow', () => {
         const result = game.makeMove(move);
         expect(result.success).toBe(true);
         expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
         
         if (index === foolsMate.length - 1) {
-          // Last move should result in checkmate
+          // Last move should result in checkmate using current API properties
           expect(game.gameStatus).toBe('checkmate');
           expect(game.winner).toBe('black');
         }
@@ -81,9 +84,10 @@ describe('Comprehensive Game Flow', () => {
         const result = game.makeMove(move);
         expect(result.success).toBe(true);
         expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
       });
       
-      // Game should still be active
+      // Game should still be active using current API properties
       expect(game.gameStatus).toBe('active');
       expect(game.currentTurn).toBe('white');
       expect(game.moveHistory).toHaveLength(10);
@@ -105,9 +109,10 @@ describe('Comprehensive Game Flow', () => {
         const result = game.makeMove(move);
         expect(result.success).toBe(true);
         expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
       });
       
-      // Verify both kings and rooks are in castled positions
+      // Verify both kings and rooks are in castled positions using current board representation
       expect(game.board[7][6]).toEqual({ type: 'king', color: 'white' });
       expect(game.board[7][5]).toEqual({ type: 'rook', color: 'white' });
       expect(game.board[0][6]).toEqual({ type: 'king', color: 'black' });
@@ -134,6 +139,7 @@ describe('Comprehensive Game Flow', () => {
       
       expect(promotionResult.success).toBe(true);
       expect(promotionResult.message).toBeDefined();
+      expect(promotionResult.data).toBeDefined();
       expect(promotionGame.board[0][4]).toEqual({ type: 'queen', color: 'white' });
       
       // Verify the pawn is no longer at the original position
@@ -153,9 +159,10 @@ describe('Comprehensive Game Flow', () => {
         const result = game.makeMove(move);
         expect(result.success).toBe(true);
         expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
       });
       
-      // Verify en passant capture worked
+      // Verify en passant capture worked using current board representation
       expect(game.board[2][5]).toEqual({ type: 'pawn', color: 'white' });
       expect(game.board[3][5]).toBeNull(); // Captured pawn should be removed
     });
@@ -177,7 +184,9 @@ describe('Comprehensive Game Flow', () => {
       const result = checkmateGame.makeMove({ from: { row: 2, col: 0 }, to: { row: 0, col: 0 } });
       expect(result.success).toBe(true);
       expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
       
+      // Verify checkmate using current API properties
       expect(checkmateGame.gameStatus).toBe('checkmate');
       expect(checkmateGame.winner).toBe('white');
     });
@@ -194,7 +203,7 @@ describe('Comprehensive Game Flow', () => {
       // Manually trigger game state evaluation
       stalemateGame.checkGameEnd();
       
-      // This position should be stalemate (black king has no legal moves but is not in check)
+      // This position should be stalemate using current API properties
       expect(stalemateGame.gameStatus).toBe('stalemate');
     });
 
@@ -208,13 +217,12 @@ describe('Comprehensive Game Flow', () => {
       // Manually trigger game state evaluation
       drawGame.checkGameEnd();
       
-      // King vs King - the game should continue as active since insufficient material 
-      // detection might not be implemented, or it might be detected as stalemate
+      // King vs King - using current API properties to check game status
       expect(['active', 'draw', 'stalemate']).toContain(drawGame.gameStatus);
     });
 
     test('should continue game when material is sufficient', () => {
-      // Game with sufficient material should continue
+      // Game with sufficient material should continue using current API properties
       expect(game.gameStatus).toBe('active');
       expect(game.winner).toBeNull();
     });
@@ -238,8 +246,9 @@ describe('Comprehensive Game Flow', () => {
       const result = checkGame.makeMove({ from: { row: 4, col: 4 }, to: { row: 3, col: 4 } });
       expect(result.success).toBe(true);
       expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
       
-      // Game should no longer be in check
+      // Game should no longer be in check using current API properties
       expect(checkGame.gameStatus).toBe('active');
     });
   });
@@ -249,11 +258,13 @@ describe('Comprehensive Game Flow', () => {
       expect(game.currentTurn).toBe('white');
       
       // Make white move
-      game.makeMove({ from: { row: 6, col: 4 }, to: { row: 5, col: 4 } });
+      const whiteResult = game.makeMove({ from: { row: 6, col: 4 }, to: { row: 5, col: 4 } });
+      expect(whiteResult.success).toBe(true);
       expect(game.currentTurn).toBe('black');
       
       // Make black move
-      game.makeMove({ from: { row: 1, col: 4 }, to: { row: 2, col: 4 } });
+      const blackResult = game.makeMove({ from: { row: 1, col: 4 }, to: { row: 2, col: 4 } });
+      expect(blackResult.success).toBe(true);
       expect(game.currentTurn).toBe('white');
     });
 
@@ -266,7 +277,8 @@ describe('Comprehensive Game Flow', () => {
       ];
       
       moves.forEach((move, index) => {
-        game.makeMove(move);
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
         expect(game.moveHistory).toHaveLength(index + 1);
         
         const lastMove = game.moveHistory[game.moveHistory.length - 1];
@@ -276,7 +288,7 @@ describe('Comprehensive Game Flow', () => {
     });
 
     test('should track castling rights correctly throughout game', () => {
-      // Initially all castling rights should be available
+      // Initially all castling rights should be available using current API properties
       expect(game.castlingRights.white.kingside).toBe(true);
       expect(game.castlingRights.white.queenside).toBe(true);
       expect(game.castlingRights.black.kingside).toBe(true);
@@ -284,7 +296,8 @@ describe('Comprehensive Game Flow', () => {
       
       // Move white king
       game.board[6][4] = null; // Clear path
-      game.makeMove({ from: { row: 7, col: 4 }, to: { row: 6, col: 4 } });
+      const result = game.makeMove({ from: { row: 7, col: 4 }, to: { row: 6, col: 4 } });
+      expect(result.success).toBe(true);
       
       // White should lose all castling rights
       expect(game.castlingRights.white.kingside).toBe(false);
@@ -299,11 +312,13 @@ describe('Comprehensive Game Flow', () => {
       expect(game.enPassantTarget).toBeNull();
       
       // Make two-square pawn move
-      game.makeMove({ from: { row: 6, col: 4 }, to: { row: 4, col: 4 } });
+      const pawnResult = game.makeMove({ from: { row: 6, col: 4 }, to: { row: 4, col: 4 } });
+      expect(pawnResult.success).toBe(true);
       expect(game.enPassantTarget).toEqual({ row: 5, col: 4 });
       
       // Make another move (not en passant)
-      game.makeMove({ from: { row: 1, col: 3 }, to: { row: 2, col: 3 } });
+      const otherResult = game.makeMove({ from: { row: 1, col: 3 }, to: { row: 2, col: 3 } });
+      expect(otherResult.success).toBe(true);
       expect(game.enPassantTarget).toBeNull();
     });
 
@@ -313,19 +328,26 @@ describe('Comprehensive Game Flow', () => {
       expect(initialPieceCount.black).toBe(16);
       
       // Make some moves without captures
-      game.makeMove({ from: { row: 6, col: 4 }, to: { row: 5, col: 4 } });
-      game.makeMove({ from: { row: 1, col: 4 }, to: { row: 2, col: 4 } });
-      game.makeMove({ from: { row: 7, col: 6 }, to: { row: 5, col: 5 } });
-      game.makeMove({ from: { row: 0, col: 1 }, to: { row: 2, col: 2 } });
+      const move1 = game.makeMove({ from: { row: 6, col: 4 }, to: { row: 5, col: 4 } });
+      expect(move1.success).toBe(true);
+      const move2 = game.makeMove({ from: { row: 1, col: 4 }, to: { row: 2, col: 4 } });
+      expect(move2.success).toBe(true);
+      const move3 = game.makeMove({ from: { row: 7, col: 6 }, to: { row: 5, col: 5 } });
+      expect(move3.success).toBe(true);
+      const move4 = game.makeMove({ from: { row: 0, col: 1 }, to: { row: 2, col: 2 } });
+      expect(move4.success).toBe(true);
       
       const afterMovesPieceCount = countPieces(game.board);
       expect(afterMovesPieceCount.white).toBe(16);
       expect(afterMovesPieceCount.black).toBe(16);
       
       // Make a capture - set up a diagonal pawn capture
-      game.makeMove({ from: { row: 6, col: 3 }, to: { row: 4, col: 3 } }); // White pawn d4
-      game.makeMove({ from: { row: 2, col: 4 }, to: { row: 3, col: 4 } }); // Black pawn e5
-      game.makeMove({ from: { row: 4, col: 3 }, to: { row: 3, col: 4 } }); // White pawn captures black pawn
+      const move5 = game.makeMove({ from: { row: 6, col: 3 }, to: { row: 4, col: 3 } }); // White pawn d4
+      expect(move5.success).toBe(true);
+      const move6 = game.makeMove({ from: { row: 2, col: 4 }, to: { row: 3, col: 4 } }); // Black pawn e5
+      expect(move6.success).toBe(true);
+      const move7 = game.makeMove({ from: { row: 4, col: 3 }, to: { row: 3, col: 4 } }); // White pawn captures black pawn
+      expect(move7.success).toBe(true);
       
       const afterCapturePieceCount = countPieces(game.board);
       expect(afterCapturePieceCount.white).toBe(16);
@@ -350,9 +372,10 @@ describe('Comprehensive Game Flow', () => {
         const result = game.makeMove(move);
         expect(result.success).toBe(true);
         expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
       });
       
-      // Verify pieces were exchanged correctly
+      // Verify pieces were exchanged correctly using current board representation
       expect(game.board[5][3]).toEqual({ type: 'knight', color: 'black' });
       expect(game.moveHistory).toHaveLength(8);
     });
@@ -371,8 +394,9 @@ describe('Comprehensive Game Flow', () => {
       const result = tacticalGame.makeMove({ from: { row: 4, col: 4 }, to: { row: 2, col: 3 } });
       expect(result.success).toBe(true);
       expect(result.message).toBeDefined();
+      expect(result.data).toBeDefined();
       
-      // Black king should be in check from the rook
+      // Black king should be in check from the rook using current API properties
       expect(tacticalGame.gameStatus).toBe('check');
     });
 
@@ -399,8 +423,10 @@ describe('Comprehensive Game Flow', () => {
         const result = endgame.makeMove(move);
         expect(result.success).toBe(true);
         expect(result.message).toBeDefined();
+        expect(result.data).toBeDefined();
       });
       
+      // Verify endgame state using current API properties
       expect(endgame.gameStatus).toBe('active');
       expect(endgame.moveHistory).toHaveLength(6);
     });
@@ -429,7 +455,8 @@ describe('Comprehensive Game Flow', () => {
         ];
         
         moves.forEach(move => {
-          freshGame.makeMove(move);
+          const result = freshGame.makeMove(move);
+          expect(result.success).toBe(true);
         });
       }
       
@@ -458,7 +485,8 @@ describe('Comprehensive Game Flow', () => {
         ];
         
         complexMoves.forEach(move => {
-          complexGame.makeMove(move);
+          const result = complexGame.makeMove(move);
+          expect(result.success).toBe(true);
         });
       }
       
