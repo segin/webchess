@@ -222,8 +222,9 @@ class ChessAI {
           to: { row: toRow, col: toCol }
         };
         
-        if (chessGame.isValidMove(move.from, move.to, piece) && 
-            !chessGame.wouldBeInCheck(move.from, move.to, piece.color)) {
+        // Use comprehensive validation instead of lower-level methods
+        const validation = chessGame.validateMove(move);
+        if (validation.success && validation.isValid) {
           moves.push(move);
         }
       }
