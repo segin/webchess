@@ -456,7 +456,7 @@
   - Fix helper edge cases to use current error handling
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
 
-- [-] 58. Update test utility functions in tests/utils/ directory
+- [x] 58. Update test utility functions in tests/utils/ directory
   - Normalize all utility functions to use current API patterns
   - Fix utility validation to expect current response structure
   - Update utility helpers to use current error codes
@@ -464,7 +464,7 @@
   - Fix utility edge cases to use current error handling
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
 
-- [ ] 59. Create comprehensive API normalization validation test
+- [x] 59. Create comprehensive API normalization validation test
   - Create test to validate all normalized tests use current API consistently
   - Verify all tests expect correct response structure (success/message/data)
   - Validate all tests use correct property names (gameStatus, currentTurn, etc.)
