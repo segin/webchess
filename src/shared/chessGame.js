@@ -718,8 +718,12 @@ class ChessGame {
   getCheckResolutionType(from, to, piece, attacker) {
     const kingPos = this.findKing(piece.color);
 
-    // King move - always valid if it gets out of check
+    // King move - only valid if it gets the king out of check
     if (piece.type === 'king') {
+      // Check if the king would still be in check after the move
+      if (this.wouldBeInCheck(from, to, piece.color)) {
+        return 'invalid'; // King move doesn't resolve check
+      }
       return 'king_move';
     }
 

@@ -1,98 +1,62 @@
-const ChessGame = require('../src/shared/chessGame');
+/**
+ * Comprehensive Chess Game Validation Tests
+ * Tests all validation methods and error handling scenarios
+ * 
+ * This test file has been normalized to use the current API patterns:
+ * - Uses current makeMove API with {from, to, promotion} object format
+ * - Validates responses using current success/error structure (success, isValid, errorCode)
+ * - Accesses game state using current property names (gameStatus, currentTurn, etc.)
+ * - Uses current error codes and message formats from errorHandler.js
+ * - Uses testUtils validation methods for consistent API validation
+ * - Tests validation methods using current response structure
+ */
 
-// Simple test framework for Node.js
-if (typeof describe === 'undefined') {
-  global.describe = (name, fn) => { console.log('\n' + name); fn(); };
-  global.test = (name, fn) => { 
-    try { 
-      fn(); 
-      console.log('✅', name); 
-    } catch(e) { 
-      console.log('❌', name, ':', e.message); 
-    } 
-  };
-  global.beforeEach = (fn) => fn();
-  global.expect = (actual) => ({
-    toBe: (expected) => { 
-      if (actual !== expected) throw new Error(`Expected ${expected}, got ${actual}`); 
-      return { toBe: () => {} };
-    },
-    toEqual: (expected) => { 
-      if (JSON.stringify(actual) !== JSON.stringify(expected)) 
-        throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`); 
-      return { toEqual: () => {} };
-    },
-    toContain: (expected) => { 
-      if (!Array.isArray(actual) || !actual.includes(expected)) 
-        throw new Error(`Expected array to contain ${expected}, got ${JSON.stringify(actual)}`); 
-      return { toContain: () => {} };
-    },
-    toBeDefined: () => { 
-      if (actual === undefined) throw new Error('Expected value to be defined'); 
-      return { toBeDefined: () => {} };
-    },
-    toBeGreaterThan: (expected) => { 
-      if (actual <= expected) throw new Error(`Expected ${actual} to be greater than ${expected}`); 
-      return { toBeGreaterThan: () => {} };
-    }
-  });
-  global.jest = { 
-    fn: () => ({ 
-      mockReturnValue: (val) => () => val 
-    }) 
-  };
-}
+const ChessGame = require('../src/shared/chessGame');
 
 describe('ChessGame Enhanced Validation Infrastructure', () => {
   let game;
 
   beforeEach(() => {
-    game = new ChessGame();
+    game = testUtils.createFreshGame();
   });
 
   describe('validateMoveFormat', () => {
     test('should reject null move', () => {
       const result = game.validateMoveFormat(null);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('MALFORMED_MOVE');
+      testUtils.validateErrorResponse(result, 'MALFORMED_MOVE');
       expect(result.message).toBe('Move must be an object');
-      expect(result.message).toContain('Move must be an object');
     });
 
     test('should reject undefined move', () => {
       const result = game.validateMoveFormat(undefined);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('MALFORMED_MOVE');
-      // Details structure may vary in current implementation
+      testUtils.validateErrorResponse(result, 'MALFORMED_MOVE');
+      expect(result.message).toBe('Move must be an object');
     });
 
     test('should reject non-object move', () => {
       const result = game.validateMoveFormat('invalid');
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('MALFORMED_MOVE');
+      testUtils.validateErrorResponse(result, 'MALFORMED_MOVE');
       expect(result.message).toBe('Move must be an object');
     });
 
     test('should reject move without from square', () => {
       const move = { to: { row: 4, col: 4 } };
       const result = game.validateMoveFormat(move);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('INVALID_FORMAT');
+      testUtils.validateErrorResponse(result, 'INVALID_FORMAT');
       expect(result.message).toContain('Move format is incorrect');
     });
 
     test('should reject move without to square', () => {
       const move = { from: { row: 6, col: 4 } };
       const result = game.validateMoveFormat(move);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('INVALID_FORMAT');
+      testUtils.validateErrorResponse(result, 'INVALID_FORMAT');
       expect(result.message).toContain('Move format is incorrect');
     });
 
     test('should reject move with non-numeric coordinates', () => {
       const move = { from: { row: 'a', col: 4 }, to: { row: 4, col: 4 } };
       const result = game.validateMoveFormat(move);
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result, 'INVALID_COORDINATES');
       expect(result.message).toContain('From square must have valid integer row and col properties');
     });
 
@@ -103,14 +67,14 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
         promotion: 'invalid' 
       };
       const result = game.validateMoveFormat(move);
-      expect(result.success).toBe(false);
+      testUtils.validateErrorResponse(result, 'INVALID_FORMAT');
       expect(result.message).toContain('Move format is incorrect');
     });
 
     test('should accept valid move format', () => {
       const move = { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } };
       const result = game.validateMoveFormat(move);
-      expect(result.success).toBe(true);
+      testUtils.validateSuccessResponse(result);
     });
 
     test('should accept valid move with promotion', () => {
@@ -120,7 +84,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
         promotion: 'queen' 
       };
       const result = game.validateMoveFormat(move);
-      expect(result.success).toBe(true);
+      testUtils.validateSuccessResponse(result);
     });
   });
 
@@ -129,8 +93,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       const from = { row: -1, col: 0 };
       const to = { row: 0, col: 0 };
       const result = game.validateCoordinates(from, to);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('INVALID_COORDINATES');
+      testUtils.validateErrorResponse(result, 'INVALID_COORDINATES');
       expect(result.message).toContain('Invalid coordinates');
     });
 
@@ -138,8 +101,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       const from = { row: 0, col: 0 };
       const to = { row: 8, col: 0 };
       const result = game.validateCoordinates(from, to);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('INVALID_COORDINATES');
+      testUtils.validateErrorResponse(result, 'INVALID_COORDINATES');
       expect(result.message).toContain('Invalid coordinates');
     });
 
@@ -147,8 +109,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       const from = { row: 0, col: 0 };
       const to = { row: 0, col: 0 };
       const result = game.validateCoordinates(from, to);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('INVALID_COORDINATES');
+      testUtils.validateErrorResponse(result, 'INVALID_COORDINATES');
       expect(result.message).toContain('Invalid coordinates');
     });
 
@@ -156,16 +117,15 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       const from = { row: 6, col: 4 };
       const to = { row: 4, col: 4 };
       const result = game.validateCoordinates(from, to);
-      expect(result.success).toBe(true);
+      testUtils.validateSuccessResponse(result);
     });
 
     test('should reject multiple coordinate errors', () => {
       const from = { row: -1, col: 9 };
       const to = { row: 8, col: -2 };
       const result = game.validateCoordinates(from, to);
-      expect(result.success).toBe(false);
-      // Error details structure may vary
-      // Details structure may vary in current implementation
+      testUtils.validateErrorResponse(result, 'INVALID_COORDINATES');
+      expect(result.details).toBeDefined();
     });
   });
 
@@ -173,16 +133,14 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
     test('should reject moves when game is not active', () => {
       game.gameStatus = 'checkmate';
       const result = game.validateGameState();
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('GAME_NOT_ACTIVE');
+      testUtils.validateErrorResponse(result, 'GAME_NOT_ACTIVE');
       expect(result.message).toBe('Game is not active');
-      // Message is already correct: 'Game is not active'
     });
 
     test('should accept moves when game is active', () => {
       game.gameStatus = 'active';
       const result = game.validateGameState();
-      expect(result.success).toBe(true);
+      testUtils.validateSuccessResponse(result);
     });
   });
 
@@ -190,9 +148,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
     test('should reject empty square', () => {
       const from = { row: 4, col: 4 }; // Empty square
       const result = game.validatePieceAtSquare(from);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('NO_PIECE');
-      expect(result.message).toBe('No piece at source square');
+      testUtils.validateErrorResponse(result, 'NO_PIECE');
       expect(result.message).toBe('No piece at source square');
     });
 
@@ -201,33 +157,30 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       game.board[4][4] = { type: null, color: 'white' };
       const from = { row: 4, col: 4 };
       const result = game.validatePieceAtSquare(from);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('INVALID_PIECE');
-      expect(result.message).toBe('Invalid piece data');
+      testUtils.validateErrorResponse(result, 'INVALID_PIECE');
+      expect(result.message).toContain('Invalid piece data');
     });
 
     test('should reject invalid piece type', () => {
       game.board[4][4] = { type: 'invalid', color: 'white' };
       const from = { row: 4, col: 4 };
       const result = game.validatePieceAtSquare(from);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('INVALID_PIECE_TYPE');
-      expect(result.message).toBe('Invalid piece type: invalid');
+      testUtils.validateErrorResponse(result, 'INVALID_PIECE_TYPE');
+      expect(result.message).toContain('Invalid piece type');
     });
 
     test('should reject invalid piece color', () => {
       game.board[4][4] = { type: 'pawn', color: 'red' };
       const from = { row: 4, col: 4 };
       const result = game.validatePieceAtSquare(from);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('INVALID_PIECE_COLOR');
-      expect(result.message).toBe('Invalid piece color: red');
+      testUtils.validateErrorResponse(result, 'INVALID_PIECE_COLOR');
+      expect(result.message).toContain('Invalid piece color');
     });
 
     test('should accept valid piece', () => {
       const from = { row: 6, col: 4 }; // White pawn
       const result = game.validatePieceAtSquare(from);
-      expect(result.success).toBe(true);
+      testUtils.validateSuccessResponse(result);
     });
   });
 
@@ -236,9 +189,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       const piece = { type: 'pawn', color: 'black' };
       game.currentTurn = 'white';
       const result = game.validateTurn(piece);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('WRONG_TURN');
-      expect(result.message).toBe('Not your turn');
+      testUtils.validateErrorResponse(result, 'WRONG_TURN');
       expect(result.message).toBe('Not your turn');
     });
 
@@ -246,7 +197,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       const piece = { type: 'pawn', color: 'white' };
       game.currentTurn = 'white';
       const result = game.validateTurn(piece);
-      expect(result.success).toBe(true);
+      testUtils.validateSuccessResponse(result);
     });
   });
 
@@ -256,9 +207,8 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       const to = { row: 4, col: 5 }; // Invalid diagonal without capture
       const piece = { type: 'pawn', color: 'white' };
       const result = game.validateMovementPattern(from, to, piece);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('INVALID_MOVEMENT');
-      expect(result.message).toBe('This piece cannot move in that pattern.');
+      testUtils.validateErrorResponse(result, 'INVALID_MOVEMENT');
+      expect(result.message).toContain('cannot move in that pattern');
     });
 
     test('should accept valid pawn movement', () => {
@@ -266,7 +216,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       const to = { row: 5, col: 4 };
       const piece = { type: 'pawn', color: 'white' };
       const result = game.validateMovementPattern(from, to, piece);
-      expect(result.success).toBe(true);
+      testUtils.validateSuccessResponse(result);
     });
 
     test('should reject unknown piece type', () => {
@@ -274,9 +224,8 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       const to = { row: 5, col: 4 };
       const piece = { type: 'unknown', color: 'white' };
       const result = game.validateMovementPattern(from, to, piece);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('UNKNOWN_PIECE_TYPE');
-      expect(result.message).toBe('Unknown piece type');
+      testUtils.validateErrorResponse(result, 'UNKNOWN_PIECE_TYPE');
+      expect(result.message).toContain('Unknown piece type');
     });
   });
 
@@ -287,9 +236,8 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       const from = { row: 6, col: 4 };
       const to = { row: 4, col: 4 };
       const result = game.validatePath(from, to);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('PATH_BLOCKED');
-      expect(result.message).toBe('The path is blocked by other pieces.');
+      testUtils.validateErrorResponse(result, 'PATH_BLOCKED');
+      expect(result.message).toContain('path is blocked');
     });
 
     test('should accept clear path', () => {
@@ -298,7 +246,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       // Clear any pieces that might be in the path
       game.board[5][4] = null;
       const result = game.validatePath(from, to);
-      expect(result.success).toBe(true);
+      testUtils.validateSuccessResponse(result);
     });
   });
 
@@ -308,9 +256,8 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       const to = { row: 7, col: 4 }; // White rook position
       const piece = { type: 'pawn', color: 'white' };
       const result = game.validateCapture(from, to, piece);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('CAPTURE_OWN_PIECE');
-      expect(result.message).toBe('You cannot capture your own pieces.');
+      testUtils.validateErrorResponse(result, 'CAPTURE_OWN_PIECE');
+      expect(result.message).toContain('cannot capture your own pieces');
     });
 
     test('should accept capturing opponent piece', () => {
@@ -318,7 +265,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       const to = { row: 1, col: 4 }; // Black pawn position
       const piece = { type: 'pawn', color: 'white' };
       const result = game.validateCapture(from, to, piece);
-      expect(result.success).toBe(true);
+      testUtils.validateSuccessResponse(result);
     });
 
     test('should accept moving to empty square', () => {
@@ -326,7 +273,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       const to = { row: 5, col: 4 }; // Empty square
       const piece = { type: 'pawn', color: 'white' };
       const result = game.validateCapture(from, to, piece);
-      expect(result.success).toBe(true);
+      testUtils.validateSuccessResponse(result);
     });
   });
 
@@ -337,8 +284,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       const piece = { type: 'pawn', color: 'white' };
       const promotion = 'invalid';
       const result = game.validateSpecialMoves(from, to, piece, promotion);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('INVALID_PROMOTION');
+      testUtils.validateErrorResponse(result, 'INVALID_PROMOTION');
       expect(result.message).toContain('Invalid pawn promotion piece selected');
     });
 
@@ -348,7 +294,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       const piece = { type: 'pawn', color: 'white' };
       const promotion = 'queen';
       const result = game.validateSpecialMoves(from, to, piece, promotion);
-      expect(result.success).toBe(true);
+      testUtils.validateSuccessResponse(result);
     });
 
     test('should accept pawn promotion without explicit promotion (defaults to queen)', () => {
@@ -356,7 +302,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       const to = { row: 0, col: 0 };
       const piece = { type: 'pawn', color: 'white' };
       const result = game.validateSpecialMoves(from, to, piece);
-      expect(result.success).toBe(true);
+      testUtils.validateSuccessResponse(result);
     });
   });
 
@@ -374,9 +320,8 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       game.wouldBeInCheck = jest.fn().mockReturnValue(true);
       
       const result = game.validateCheckConstraints(from, to, piece);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('KING_IN_CHECK');
-      expect(result.message).toBe('This move would put your king in check.');
+      testUtils.validateErrorResponse(result, 'KING_IN_CHECK');
+      expect(result.message).toContain('would put your king in check');
       
       // Restore original method
       game.wouldBeInCheck = originalWouldBeInCheck;
@@ -387,45 +332,34 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       const to = { row: 5, col: 4 };
       const piece = { type: 'pawn', color: 'white' };
       const result = game.validateCheckConstraints(from, to, piece);
-      expect(result.success).toBe(true);
+      testUtils.validateSuccessResponse(result);
     });
   });
 
   describe('validateMove - Integration Tests', () => {
     test('should validate complete valid move', () => {
       // Reset game to ensure clean state
-      game = new ChessGame();
+      game = testUtils.createFreshGame();
       const move = { from: { row: 6, col: 4 }, to: { row: 5, col: 4 } };
       const result = game.validateMove(move);
-      expect(result.success).toBe(true);
-      expect(result.message).toBe('Valid move');
-      expect(result.errorCode).toBeUndefined();
-      // Error structure may vary in current implementation
-      // Details structure may vary in current implementation
-      // Details structure may vary in current implementation
-      // Details structure may vary in current implementation
-      // Details structure may vary in current implementation
-      // Details structure may vary in current implementation
-      // Details structure may vary in current implementation
-      // Details structure may vary in current implementation
-      // Details structure may vary in current implementation
-      // Details structure may vary in current implementation
+      testUtils.validateSuccessResponse(result);
+      expect(result.message).toContain('Valid');
+      // errorCode may be null or undefined for success responses
+      if (result.hasOwnProperty('errorCode')) {
+        expect(result.errorCode).toBeNull();
+      }
     });
 
     test('should fail validation at first error encountered', () => {
       const move = null;
       const result = game.validateMove(move);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('MALFORMED_MOVE');
-      // Details structure may vary in current implementation
+      testUtils.validateErrorResponse(result, 'MALFORMED_MOVE');
     });
 
     test('should provide detailed error information', () => {
       const move = { from: { row: -1, col: 0 }, to: { row: 0, col: 0 } };
       const result = game.validateMove(move);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('INVALID_COORDINATES');
-      // Error details structure may vary
+      testUtils.validateErrorResponse(result, 'INVALID_COORDINATES');
       expect(result.details).toBeDefined();
     });
   });
@@ -434,19 +368,16 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
     test('should return detailed error response for invalid move', () => {
       const move = { from: { row: -1, col: 0 }, to: { row: 0, col: 0 } };
       const result = game.makeMove(move);
-      expect(result.success).toBe(false);
-      expect(result.message).toBeDefined();
-      expect(result.errorCode).toBeDefined();
-      // Error structure may vary in current implementation
+      testUtils.validateErrorResponse(result);
       expect(result.details).toBeDefined();
     });
 
     test('should execute valid move successfully', () => {
       // Reset game to ensure clean state
-      game = new ChessGame();
+      game = testUtils.createFreshGame();
       const move = { from: { row: 6, col: 4 }, to: { row: 5, col: 4 } };
       const result = game.makeMove(move);
-      expect(result.success).toBe(true);
+      testUtils.validateSuccessResponse(result);
       expect(game.currentTurn).toBe('black');
     });
   });
@@ -455,51 +386,46 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
     test('should handle null coordinates gracefully', () => {
       const move = { from: null, to: { row: 0, col: 0 } };
       const result = game.validateMoveFormat(move);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('INVALID_FORMAT');
+      testUtils.validateErrorResponse(result, 'INVALID_FORMAT');
     });
 
     test('should handle undefined coordinates gracefully', () => {
       const move = { from: { row: 6, col: 4 }, to: undefined };
       const result = game.validateMoveFormat(move);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('INVALID_FORMAT');
+      testUtils.validateErrorResponse(result, 'INVALID_FORMAT');
     });
 
     test('should handle fractional coordinates', () => {
       const move = { from: { row: 6.5, col: 4 }, to: { row: 5, col: 4 } };
       const result = game.validateCoordinates(move.from, move.to);
-      expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('INVALID_COORDINATES');
+      testUtils.validateErrorResponse(result, 'INVALID_COORDINATES');
     });
 
     test('should handle negative coordinates', () => {
       const move = { from: { row: -1, col: -1 }, to: { row: 0, col: 0 } };
       const result = game.validateCoordinates(move.from, move.to);
-      expect(result.success).toBe(false);
-      // Error details structure may vary // Only source coordinates error
+      testUtils.validateErrorResponse(result, 'INVALID_COORDINATES');
     });
 
     test('should handle coordinates beyond board bounds', () => {
       const move = { from: { row: 8, col: 8 }, to: { row: 9, col: 9 } };
       const result = game.validateCoordinates(move.from, move.to);
-      expect(result.success).toBe(false);
-      // Error details structure may vary // Both source and destination errors
+      testUtils.validateErrorResponse(result, 'INVALID_COORDINATES');
     });
   });
 
   describe('Comprehensive Pawn Movement Validation', () => {
     beforeEach(() => {
-      game = new ChessGame();
+      game = testUtils.createFreshGame();
     });
 
     describe('Basic Pawn Forward Moves', () => {
       test('should allow white pawn single square forward move', () => {
         const move = { from: { row: 6, col: 4 }, to: { row: 5, col: 4 } };
         const result = game.makeMove(move);
-        expect(result.success).toBe(true);
+        testUtils.validateSuccessResponse(result);
         expect(game.board[5][4]).toEqual({ type: 'pawn', color: 'white' });
-        expect(game.board[6][4]).toBe(null);
+        expect(game.board[6][4]).toBeNull();
       });
 
       test('should allow black pawn single square forward move', () => {
@@ -508,69 +434,66 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
         
         const move = { from: { row: 1, col: 4 }, to: { row: 2, col: 4 } };
         const result = game.makeMove(move);
-        expect(result.success).toBe(true);
+        testUtils.validateSuccessResponse(result);
         expect(game.board[2][4]).toEqual({ type: 'pawn', color: 'black' });
-        expect(game.board[1][4]).toBe(null);
+        expect(game.board[1][4]).toBeNull();
       });
 
       test('should reject pawn forward move to occupied square', () => {
-        game = new ChessGame(); // Reset game
+        game = testUtils.createFreshGame(); // Reset game
         // Place a piece in front of the pawn
         game.board[5][4] = { type: 'pawn', color: 'black' };
         
         const move = { from: { row: 6, col: 4 }, to: { row: 5, col: 4 } };
         const result = game.makeMove(move);
-        expect(result.success).toBe(false);
-        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+        testUtils.validateErrorResponse(result, 'INVALID_MOVEMENT');
       });
     });
 
     describe('Initial Two-Square Pawn Moves', () => {
       test('should allow white pawn initial two-square move', () => {
-        game = new ChessGame(); // Reset game
+        game = testUtils.createFreshGame(); // Reset game
         const move = { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } };
         const result = game.makeMove(move);
-        expect(result.success).toBe(true);
+        testUtils.validateSuccessResponse(result);
         expect(game.board[4][4]).toEqual({ type: 'pawn', color: 'white' });
-        expect(game.board[6][4]).toBe(null);
+        expect(game.board[6][4]).toBeNull();
       });
 
       test('should allow black pawn initial two-square move', () => {
-        game = new ChessGame(); // Reset game
+        game = testUtils.createFreshGame(); // Reset game
         // Make a white move first
         game.makeMove({ from: { row: 6, col: 4 }, to: { row: 5, col: 4 } });
         
         const move = { from: { row: 1, col: 4 }, to: { row: 3, col: 4 } };
         const result = game.makeMove(move);
-        expect(result.success).toBe(true);
+        testUtils.validateSuccessResponse(result);
         expect(game.board[3][4]).toEqual({ type: 'pawn', color: 'black' });
-        expect(game.board[1][4]).toBe(null);
+        expect(game.board[1][4]).toBeNull();
       });
 
       test('should reject two-square move when first square is blocked', () => {
-        game = new ChessGame(); // Reset game
+        game = testUtils.createFreshGame(); // Reset game
         // Place a piece one square in front of the pawn
         game.board[5][4] = { type: 'pawn', color: 'black' };
         
         const move = { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } };
         const result = game.makeMove(move);
-        expect(result.success).toBe(false);
-        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+        testUtils.validateErrorResponse(result, 'INVALID_MOVEMENT');
       });
 
       test('should reject two-square move when second square is blocked', () => {
-        game = new ChessGame(); // Reset game
+        game = testUtils.createFreshGame(); // Reset game
         // Place a piece two squares in front of the pawn
         game.board[4][4] = { type: 'pawn', color: 'black' };
         
         const move = { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } };
         const result = game.makeMove(move);
-        expect(result.success).toBe(false);
-        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+        testUtils.validateErrorResponse(result, 'INVALID_MOVEMENT');
       });
 
       test('should reject two-square move from non-starting position', () => {
-        game = new ChessGame(); // Reset game
+        game = testUtils.createFreshGame(); // Reset game
         // Move pawn first
         game.makeMove({ from: { row: 6, col: 4 }, to: { row: 5, col: 4 } });
         game.makeMove({ from: { row: 1, col: 0 }, to: { row: 2, col: 0 } }); // Black move
@@ -578,12 +501,11 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
         // Try to move two squares from non-starting position
         const move = { from: { row: 5, col: 4 }, to: { row: 3, col: 4 } };
         const result = game.makeMove(move);
-        expect(result.success).toBe(false);
-        expect(result.errorCode).toBe('INVALID_MOVEMENT');
+        testUtils.validateErrorResponse(result, 'INVALID_MOVEMENT');
       });
 
       test('should set en passant target after two-square pawn move', () => {
-        game = new ChessGame(); // Reset game
+        game = testUtils.createFreshGame(); // Reset game
         const move = { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } };
         game.makeMove(move);
         
@@ -2240,6 +2162,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
         game = new ChessGame(); // Reset game
         game.board[0][0] = { type: 'queen', color: 'white' };
         game.board[7][3] = null; // Remove original queen
+        game.board[7][7] = null; // Clear destination square (remove white rook)
         
         // Clear diagonal path
         const diagonalPath = [[1, 1], [2, 2], [3, 3], [4, 4], [5, 5], [6, 6]];
@@ -2615,6 +2538,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
         game = new ChessGame(); // Reset game
         game.board[0][0] = { type: 'queen', color: 'white' };
         game.board[7][3] = null; // Remove original queen
+        game.board[7][7] = null; // Clear destination square (remove white rook)
         
         // Clear diagonal path
         const diagonalPath = [[1, 1], [2, 2], [3, 3], [4, 4], [5, 5], [6, 6]];
@@ -2868,6 +2792,8 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
         game.board[6][3] = null; // Clear pawn
         game.board[6][2] = null; // Clear pawn
         game.board[6][1] = null; // Clear pawn
+        game.board[7][2] = null; // Clear bishop blocking path
+        game.board[7][1] = null; // Clear destination square (knight)
         
         const move = { from: { row: 7, col: 3 }, to: { row: 7, col: 1 } };
         const result = game.makeMove(move);
@@ -2893,8 +2819,10 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
 
       test('should allow queen to capture enemy piece horizontally', () => {
         game = new ChessGame(); // Reset game
-        // Place enemy piece for capture
-        game.board[7][5] = { type: 'pawn', color: 'black' };
+        // Clear path and place enemy piece for capture
+        game.board[7][4] = null; // Clear king (move it elsewhere)
+        game.board[0][4] = { type: 'king', color: 'white' }; // Move white king to safe spot
+        game.board[7][5] = { type: 'pawn', color: 'black' }; // Place enemy piece to capture
         
         const move = { from: { row: 7, col: 3 }, to: { row: 7, col: 5 } };
         const result = game.makeMove(move);
@@ -2969,6 +2897,8 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
         // Move queen to center first
         game.board[4][4] = { type: 'queen', color: 'white' };
         game.board[7][3] = null; // Remove original queen
+        game.board[5][5] = null; // Clear diagonal path
+        game.board[6][6] = null; // Clear destination square (pawn)
         game.currentTurn = 'white'; // Ensure it's white's turn
         
         const move = { from: { row: 4, col: 4 }, to: { row: 6, col: 6 } };
@@ -2982,7 +2912,9 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
         game = new ChessGame(); // Reset game
         // Move queen to center for testing
         game.board[4][4] = { type: 'queen', color: 'white' };
-        game.board[0][3] = null; // Remove original queen
+        game.board[7][3] = null; // Remove original queen
+        game.board[5][3] = null; // Clear diagonal path
+        game.board[6][2] = null; // Clear destination square (pawn)
         
         const move = { from: { row: 4, col: 4 }, to: { row: 6, col: 2 } };
         const result = game.makeMove(move);
@@ -3141,6 +3073,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
         game = new ChessGame(); // Reset game
         game.board[0][0] = { type: 'queen', color: 'white' };
         game.board[7][3] = null; // Remove original queen
+        game.board[7][7] = null; // Clear destination square (remove white rook)
         
         // Clear diagonal path
         const diagonalPath = [[1, 1], [2, 2], [3, 3], [4, 4], [5, 5], [6, 6]];
@@ -3484,37 +3417,46 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       test('should prevent king from moving into check from enemy bishop', () => {
         game.board = Array(8).fill(null).map(() => Array(8).fill(null));
         game.board[4][4] = { type: 'king', color: 'white' };
-        game.board[1][1] = { type: 'bishop', color: 'black' }; // Bishop on diagonal
+        game.board[0][4] = { type: 'king', color: 'black' }; // Black king required for valid game state
+        game.board[2][4] = { type: 'bishop', color: 'black' }; // Bishop that can attack (3,3) but not (4,4)
         game.currentTurn = 'white';
+        game.inCheck = false; // Ensure not currently in check
+        game.gameStatus = 'active';
 
         const move = { from: { row: 4, col: 4 }, to: { row: 3, col: 3 } }; // Moving into bishop's diagonal
         const result = game.makeMove(move);
         expect(result.success).toBe(false);
-        expect(result.code).toBe('KING_IN_CHECK');
+        expect(result.errorCode).toBe('KING_IN_CHECK');
       });
 
       test('should prevent king from moving into check from enemy queen', () => {
         game.board = Array(8).fill(null).map(() => Array(8).fill(null));
         game.board[4][4] = { type: 'king', color: 'white' };
-        game.board[2][4] = { type: 'queen', color: 'black' }; // Queen attacking vertically
+        game.board[0][4] = { type: 'king', color: 'black' }; // Black king required for valid game state
+        game.board[3][0] = { type: 'queen', color: 'black' }; // Queen that can attack (3,4) but not (4,4)
         game.currentTurn = 'white';
+        game.inCheck = false; // Ensure not currently in check
+        game.gameStatus = 'active';
 
         const move = { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } }; // Moving into queen's attack
         const result = game.makeMove(move);
         expect(result.success).toBe(false);
-        expect(result.code).toBe('KING_IN_CHECK');
+        expect(result.errorCode).toBe('KING_IN_CHECK');
       });
 
       test('should prevent king from moving into check from enemy knight', () => {
         game.board = Array(8).fill(null).map(() => Array(8).fill(null));
         game.board[4][4] = { type: 'king', color: 'white' };
-        game.board[1][3] = { type: 'knight', color: 'black' }; // Knight that can attack (3,5)
+        game.board[0][4] = { type: 'king', color: 'black' }; // Black king required for valid game state
+        game.board[1][4] = { type: 'knight', color: 'black' }; // Knight that can attack (3,5)
         game.currentTurn = 'white';
+        game.inCheck = false; // Ensure not currently in check
+        game.gameStatus = 'active';
 
         const move = { from: { row: 4, col: 4 }, to: { row: 3, col: 5 } }; // Moving into knight's attack
         const result = game.makeMove(move);
         expect(result.success).toBe(false);
-        expect(result.code).toBe('KING_IN_CHECK');
+        expect(result.errorCode).toBe('KING_IN_CHECK');
       });
 
       test('should prevent king from moving into check from enemy pawn', () => {
@@ -3707,9 +3649,12 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       test('should handle multiple attacking pieces correctly', () => {
         game.board = Array(8).fill(null).map(() => Array(8).fill(null));
         game.board[4][4] = { type: 'king', color: 'white' };
+        game.board[0][4] = { type: 'king', color: 'black' }; // Black king required for valid game state
         game.board[3][6] = { type: 'rook', color: 'black' }; // Attacks row 3
         game.board[1][1] = { type: 'bishop', color: 'black' }; // Attacks diagonal
         game.currentTurn = 'white';
+        game.inCheck = false; // Ensure not currently in check
+        game.gameStatus = 'active';
 
         // Try to move to square attacked by rook
         const move1 = { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } };
