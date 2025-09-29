@@ -85,6 +85,10 @@ class ChessAI {
   }
   
   getBestMove(chessGame) {
+    if (!chessGame || !chessGame.currentTurn) {
+      return null;
+    }
+    
     const color = chessGame.currentTurn;
     const moves = this.getAllValidMoves(chessGame, color);
     

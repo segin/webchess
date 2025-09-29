@@ -376,7 +376,7 @@
   - Fix AI edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 6.1, 6.2, 7.1_
 
-- [ ] 48. Normalize tests/chessAIExpansion.test.js - Extended AI tests
+- [x] 48. Normalize tests/chessAIExpansion.test.js - Extended AI tests
   - Update extended AI tests to use current API patterns
   - Fix advanced AI scenarios to expect current response format
   - Normalize AI expansion features to use current validation
