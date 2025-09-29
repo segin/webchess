@@ -328,7 +328,7 @@
   - Fix boundary edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 42. Normalize tests/edgeCasesBoundaryConditions.test.js - Edge cases and boundaries
+- [x] 42. Normalize tests/edgeCasesBoundaryConditions.test.js - Edge cases and boundaries
   - Update edge case tests to use current API structure
   - Fix edge case validation to expect current response format
   - Normalize edge case handling to use current error codes
@@ -408,7 +408,7 @@
   - Fix server expansion edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 7.1, 7.2, 7.3, 7.4_
 
-- [ ] 52. Normalize tests/concurrentGameTests.test.js - Concurrent game tests
+- [x] 52. Normalize tests/concurrentGameTests.test.js - Concurrent game tests
   - Update concurrent game tests to use current API patterns
   - Fix concurrent scenarios to expect current response structure
   - Normalize concurrent validation to use current error codes
@@ -416,7 +416,7 @@
   - Fix concurrent edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 7.1, 7.2, 7.4, 7.5_
 
-- [ ] 53. Normalize tests/coverageValidation.test.js - Coverage validation
+- [x] 53. Normalize tests/coverageValidation.test.js - Coverage validation
   - Update coverage validation tests to use current API patterns
   - Fix coverage checking to expect current response format
   - Normalize coverage validation to use current patterns
@@ -424,7 +424,7 @@
   - Fix coverage edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 7.5, 7.6, 8.3, 8.5_
 
-- [ ] 54. Normalize tests/underTestedAreasExpansion.test.js - Under-tested areas
+- [x] 54. Normalize tests/underTestedAreasExpansion.test.js - Under-tested areas
   - Update under-tested area tests to use current API patterns
   - Fix expanded coverage to expect current response structure
   - Normalize new test areas to use current validation
