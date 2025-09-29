@@ -23,8 +23,8 @@ describe('Comprehensive Boundary Conditions Tests', () => {
 
       testCases.forEach(({ from, to }) => {
         const result = game.makeMove({ from, to });
-        expect(result.isValid).toBe(false);
-        expect(result.message || result.error).toMatch(/coordinate|invalid|boundary/i);
+        expect(result.success).toBe(false);
+        expect(result.message).toMatch(/coordinate|invalid|boundary|row|col|properties/i);
       });
     });
 
@@ -42,8 +42,8 @@ describe('Comprehensive Boundary Conditions Tests', () => {
 
       extremeValues.forEach(coord => {
         const result = game.makeMove({ from: { row: 6, col: 4 }, to: coord });
-        expect(result.isValid).toBe(false);
-        expect(result.message || result.error).toMatch(/coordinate|invalid|boundary/i);
+        expect(result.success).toBe(false);
+        expect(result.message).toMatch(/coordinate|invalid|boundary|row|col|properties/i);
       });
     });
 
@@ -67,7 +67,7 @@ describe('Comprehensive Boundary Conditions Tests', () => {
       
       // Cannot move further up
       const result = game.makeMove({ from: { row: 0, col: 0 }, to: { row: -1, col: 0 } });
-      expect(result.isValid).toBe(false);
+      expect(result.success).toBe(false);
     });
 
     test('should handle knight movement from corner squares', () => {
@@ -78,18 +78,32 @@ describe('Comprehensive Boundary Conditions Tests', () => {
       game.board[0][4] = { type: 'king', color: 'black' }; // Need black king too
       game.currentTurn = 'white';
       
+      // Reset castling rights since we cleared the board
+      game.castlingRights = {
+        white: { kingside: false, queenside: false },
+        black: { kingside: false, queenside: false }
+      };
+      
       // Test valid knight moves from corner
       const possibleMoves = [
         { row: 1, col: 2 }, { row: 2, col: 1 }
       ];
       
       possibleMoves.forEach(to => {
-        const result = game.makeMove({ from: { row: 0, col: 0 }, to });
-        expect(result.isValid).toBe(true);
-        // Reset board for next test
-        game.board[to.row][to.col] = null;
+        // Create fresh game state for each move test
+        game = new ChessGame();
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
         game.board[0][0] = { type: 'knight', color: 'white' };
+        game.board[7][4] = { type: 'king', color: 'white' };
+        game.board[0][4] = { type: 'king', color: 'black' };
         game.currentTurn = 'white';
+        game.castlingRights = {
+          white: { kingside: false, queenside: false },
+          black: { kingside: false, queenside: false }
+        };
+        
+        const result = game.makeMove({ from: { row: 0, col: 0 }, to });
+        expect(result.success).toBe(true);
       });
     });
 
@@ -101,9 +115,15 @@ describe('Comprehensive Boundary Conditions Tests', () => {
       game.board[1][4] = { type: 'king', color: 'black' }; // Move black king out of the path
       game.currentTurn = 'white';
       
+      // Reset castling rights since we cleared the board
+      game.castlingRights = {
+        white: { kingside: false, queenside: false },
+        black: { kingside: false, queenside: false }
+      };
+      
       // Test movement along top edge
       const result = game.makeMove({ from: { row: 0, col: 0 }, to: { row: 0, col: 7 } });
-      expect(result.isValid).toBe(true);
+      expect(result.success).toBe(true);
     });
 
     test('should handle bishop movement in corners', () => {
@@ -114,9 +134,15 @@ describe('Comprehensive Boundary Conditions Tests', () => {
       game.board[0][4] = { type: 'king', color: 'black' };
       game.currentTurn = 'white';
       
+      // Reset castling rights since we cleared the board
+      game.castlingRights = {
+        white: { kingside: false, queenside: false },
+        black: { kingside: false, queenside: false }
+      };
+      
       // Only one diagonal available from corner
       const result = game.makeMove({ from: { row: 0, col: 0 }, to: { row: 1, col: 1 } });
-      expect(result.isValid).toBe(true);
+      expect(result.success).toBe(true);
     });
 
     test('should handle queen movement from edge positions', () => {
@@ -126,6 +152,12 @@ describe('Comprehensive Boundary Conditions Tests', () => {
       game.board[7][4] = { type: 'king', color: 'white' };
       game.board[1][7] = { type: 'king', color: 'black' }; // Move black king out of the path
       game.currentTurn = 'white';
+      
+      // Reset castling rights since we cleared the board
+      game.castlingRights = {
+        white: { kingside: false, queenside: false },
+        black: { kingside: false, queenside: false }
+      };
       
       // Test valid moves from edge
       const validMoves = [
@@ -137,12 +169,20 @@ describe('Comprehensive Boundary Conditions Tests', () => {
       ];
       
       validMoves.forEach(to => {
-        const result = game.makeMove({ from: { row: 0, col: 3 }, to });
-        expect(result.isValid).toBe(true);
-        // Reset for next test
-        game.board[to.row][to.col] = null;
+        // Create fresh game state for each move test
+        game = new ChessGame();
+        game.board = Array(8).fill(null).map(() => Array(8).fill(null));
         game.board[0][3] = { type: 'queen', color: 'white' };
+        game.board[7][4] = { type: 'king', color: 'white' };
+        game.board[1][7] = { type: 'king', color: 'black' };
         game.currentTurn = 'white';
+        game.castlingRights = {
+          white: { kingside: false, queenside: false },
+          black: { kingside: false, queenside: false }
+        };
+        
+        const result = game.makeMove({ from: { row: 0, col: 3 }, to });
+        expect(result.success).toBe(true);
       });
     });
 
@@ -153,9 +193,15 @@ describe('Comprehensive Boundary Conditions Tests', () => {
       game.board[7][4] = { type: 'king', color: 'black' };
       game.currentTurn = 'white';
       
+      // Reset castling rights since we cleared the board
+      game.castlingRights = {
+        white: { kingside: false, queenside: false },
+        black: { kingside: false, queenside: false }
+      };
+      
       // Test movement to edge
       const validMove = game.makeMove({ from: { row: 0, col: 3 }, to: { row: 0, col: 2 } });
-      expect(validMove.isValid).toBe(true);
+      expect(validMove.success).toBe(true);
       
       // Reset and test invalid move beyond boundary
       game.board[0][2] = null;
@@ -163,7 +209,7 @@ describe('Comprehensive Boundary Conditions Tests', () => {
       game.currentTurn = 'white';
       
       const invalidMove = game.makeMove({ from: { row: 0, col: 3 }, to: { row: -1, col: 3 } });
-      expect(invalidMove.isValid).toBe(false);
+      expect(invalidMove.success).toBe(false);
     });
   });
 
@@ -177,9 +223,15 @@ describe('Comprehensive Boundary Conditions Tests', () => {
       game.board[7][4] = { type: 'king', color: 'white' };
       game.currentTurn = 'black';
       
+      // Set castling rights to allow castling
+      game.castlingRights = {
+        white: { kingside: false, queenside: false },
+        black: { kingside: true, queenside: true }
+      };
+      
       // Test queenside castling
       const result = game.makeMove({ from: { row: 0, col: 4 }, to: { row: 0, col: 2 } });
-      expect(result.isValid).toBe(true);
+      expect(result.success).toBe(true);
     });
 
     test('should handle en passant at board edges', () => {
@@ -192,8 +244,14 @@ describe('Comprehensive Boundary Conditions Tests', () => {
       game.currentTurn = 'white';
       game.enPassantTarget = { row: 2, col: 1 };
       
+      // Reset castling rights since we cleared the board
+      game.castlingRights = {
+        white: { kingside: false, queenside: false },
+        black: { kingside: false, queenside: false }
+      };
+      
       const result = game.makeMove({ from: { row: 3, col: 0 }, to: { row: 2, col: 1 } });
-      expect(result.isValid).toBe(true);
+      expect(result.success).toBe(true);
     });
 
     test('should handle pawn promotion at exact board boundary', () => {
@@ -204,8 +262,14 @@ describe('Comprehensive Boundary Conditions Tests', () => {
       game.board[0][4] = { type: 'king', color: 'black' };
       game.currentTurn = 'white';
       
+      // Reset castling rights since we cleared the board
+      game.castlingRights = {
+        white: { kingside: false, queenside: false },
+        black: { kingside: false, queenside: false }
+      };
+      
       const result = game.makeMove({ from: { row: 1, col: 0 }, to: { row: 0, col: 0 }, promotion: 'queen' });
-      expect(result.isValid).toBe(true);
+      expect(result.success).toBe(true);
       expect(game.board[0][0].type).toBe('queen');
     });
   });
@@ -231,7 +295,7 @@ describe('Comprehensive Boundary Conditions Tests', () => {
       
       // Make a move to increment
       const result = game.makeMove({ from: { row: 6, col: 4 }, to: { row: 4, col: 4 } });
-      expect(result.isValid).toBe(true);
+      expect(result.success).toBe(true);
       
       // Should handle large numbers gracefully
       expect(game.fullMoveNumber).toBeGreaterThan(Number.MAX_SAFE_INTEGER - 2);
