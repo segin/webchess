@@ -79,6 +79,12 @@ describe('Comprehensive Queen Movement Validation', () => {
       ];
       
       verticalMoves.forEach((to) => {
+        // Ensure queen is at starting position before each move
+        game.board[4][4] = { type: 'queen', color: 'white' };
+        game.board[to.row][to.col] = null;
+        game.currentTurn = 'white';
+        game.gameStatus = 'active'; // Reset game status
+        
         const result = game.makeMove({ from: { row: 4, col: 4 }, to: to });
         
         // Validate success response
@@ -87,11 +93,6 @@ describe('Comprehensive Queen Movement Validation', () => {
         expect(result.data).toBeDefined();
         expect(game.board[to.row][to.col]).toEqual({ type: 'queen', color: 'white' });
         expect(game.board[4][4]).toBe(null);
-        
-        // Reset for next test
-        game.board[4][4] = { type: 'queen', color: 'white' };
-        game.board[to.row][to.col] = null;
-        game.currentTurn = 'white';
       });
     });
 

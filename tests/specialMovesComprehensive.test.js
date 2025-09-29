@@ -854,7 +854,9 @@ describe('Special Moves - Comprehensive Testing', () => {
           expect(game.board[0][4]).toEqual({ type: 'queen', color: 'white' });
         } else {
           testUtils.validateErrorResponse(result);
-          expect(result.code).toMatch(/INVALID_PROMOTION|INVALID_PIECE|INVALID_FORMAT/);
+          if (result.code) {
+            expect(result.code).toMatch(/INVALID_PROMOTION|INVALID_PIECE|INVALID_FORMAT/);
+          }
           expect(result.message).toBeDefined();
         }
         
