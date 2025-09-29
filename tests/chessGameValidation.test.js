@@ -3488,9 +3488,9 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
         game.currentTurn = 'white';
 
         const move = { from: { row: 4, col: 4 }, to: { row: 3, col: 3 } }; // Moving into bishop's diagonal
-        const result = game.validateMove(move);
+        const result = game.makeMove(move);
         expect(result.success).toBe(false);
-        expect(result.errorCode).toBe('KING_IN_CHECK');
+        expect(result.code).toBe('KING_IN_CHECK');
       });
 
       test('should prevent king from moving into check from enemy queen', () => {
@@ -3500,9 +3500,9 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
         game.currentTurn = 'white';
 
         const move = { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } }; // Moving into queen's attack
-        const result = game.validateMove(move);
+        const result = game.makeMove(move);
         expect(result.success).toBe(false);
-        expect(result.errorCode).toBe('KING_IN_CHECK');
+        expect(result.code).toBe('KING_IN_CHECK');
       });
 
       test('should prevent king from moving into check from enemy knight', () => {
@@ -3512,9 +3512,9 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
         game.currentTurn = 'white';
 
         const move = { from: { row: 4, col: 4 }, to: { row: 3, col: 5 } }; // Moving into knight's attack
-        const result = game.validateMove(move);
+        const result = game.makeMove(move);
         expect(result.success).toBe(false);
-        expect(result.errorCode).toBe('KING_IN_CHECK');
+        expect(result.code).toBe('KING_IN_CHECK');
       });
 
       test('should prevent king from moving into check from enemy pawn', () => {
@@ -3713,7 +3713,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
 
         // Try to move to square attacked by rook
         const move1 = { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } };
-        const result1 = game.validateMove(move1);
+        const result1 = game.makeMove(move1);
         expect(result1.success).toBe(false);
 
         // Try to move to square attacked by bishop

@@ -433,18 +433,18 @@ describe('Comprehensive Check and Checkmate Test Suite', () => {
     test('should detect checkmate with multiple pieces involved', () => {
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
       
-      // Complex checkmate position
-      game.board[7][7] = { type: 'king', color: 'white' };
-      game.board[6][6] = { type: 'pawn', color: 'white' };
-      game.board[6][7] = { type: 'pawn', color: 'white' };
-      game.board[7][6] = { type: 'pawn', color: 'white' };
+      // Set up a known checkmate position - back rank mate
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[6][3] = { type: 'pawn', color: 'white' };
+      game.board[6][4] = { type: 'pawn', color: 'white' };
+      game.board[6][5] = { type: 'pawn', color: 'white' };
       
-      // Multiple attacking pieces
-      game.board[5][7] = { type: 'queen', color: 'black' };
-      game.board[5][5] = { type: 'bishop', color: 'black' };
+      // Black queen delivering checkmate on back rank
+      game.board[7][0] = { type: 'queen', color: 'black' };
       game.board[0][0] = { type: 'king', color: 'black' };
       
       game.currentTurn = 'white';
+      game.gameStatus = 'active';
       
       const inCheck = game.isInCheck('white');
       const isCheckmate = game.isCheckmate('white');

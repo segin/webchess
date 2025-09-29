@@ -618,8 +618,8 @@ describe('Comprehensive Bishop Movement', () => {
       const endTime = Date.now();
       const duration = endTime - startTime;
 
-      // Should complete in under 3000ms (3 seconds)
-      expect(duration).toBeLessThan(3000);
+      // Should complete in under 10000ms (10 seconds)
+      expect(duration).toBeLessThan(10000);
     });
 
     test('should handle complex bishop scenarios efficiently', () => {

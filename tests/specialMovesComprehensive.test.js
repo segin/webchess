@@ -835,6 +835,8 @@ describe('Special Moves - Comprehensive Testing', () => {
       game.board[0][0] = { type: 'king', color: 'black' }; // Place black king in opposite corner
       
       game.board[1][4] = { type: 'pawn', color: 'white' }; // Use middle file
+      game.gameStatus = 'active'; // Ensure game is active
+      game.currentTurn = 'white';
       
       const invalidPromotions = ['king', 'pawn', 'invalid', null, undefined];
       
@@ -852,7 +854,7 @@ describe('Special Moves - Comprehensive Testing', () => {
           expect(game.board[0][4]).toEqual({ type: 'queen', color: 'white' });
         } else {
           testUtils.validateErrorResponse(result);
-          expect(result.errorCode).toMatch(/INVALID_PROMOTION|INVALID_PIECE|INVALID_FORMAT/);
+          expect(result.code).toMatch(/INVALID_PROMOTION|INVALID_PIECE|INVALID_FORMAT/);
           expect(result.message).toBeDefined();
         }
         
@@ -860,6 +862,7 @@ describe('Special Moves - Comprehensive Testing', () => {
         game.board[0][4] = null;
         game.board[1][4] = { type: 'pawn', color: 'white' };
         game.currentTurn = 'white';
+        game.gameStatus = 'active';
       });
     });
 

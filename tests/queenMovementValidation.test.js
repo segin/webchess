@@ -54,20 +54,23 @@ describe('Comprehensive Queen Movement Validation', () => {
       // Create fresh game and set up board with queen in center
       game = new ChessGame();
       
+      // Clear the board completely
+      for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+          game.board[row][col] = null;
+        }
+      }
+      
       // Place kings for valid game state (avoiding vertical path)
       game.board[7][3] = { type: 'king', color: 'white' };
       game.board[0][3] = { type: 'king', color: 'black' };
       
-      // Place queen in center and clear original queen
+      // Place queen in center
       game.board[4][4] = { type: 'queen', color: 'white' };
-      game.board[7][3] = { type: 'king', color: 'white' }; // Restore king
       
-      // Clear vertical path
-      for (let row = 0; row < 8; row++) {
-        if (row !== 4) {
-          game.board[row][4] = null;
-        }
-      }
+      // Ensure game is active and it's white's turn
+      game.gameStatus = 'active';
+      game.currentTurn = 'white';
       
       // Test vertical moves in both directions
       const verticalMoves = [
