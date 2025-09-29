@@ -1,10 +1,16 @@
 /**
  * Server Integration Tests
  * Tests server functionality that was covered in legacy test files
+ * Normalized to use current API patterns and response structures
  */
 
 const fs = require('fs');
 const path = require('path');
+
+// Import actual server components for integration testing
+const GameManager = require('../src/server/gameManager');
+const ChessGame = require('../src/shared/chessGame');
+const ChessErrorHandler = require('../src/shared/errorHandler');
 
 // Mock server dependencies for testing
 const mockExpress = () => ({
@@ -213,17 +219,22 @@ describe('Server Integration Tests - Comprehensive Coverage', () => {
       expect(authMiddleware).toHaveBeenCalled();
     });
 
-    test('should handle real-time game state synchronization', () => {
+    test('should handle real-time game state synchronization with current API', () => {
       const io = mockSocketIO();
-      const gameId = 'ABC123';
+      const gameManager = new GameManager();
+      const gameId = gameManager.createGame('player1');
+      gameManager.joinGame(gameId, 'player2');
       
-      // Mock game state update
-      const gameState = {
-        board: Array(8).fill(null).map(() => Array(8).fill(null)),
-        currentTurn: 'white',
-        gameStatus: 'active',
-        moveHistory: []
-      };
+      // Get actual game state using current API
+      const gameState = gameManager.getGameState(gameId);
+      
+      // Validate current game state structure
+      expect(gameState.board).toBeDefined();
+      expect(gameState.currentTurn).toBe('white');
+      expect(gameState.gameStatus).toBe('active');
+      expect(gameState.moveHistory).toBeDefined();
+      expect(gameState.castlingRights).toBeDefined();
+      expect(gameState.enPassantTarget).toBeNull();
       
       const mockRoom = {
         emit: jest.fn()
@@ -231,7 +242,7 @@ describe('Server Integration Tests - Comprehensive Coverage', () => {
       
       io.to = jest.fn(() => mockRoom);
       
-      // Simulate real-time update
+      // Simulate real-time update with current game state structure
       io.to(gameId).emit('game-state-update', {
         gameId,
         gameState,
@@ -241,193 +252,294 @@ describe('Server Integration Tests - Comprehensive Coverage', () => {
       expect(io.to).toHaveBeenCalledWith(gameId);
       expect(mockRoom.emit).toHaveBeenCalledWith('game-state-update', expect.objectContaining({
         gameId,
-        gameState,
+        gameState: expect.objectContaining({
+          currentTurn: 'white',
+          gameStatus: 'active',
+          board: expect.any(Array),
+          moveHistory: expect.any(Array)
+        }),
         timestamp: expect.any(Number)
       }));
     });
   });
 
   describe('Game Manager Integration', () => {
-    test('should handle game creation', () => {
-      // Mock GameManager functionality
-      const gameManager = {
-        createGame: jest.fn(() => ({
-          success: true,
-          gameId: 'ABC123',
-          hostColor: 'white'
-        })),
-        joinGame: jest.fn(() => ({
-          success: true,
-          color: 'black'
-        })),
-        makeMove: jest.fn(() => ({
-          success: true,
-          gameState: {}
-        }))
-      };
-      
-      const result = gameManager.createGame();
-      expect(result.success).toBe(true);
-      expect(result.gameId).toBeDefined();
-      expect(result.hostColor).toBe('white');
+    let gameManager;
+    let playerId1, playerId2;
+
+    beforeEach(() => {
+      gameManager = new GameManager();
+      playerId1 = 'player1';
+      playerId2 = 'player2';
     });
 
-    test('should handle game joining', () => {
-      const gameManager = {
-        joinGame: jest.fn((gameId) => ({
-          success: true,
-          gameId,
-          color: 'black',
-          gameState: {}
-        }))
-      };
+    test('should handle game creation with current API', () => {
+      const gameId = gameManager.createGame(playerId1);
       
-      const result = gameManager.joinGame('ABC123');
+      expect(typeof gameId).toBe('string');
+      expect(gameId).toHaveLength(6);
+      
+      const game = gameManager.getGame(gameId);
+      expect(game).toBeDefined();
+      expect(game.host).toBe(playerId1);
+      expect(game.status).toBe('waiting');
+      expect(game.chess).toBeInstanceOf(ChessGame);
+    });
+
+    test('should handle game joining with current API response format', () => {
+      const gameId = gameManager.createGame(playerId1);
+      const result = gameManager.joinGame(gameId, playerId2);
+      
+      // Validate current API response structure
       expect(result.success).toBe(true);
-      expect(result.gameId).toBe('ABC123');
       expect(result.color).toBe('black');
+      expect(result.opponentColor).toBe('white');
+      
+      const game = gameManager.getGame(gameId);
+      expect(game.guest).toBe(playerId2);
+      expect(game.status).toBe('active');
     });
 
-    test('should handle move processing', () => {
-      const gameManager = {
-        makeMove: jest.fn((gameId, move) => ({
-          success: true,
-          gameState: {
-            currentTurn: 'black',
-            moveHistory: [move]
-          }
-        }))
-      };
+    test('should handle move processing with current API patterns', () => {
+      const gameId = gameManager.createGame(playerId1);
+      gameManager.joinGame(gameId, playerId2);
       
       const move = { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } };
-      const result = gameManager.makeMove('ABC123', move);
+      const result = gameManager.makeMove(gameId, playerId1, move);
       
+      // Validate current API response structure
       expect(result.success).toBe(true);
-      expect(result.gameState.moveHistory).toContain(move);
+      expect(result.gameState).toBeDefined();
+      expect(result.gameState.currentTurn).toBe('black');
+      expect(result.gameState.gameStatus).toBe('active');
+      expect(result.nextTurn).toBe('black');
+    });
+
+    test('should handle invalid game operations with current error patterns', () => {
+      // Test joining non-existent game
+      const joinResult = gameManager.joinGame('INVALID', playerId1);
+      expect(joinResult.success).toBe(false);
+      expect(joinResult.message).toBe('Game not found');
+      
+      // Test making move in non-existent game
+      const moveResult = gameManager.makeMove('INVALID', playerId1, { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } });
+      expect(moveResult.success).toBe(false);
+      expect(moveResult.message).toBe('Game not found');
+    });
+
+    test('should validate player turn with current API', () => {
+      const gameId = gameManager.createGame(playerId1);
+      gameManager.joinGame(gameId, playerId2);
+      
+      const move = { from: { row: 1, col: 4 }, to: { row: 3, col: 4 } }; // Black pawn move
+      const result = gameManager.makeMove(gameId, playerId2, move); // Black player trying to move first
+      
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Not your turn');
     });
   });
 
   describe('Error Handling', () => {
-    test('should handle invalid game IDs', () => {
-      const gameManager = {
-        joinGame: jest.fn((gameId) => {
-          if (!gameId || gameId.length !== 6) {
-            return {
-              success: false,
-              message: 'Invalid game ID'
-            };
-          }
-          return { success: true };
-        })
-      };
-      
-      const invalidResult = gameManager.joinGame('INVALID');
-      expect(invalidResult.success).toBe(false);
-      expect(invalidResult.message).toBe('Invalid game ID');
-      
-      const validResult = gameManager.joinGame('ABC123');
-      expect(validResult.success).toBe(true);
+    let gameManager;
+    let errorHandler;
+
+    beforeEach(() => {
+      gameManager = new GameManager();
+      errorHandler = new ChessErrorHandler();
     });
 
-    test('should handle server errors gracefully', () => {
-      const errorHandler = jest.fn((error) => ({
-        success: false,
-        message: 'Server error occurred',
-        error: error.message
-      }));
+    test('should handle invalid game IDs with current error response format', () => {
+      const invalidResult = gameManager.joinGame('INVALID', 'player1');
+      expect(invalidResult.success).toBe(false);
+      expect(invalidResult.message).toBe('Game not found');
       
-      const testError = new Error('Test error');
-      const result = errorHandler(testError);
+      const emptyResult = gameManager.joinGame('', 'player1');
+      expect(emptyResult.success).toBe(false);
+      expect(emptyResult.message).toBe('Game not found');
+    });
+
+    test('should handle server errors with current error handler patterns', () => {
+      const errorResponse = errorHandler.createError('SYSTEM_ERROR', 'Test system error');
       
-      expect(result.success).toBe(false);
-      expect(result.message).toBe('Server error occurred');
-      expect(result.error).toBe('Test error');
+      expect(errorResponse.success).toBe(false);
+      expect(errorResponse.isValid).toBe(false);
+      expect(errorResponse.message).toBe('Test system error');
+      expect(errorResponse.errorCode).toBe('SYSTEM_ERROR');
+      expect(errorResponse.details).toBeDefined();
+    });
+
+    test('should handle game state errors with current API patterns', () => {
+      const gameId = gameManager.createGame('player1');
+      
+      // Try to make move before game starts (no second player)
+      const moveResult = gameManager.makeMove(gameId, 'player1', { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } });
+      expect(moveResult.success).toBe(false);
+      expect(moveResult.message).toBe('Game is not active');
+    });
+
+    test('should handle player validation errors with current patterns', () => {
+      const gameId = gameManager.createGame('player1');
+      gameManager.joinGame(gameId, 'player2');
+      
+      // Try to make move as non-participant
+      const moveResult = gameManager.makeMove(gameId, 'player3', { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } });
+      expect(moveResult.success).toBe(false);
+      expect(moveResult.message).toBe('You are not in this game');
+    });
+
+    test('should handle chess game errors with current error codes', () => {
+      const game = new ChessGame();
+      
+      // Test invalid move format
+      const invalidMoveResult = game.makeMove(null);
+      expect(invalidMoveResult.success).toBe(false);
+      expect(invalidMoveResult.errorCode).toBe('MALFORMED_MOVE');
+      
+      // Test invalid coordinates
+      const invalidCoordResult = game.makeMove({ from: { row: -1, col: 4 }, to: { row: 4, col: 4 } });
+      expect(invalidCoordResult.success).toBe(false);
+      expect(invalidCoordResult.errorCode).toBe('INVALID_COORDINATES');
     });
   });
 
   describe('Session Management', () => {
-    test('should handle player sessions', () => {
-      const sessionManager = {
-        sessions: new Map(),
-        createSession: jest.fn((socketId, gameId, color) => {
-          const session = { socketId, gameId, color, connected: true };
-          sessionManager.sessions.set(socketId, session);
-          return session;
-        }),
-        getSession: jest.fn((socketId) => {
-          return sessionManager.sessions.get(socketId);
-        }),
-        removeSession: jest.fn((socketId) => {
-          return sessionManager.sessions.delete(socketId);
-        })
-      };
-      
-      const session = sessionManager.createSession('socket1', 'ABC123', 'white');
-      expect(session.socketId).toBe('socket1');
-      expect(session.gameId).toBe('ABC123');
-      expect(session.color).toBe('white');
-      
-      const retrieved = sessionManager.getSession('socket1');
-      expect(retrieved).toEqual(session);
-      
-      const removed = sessionManager.removeSession('socket1');
-      expect(removed).toBe(true);
+    let gameManager;
+
+    beforeEach(() => {
+      gameManager = new GameManager();
     });
 
-    test('should handle disconnections', () => {
-      const disconnectionHandler = jest.fn((socketId) => {
-        return {
-          success: true,
-          message: 'Player disconnected',
-          socketId
-        };
-      });
+    test('should handle player sessions with current API patterns', () => {
+      const gameId = gameManager.createGame('player1');
+      gameManager.joinGame(gameId, 'player2');
       
-      const result = disconnectionHandler('socket1');
-      expect(result.success).toBe(true);
-      expect(result.socketId).toBe('socket1');
+      // Test player color assignment
+      const player1Color = gameManager.getPlayerColor(gameId, 'player1');
+      const player2Color = gameManager.getPlayerColor(gameId, 'player2');
+      
+      expect(player1Color).toBe('white');
+      expect(player2Color).toBe('black');
+      
+      // Test opponent identification
+      const player1Opponent = gameManager.getOpponentId(gameId, 'player1');
+      const player2Opponent = gameManager.getOpponentId(gameId, 'player2');
+      
+      expect(player1Opponent).toBe('player2');
+      expect(player2Opponent).toBe('player1');
+    });
+
+    test('should handle disconnections with current patterns', () => {
+      const gameId = gameManager.createGame('player1');
+      gameManager.joinGame(gameId, 'player2');
+      
+      // Simulate disconnection
+      gameManager.handleDisconnect('player1');
+      
+      // Verify game still exists (disconnection timeout not reached)
+      const game = gameManager.getGame(gameId);
+      expect(game).toBeDefined();
+      expect(game.status).toBe('active');
+    });
+
+    test('should validate game access with current API', () => {
+      const gameId = gameManager.createGame('player1');
+      gameManager.joinGame(gameId, 'player2');
+      
+      // Test valid access
+      expect(gameManager.validateGameAccess(gameId, 'player1')).toBe(true);
+      expect(gameManager.validateGameAccess(gameId, 'player2')).toBe(true);
+      
+      // Test invalid access
+      expect(gameManager.validateGameAccess(gameId, 'player3')).toBe(false);
+      
+      // Test with invalid game ID - returns undefined (falsy) when game doesn't exist
+      const invalidResult = gameManager.validateGameAccess('INVALID', 'player1');
+      expect(invalidResult).toBeFalsy(); // undefined is falsy
+    });
+
+    test('should handle player removal with current response format', () => {
+      const gameId = gameManager.createGame('player1');
+      gameManager.joinGame(gameId, 'player2');
+      
+      const removeResult = gameManager.removePlayer(gameId, 'player2');
+      expect(removeResult.success).toBe(true);
+      
+      const game = gameManager.getGame(gameId);
+      expect(game.guest).toBeNull();
+      
+      // Test removing non-existent player
+      const invalidRemoveResult = gameManager.removePlayer(gameId, 'player3');
+      expect(invalidRemoveResult.success).toBe(false);
+      expect(invalidRemoveResult.message).toBe('Player not in game');
     });
   });
 
   describe('Chat System Integration', () => {
-    test('should handle chat messages', () => {
-      const chatHandler = jest.fn((gameId, message, sender) => {
-        if (!message || message.length > 200) {
-          return {
-            success: false,
-            message: 'Invalid chat message'
-          };
-        }
-        
-        return {
-          success: true,
-          chatMessage: {
-            sender,
-            message,
-            timestamp: Date.now()
-          }
-        };
-      });
-      
-      const validResult = chatHandler('ABC123', 'Hello!', 'Player1');
-      expect(validResult.success).toBe(true);
-      expect(validResult.chatMessage.message).toBe('Hello!');
-      
-      const invalidResult = chatHandler('ABC123', '', 'Player1');
-      expect(invalidResult.success).toBe(false);
+    let gameManager;
+
+    beforeEach(() => {
+      gameManager = new GameManager();
     });
 
-    test('should validate chat message length', () => {
+    test('should handle chat messages with current API response format', () => {
+      const gameId = gameManager.createGame('player1');
+      gameManager.joinGame(gameId, 'player2');
+      
+      const validResult = gameManager.addChatMessage(gameId, 'player1', 'Hello!');
+      expect(validResult.success).toBe(true);
+      expect(validResult.chatMessage.message).toBe('Hello!');
+      expect(validResult.chatMessage.sender).toBe('White');
+      expect(validResult.chatMessage.timestamp).toBeDefined();
+      
+      const invalidResult = gameManager.addChatMessage(gameId, 'player1', '');
+      expect(invalidResult.success).toBe(false);
+      expect(invalidResult.message).toBe('Empty message');
+    });
+
+    test('should validate chat message length with current patterns', () => {
+      const gameId = gameManager.createGame('player1');
+      gameManager.joinGame(gameId, 'player2');
+      
       const longMessage = 'a'.repeat(201);
       const validMessage = 'Hello, world!';
       
-      const validateMessage = (message) => {
-        return message && message.length > 0 && message.length <= 200;
-      };
+      const longResult = gameManager.addChatMessage(gameId, 'player1', longMessage);
+      expect(longResult.success).toBe(true); // Should truncate to 200 chars
+      expect(longResult.chatMessage.message).toHaveLength(200);
       
-      expect(validateMessage(longMessage)).toBe(false);
-      expect(validateMessage(validMessage)).toBe(true);
-      expect(validateMessage('')).toBeFalsy(); // Empty string is falsy
+      const validResult = gameManager.addChatMessage(gameId, 'player1', validMessage);
+      expect(validResult.success).toBe(true);
+      expect(validResult.chatMessage.message).toBe(validMessage);
+    });
+
+    test('should handle chat access validation with current API', () => {
+      const gameId = gameManager.createGame('player1');
+      gameManager.joinGame(gameId, 'player2');
+      
+      // Valid player
+      const validResult = gameManager.addChatMessage(gameId, 'player1', 'Hello!');
+      expect(validResult.success).toBe(true);
+      
+      // Invalid player
+      const invalidResult = gameManager.addChatMessage(gameId, 'player3', 'Hello!');
+      expect(invalidResult.success).toBe(false);
+      expect(invalidResult.message).toBe('Player not in game');
+    });
+
+    test('should retrieve chat messages with current response structure', () => {
+      const gameId = gameManager.createGame('player1');
+      gameManager.joinGame(gameId, 'player2');
+      
+      gameManager.addChatMessage(gameId, 'player1', 'Hello!');
+      gameManager.addChatMessage(gameId, 'player2', 'Hi there!');
+      
+      const messagesResult = gameManager.getChatMessages(gameId, 'player1');
+      expect(messagesResult.success).toBe(true);
+      expect(messagesResult.messages).toHaveLength(2);
+      expect(messagesResult.messages[0].message).toBe('Hello!');
+      expect(messagesResult.messages[0].sender).toBe('White');
+      expect(messagesResult.messages[0].isOwn).toBe(true);
+      expect(messagesResult.messages[1].isOwn).toBe(false);
     });
   });
 
@@ -461,6 +573,141 @@ describe('Server Integration Tests - Comprehensive Coverage', () => {
       expect(result.ready).toBe(true);
       expect(result.services.socketio).toBe('ready');
       expect(result.services.express).toBe('ready');
+    });
+  });
+
+  describe('Advanced Server Integration', () => {
+    let gameManager;
+
+    beforeEach(() => {
+      gameManager = new GameManager();
+    });
+
+    test('should handle game statistics with current API patterns', () => {
+      const gameId = gameManager.createGame('player1');
+      gameManager.joinGame(gameId, 'player2');
+      
+      const stats = gameManager.getGameStatistics(gameId);
+      expect(stats).toBeDefined();
+      expect(stats.duration).toBeGreaterThanOrEqual(0); // Duration can be 0 if test runs quickly
+      expect(stats.moveCount).toBe(0);
+      expect(stats.players.white).toBe('player1');
+      expect(stats.players.black).toBe('player2');
+      expect(stats.status).toBe('active');
+      expect(stats.createdAt).toBeDefined();
+      expect(stats.lastActivity).toBeDefined();
+    });
+
+    test('should handle server statistics with current response format', () => {
+      gameManager.createGame('player1');
+      gameManager.createGame('player2');
+      
+      const stats = gameManager.getServerStatistics();
+      expect(stats.totalGames).toBe(2);
+      expect(stats.waitingGames).toBe(2);
+      expect(stats.activeGames).toBe(0);
+      expect(stats.totalPlayers).toBe(2);
+    });
+
+    test('should handle game lifecycle with current API', () => {
+      const gameId = gameManager.createGame('player1');
+      
+      // Test game start
+      const startResult = gameManager.startGame(gameId);
+      expect(startResult.success).toBe(false);
+      expect(startResult.message).toBe('Game needs two players to start');
+      
+      gameManager.joinGame(gameId, 'player2');
+      const startResult2 = gameManager.startGame(gameId);
+      expect(startResult2.success).toBe(true);
+      
+      // Test game end
+      const endResult = gameManager.endGame(gameId, 'checkmate', 'player1');
+      expect(endResult.success).toBe(true);
+      expect(endResult.reason).toBe('checkmate');
+      expect(endResult.winner).toBe('player1');
+    });
+
+    test('should handle game pause and resume with current patterns', () => {
+      const gameId = gameManager.createGame('player1');
+      gameManager.joinGame(gameId, 'player2');
+      gameManager.startGame(gameId);
+      
+      // Test pause
+      const pauseResult = gameManager.pauseGame(gameId);
+      expect(pauseResult.success).toBe(true);
+      
+      const game = gameManager.getGame(gameId);
+      expect(game.status).toBe('paused');
+      
+      // Test resume
+      const resumeResult = gameManager.resumeGame(gameId);
+      expect(resumeResult.success).toBe(true);
+      expect(game.status).toBe('active');
+    });
+
+    test('should handle resignation with current API response format', () => {
+      const gameId = gameManager.createGame('player1');
+      gameManager.joinGame(gameId, 'player2');
+      
+      const resignResult = gameManager.resignGame(gameId, 'player1');
+      expect(resignResult.success).toBe(true);
+      expect(resignResult.winner).toBe('black'); // Opponent wins
+      
+      const game = gameManager.getGame(gameId);
+      expect(game.status).toBe('resigned');
+    });
+
+    test('should handle memory management and cleanup', () => {
+      const gameId1 = gameManager.createGame('player1');
+      const gameId2 = gameManager.createGame('player2');
+      
+      const memoryUsage = gameManager.getMemoryUsage();
+      expect(memoryUsage.gameCount).toBe(2);
+      expect(memoryUsage.playerMappings).toBe(2);
+      
+      // Test cleanup
+      gameManager.cleanup();
+      const memoryAfterCleanup = gameManager.getMemoryUsage();
+      expect(memoryAfterCleanup.gameCount).toBe(0);
+      expect(memoryAfterCleanup.playerMappings).toBe(0);
+    });
+
+    test('should handle move validation integration', () => {
+      const gameId = gameManager.createGame('player1');
+      gameManager.joinGame(gameId, 'player2');
+      
+      const validMove = { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } };
+      const invalidMove = { from: { row: 6, col: 4 }, to: { row: 3, col: 4 } };
+      
+      // Note: validateMove in GameManager doesn't exist in current implementation
+      // This tests the integration through makeMove
+      const validResult = gameManager.makeMove(gameId, 'player1', validMove);
+      expect(validResult.success).toBe(true);
+      
+      // Reset game for invalid move test
+      const gameId2 = gameManager.createGame('player3');
+      gameManager.joinGame(gameId2, 'player4');
+      
+      const invalidResult = gameManager.makeMove(gameId2, 'player3', invalidMove);
+      expect(invalidResult.success).toBe(false);
+    });
+
+    test('should handle concurrent game operations', () => {
+      const gameIds = [];
+      
+      // Create multiple games concurrently
+      for (let i = 0; i < 5; i++) {
+        const gameId = gameManager.createGame(`player${i}`);
+        gameIds.push(gameId);
+      }
+      
+      expect(gameIds).toHaveLength(5);
+      expect(new Set(gameIds).size).toBe(5); // All unique
+      
+      const stats = gameManager.getServerStatistics();
+      expect(stats.totalGames).toBe(5);
+      expect(stats.totalPlayers).toBe(5);
     });
   });
 });
