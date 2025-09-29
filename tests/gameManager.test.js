@@ -7,6 +7,13 @@ describe('GameManager', () => {
     gameManager = new GameManager();
   });
 
+  afterEach(() => {
+    // Clean up any timers and resources to prevent worker process warnings
+    if (gameManager && gameManager.cleanup) {
+      gameManager.cleanup();
+    }
+  });
+
   describe('Game Creation', () => {
     test('should create a new game with 6-character ID', () => {
       const playerId = 'player1';
@@ -155,7 +162,7 @@ describe('GameManager', () => {
       expect(result.message).toBe('Game not found');
     });
 
-    test('should update last activity on valid move', () => {
+    test('should update last activity on valid move', async () => {
       const hostId = 'host';
       const guestId = 'guest';
       const gameId = gameManager.createGame(hostId);
@@ -164,14 +171,16 @@ describe('GameManager', () => {
       const game = gameManager.games.get(gameId);
       const originalActivity = game.lastActivity;
       
-      setTimeout(() => {
-        gameManager.makeMove(gameId, hostId, {
-          from: { row: 6, col: 4 },
-          to: { row: 5, col: 4 }
-        });
-        
-        expect(game.lastActivity).toBeGreaterThan(originalActivity);
-      }, 10);
+      // Wait a small amount to ensure timestamp difference
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      const result = gameManager.makeMove(gameId, hostId, {
+        from: { row: 6, col: 4 },
+        to: { row: 5, col: 4 }
+      });
+      
+      expect(result.success).toBe(true);
+      expect(game.lastActivity).toBeGreaterThan(originalActivity);
     });
   });
 
@@ -547,7 +556,7 @@ describe('GameManager', () => {
       });
     });
 
-    test('should handle game state updates with proper timestamps', () => {
+    test('should handle game state updates with proper timestamps', async () => {
       const hostId = 'host';
       const guestId = 'guest';
       const gameId = gameManager.createGame(hostId);
@@ -557,14 +566,15 @@ describe('GameManager', () => {
       const initialActivity = game.lastActivity;
       
       // Wait a moment then make a move
-      setTimeout(() => {
-        gameManager.makeMove(gameId, hostId, {
-          from: { row: 6, col: 4 },
-          to: { row: 4, col: 4 }
-        });
-        
-        expect(game.lastActivity).toBeGreaterThan(initialActivity);
-      }, 10);
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      const result = gameManager.makeMove(gameId, hostId, {
+        from: { row: 6, col: 4 },
+        to: { row: 4, col: 4 }
+      });
+      
+      expect(result.success).toBe(true);
+      expect(game.lastActivity).toBeGreaterThan(initialActivity);
     });
 
     test('should provide game statistics and metadata', () => {
