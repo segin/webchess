@@ -833,7 +833,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
 
   describe('Comprehensive Rook Movement Validation', () => {
     beforeEach(() => {
-      game = new ChessGame();
+      game = testUtils.createFreshGame();
     });
 
     describe('Horizontal Rook Moves', () => {
