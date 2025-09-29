@@ -112,11 +112,11 @@ class ConsoleQuiet {
 const globalConsoleQuiet = new ConsoleQuiet();
 
 /**
- * Utility functions for console management
+ * Utility functions for console management using current API patterns
  */
 const consoleUtils = {
   /**
-   * Enable quiet mode for tests
+   * Enable quiet mode for tests with current API error patterns
    * @param {Array<RegExp|string>} allowedPatterns - Patterns to allow through
    */
   enableQuiet(allowedPatterns = [
@@ -131,7 +131,13 @@ const consoleUtils = {
     // Allow actual test failures (not suppressed errors)
     /TypeError:|ReferenceError:|SyntaxError:/,
     // Allow important warnings that aren't chess game errors
-    /deprecated|warning/i
+    /deprecated|warning/i,
+    // Allow current API success/error structure validation messages
+    /success.*true|success.*false/,
+    /isValid.*true|isValid.*false/,
+    /errorCode.*null/,
+    // Allow current game state property validation
+    /gameStatus|currentTurn|moveHistory|castlingRights|enPassantTarget|inCheck/
   ]) {
     globalConsoleQuiet.enableQuietMode(allowedPatterns);
   },
@@ -159,7 +165,7 @@ const consoleUtils = {
   },
 
   /**
-   * Create a scoped quiet mode for specific tests
+   * Create a scoped quiet mode for specific tests using current API patterns
    * @param {Function} testFunction - Test function to run in quiet mode
    * @param {Array<RegExp|string>} allowedPatterns - Patterns to allow
    * @returns {Promise} Result of test function
@@ -178,6 +184,54 @@ const consoleUtils = {
         this.disableQuiet();
       }
     }
+  },
+
+  /**
+   * Validate that console utilities work with current API response patterns
+   * @param {Object} response - API response to check for console compatibility
+   * @returns {boolean} True if response follows current patterns
+   */
+  validateApiResponsePattern(response) {
+    if (!response || typeof response !== 'object') {
+      return false;
+    }
+
+    // Check for current API response structure
+    const hasCurrentStructure = (
+      response.hasOwnProperty('success') &&
+      response.hasOwnProperty('isValid') &&
+      response.hasOwnProperty('message') &&
+      response.hasOwnProperty('errorCode')
+    );
+
+    return hasCurrentStructure;
+  },
+
+  /**
+   * Create test-friendly console patterns for current API
+   * @returns {Array} Array of patterns that match current API structure
+   */
+  getCurrentApiPatterns() {
+    return [
+      // Current response structure patterns
+      /success:\s*(true|false)/,
+      /isValid:\s*(true|false)/,
+      /errorCode:\s*(null|"[A-Z_]+")/,
+      /message:\s*"[^"]*"/,
+      
+      // Current game state patterns
+      /gameStatus:\s*"(active|check|checkmate|stalemate|draw)"/,
+      /currentTurn:\s*"(white|black)"/,
+      /moveHistory:\s*\[/,
+      /castlingRights:\s*\{/,
+      /enPassantTarget:\s*(null|\{)/,
+      /inCheck:\s*(true|false)/,
+      
+      // Current error code patterns
+      /MALFORMED_MOVE|INVALID_COORDINATES|NO_PIECE|WRONG_TURN/,
+      /INVALID_MOVEMENT|PATH_BLOCKED|CAPTURE_OWN_PIECE/,
+      /INVALID_CASTLING|KING_IN_CHECK|GAME_NOT_ACTIVE/
+    ];
   }
 };
 

@@ -448,7 +448,7 @@
   - Fix legacy migration edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 8.1, 8.2, 8.6_
 
-- [-] 57. Update test helper utilities in tests/helpers/ directory
+- [x] 57. Update test helper utilities in tests/helpers/ directory
   - Normalize all helper utilities to use current API patterns
   - Fix helper functions to expect current response structure
   - Update helper validation to use current error codes
@@ -456,7 +456,7 @@
   - Fix helper edge cases to use current error handling
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
 
-- [ ] 58. Update test utility functions in tests/utils/ directory
+- [-] 58. Update test utility functions in tests/utils/ directory
   - Normalize all utility functions to use current API patterns
   - Fix utility validation to expect current response structure
   - Update utility helpers to use current error codes
