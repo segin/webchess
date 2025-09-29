@@ -14,9 +14,12 @@ const AssertionPatterns = {
   validateSuccessfulMove(response) {
     expect(response).toBeDefined();
     expect(response.success).toBe(true);
+    expect(response.isValid).toBe(true);
     expect(response.errorCode).toBeNull();
     expect(response.message).toBeDefined();
     expect(typeof response.message).toBe('string');
+    expect(response.data).toBeDefined();
+    expect(response.metadata).toBeDefined();
   },
 
   /**
@@ -27,10 +30,12 @@ const AssertionPatterns = {
   validateFailedMove(response, expectedErrorCode = null) {
     expect(response).toBeDefined();
     expect(response.success).toBe(false);
+    expect(response.isValid).toBe(false);
     expect(response.errorCode).toBeDefined();
     expect(response.message).toBeDefined();
     expect(typeof response.message).toBe('string');
     expect(response.message.length).toBeGreaterThan(0);
+    expect(response.details).toBeDefined();
     
     if (expectedErrorCode) {
       expect(response.errorCode).toBe(expectedErrorCode);
@@ -49,10 +54,9 @@ const AssertionPatterns = {
     expect(gameState.currentTurn).toBeDefined();
     expect(['white', 'black']).toContain(gameState.currentTurn);
     
-    // Current API provides both status and gameStatus for backward compatibility
+    // Current API uses gameStatus (not status)
     expect(gameState.gameStatus).toBeDefined();
     expect(['active', 'check', 'checkmate', 'stalemate', 'draw']).toContain(gameState.gameStatus);
-    expect(gameState.status).toBe(gameState.gameStatus); // Should be the same
     
     expect(gameState.moveHistory).toBeDefined();
     expect(Array.isArray(gameState.moveHistory)).toBe(true);
@@ -60,6 +64,8 @@ const AssertionPatterns = {
     expect(gameState.castlingRights).toBeDefined();
     expect(gameState.inCheck).toBeDefined();
     expect(typeof gameState.inCheck).toBe('boolean');
+    expect(gameState.enPassantTarget).toBeDefined();
+    expect(gameState.checkDetails).toBeDefined();
   },
 
   /**
@@ -133,6 +139,62 @@ const AssertionPatterns = {
     expect(typeof castlingRights.white.queenside).toBe('boolean');
     expect(typeof castlingRights.black.kingside).toBe('boolean');
     expect(typeof castlingRights.black.queenside).toBe('boolean');
+  },
+
+  /**
+   * Validate move response data structure
+   * @param {Object} moveData - Move data from successful response
+   */
+  validateMoveData(moveData) {
+    expect(moveData).toBeDefined();
+    expect(moveData.from).toBeDefined();
+    expect(moveData.to).toBeDefined();
+    expect(moveData.piece).toBeDefined();
+    expect(moveData.gameStatus).toBeDefined();
+    expect(moveData.currentTurn).toBeDefined();
+    
+    // Validate coordinates
+    expect(typeof moveData.from.row).toBe('number');
+    expect(typeof moveData.from.col).toBe('number');
+    expect(typeof moveData.to.row).toBe('number');
+    expect(typeof moveData.to.col).toBe('number');
+    
+    // Validate piece
+    this.validatePiece(moveData.piece);
+  },
+
+  /**
+   * Validate that a response indicates a specific game ending
+   * @param {Object} response - Move response
+   * @param {string} expectedStatus - Expected game status
+   * @param {string} expectedWinner - Expected winner (or null for draws)
+   */
+  validateGameEnding(response, expectedStatus, expectedWinner = null) {
+    this.validateSuccessfulMove(response);
+    expect(response.data.gameStatus).toBe(expectedStatus);
+    
+    if (expectedWinner) {
+      expect(response.data.winner || response.data.gameWinner).toBe(expectedWinner);
+    } else {
+      expect(response.data.winner || response.data.gameWinner).toBeNull();
+    }
+  },
+
+  /**
+   * Validate error response details structure
+   * @param {Object} response - Error response
+   * @param {string} expectedCode - Expected error code
+   * @param {Object} expectedDetails - Expected details properties
+   */
+  validateErrorDetails(response, expectedCode, expectedDetails = {}) {
+    this.validateFailedMove(response, expectedCode);
+    
+    if (Object.keys(expectedDetails).length > 0) {
+      expect(response.details).toBeDefined();
+      for (const [key, value] of Object.entries(expectedDetails)) {
+        expect(response.details[key]).toBe(value);
+      }
+    }
   }
 };
 
@@ -163,7 +225,9 @@ const SetupPatterns = {
    */
   errorHandlingSetup(errorPatterns = []) {
     return () => {
-      testUtils.suppressErrorLogs(errorPatterns);
+      if (typeof testUtils !== 'undefined' && testUtils.suppressErrorLogs) {
+        testUtils.suppressErrorLogs(errorPatterns);
+      }
     };
   },
 
@@ -314,6 +378,51 @@ const ExecutionHelpers = {
     }
     
     return result;
+  },
+
+  /**
+   * Execute a move and validate the game state afterwards
+   * @param {Object} game - Game instance
+   * @param {Object} move - Move to execute
+   * @param {Object} expectedState - Expected game state properties
+   * @returns {Object} Move result
+   */
+  testMoveWithStateValidation(game, move, expectedState = {}) {
+    const result = this.testMove(game, move, true);
+    
+    // Validate expected state properties
+    if (expectedState.currentTurn) {
+      expect(game.currentTurn).toBe(expectedState.currentTurn);
+    }
+    if (expectedState.gameStatus) {
+      expect(game.gameStatus).toBe(expectedState.gameStatus);
+    }
+    if (expectedState.inCheck !== undefined) {
+      expect(game.inCheck).toBe(expectedState.inCheck);
+    }
+    if (expectedState.winner !== undefined) {
+      expect(game.winner).toBe(expectedState.winner);
+    }
+    
+    return result;
+  },
+
+  /**
+   * Test multiple moves in sequence with validation
+   * @param {Object} game - Game instance
+   * @param {Array} moveSequence - Array of move objects with expected outcomes
+   * @returns {Array} Array of move results
+   */
+  testMoveSequence(game, moveSequence) {
+    const results = [];
+    
+    for (const moveTest of moveSequence) {
+      const { move, shouldSucceed = true, expectedErrorCode = null } = moveTest;
+      const result = this.testMove(game, move, shouldSucceed, expectedErrorCode);
+      results.push(result);
+    }
+    
+    return results;
   }
 };
 

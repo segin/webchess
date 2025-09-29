@@ -160,6 +160,29 @@ const TestSequences = {
         { from: { row: 7, col: 5 }, to: { row: 4, col: 2 } }, // Bc4
         { from: { row: 0, col: 5 }, to: { row: 3, col: 2 } }, // Bc5
         { from: { row: 7, col: 6 }, to: { row: 5, col: 5 } }  // Nf3
+    ],
+
+    /**
+     * En passant setup sequence
+     */
+    EN_PASSANT_SETUP_SEQUENCE: [
+        { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } }, // e4
+        { from: { row: 1, col: 3 }, to: { row: 3, col: 3 } }, // d5
+        { from: { row: 4, col: 4 }, to: { row: 3, col: 3 } }, // exd5
+        { from: { row: 1, col: 2 }, to: { row: 3, col: 2 } }, // c5 (sets up en passant)
+    ],
+
+    /**
+     * Simple checkmate sequence (back rank mate)
+     */
+    BACK_RANK_MATE: [
+        { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } }, // e4
+        { from: { row: 1, col: 4 }, to: { row: 3, col: 4 } }, // e5
+        { from: { row: 7, col: 3 }, to: { row: 3, col: 7 } }, // Qh5
+        { from: { row: 0, col: 1 }, to: { row: 2, col: 2 } }, // Nc6
+        { from: { row: 7, col: 5 }, to: { row: 4, col: 2 } }, // Bc4
+        { from: { row: 0, col: 6 }, to: { row: 2, col: 5 } }, // Nf6??
+        { from: { row: 3, col: 7 }, to: { row: 1, col: 5 } }  // Qxf7# (checkmate)
     ]
 };
 
@@ -203,30 +226,85 @@ const TestData = {
     INVALID_MOVES: {
         outOfBounds: [
             { from: { row: 0, col: 0 }, to: { row: -1, col: 0 } },
-            { from: { row: 7, col: 7 }, to: { row: 8, col: 7 } }
+            { from: { row: 7, col: 7 }, to: { row: 8, col: 7 } },
+            { from: { row: 0, col: 0 }, to: { row: 0, col: -1 } },
+            { from: { row: 7, col: 7 }, to: { row: 7, col: 8 } }
         ],
         wrongTurn: [
             { from: { row: 1, col: 4 }, to: { row: 2, col: 4 } } // black move when white's turn
         ],
         noPiece: [
             { from: { row: 4, col: 4 }, to: { row: 5, col: 4 } } // empty square
+        ],
+        malformedMoves: [
+            null,
+            undefined,
+            {},
+            { from: { row: 6, col: 4 } }, // missing 'to'
+            { to: { row: 5, col: 4 } }, // missing 'from'
+            { from: { row: 'invalid', col: 4 }, to: { row: 5, col: 4 } },
+            { from: { row: 6, col: 4 }, to: { row: 5, col: 'invalid' } }
         ]
     },
 
     /**
-     * Error codes for testing
+     * Error codes for testing (matching current errorHandler.js implementation)
      */
     ERROR_CODES: {
+        // Format errors
+        MALFORMED_MOVE: 'MALFORMED_MOVE',
+        INVALID_FORMAT: 'INVALID_FORMAT',
+        MISSING_REQUIRED_FIELD: 'MISSING_REQUIRED_FIELD',
+        
+        // Coordinate errors
         INVALID_COORDINATES: 'INVALID_COORDINATES',
+        OUT_OF_BOUNDS: 'OUT_OF_BOUNDS',
+        SAME_SQUARE: 'SAME_SQUARE',
+        
+        // Piece errors
         NO_PIECE: 'NO_PIECE',
+        INVALID_PIECE: 'INVALID_PIECE',
+        INVALID_PIECE_TYPE: 'INVALID_PIECE_TYPE',
+        INVALID_PIECE_COLOR: 'INVALID_PIECE_COLOR',
         WRONG_TURN: 'WRONG_TURN',
+        
+        // Movement errors
         INVALID_MOVE: 'INVALID_MOVE',
         INVALID_MOVEMENT: 'INVALID_MOVEMENT',
+        UNKNOWN_PIECE_TYPE: 'UNKNOWN_PIECE_TYPE',
+        
+        // Path errors
+        PATH_BLOCKED: 'PATH_BLOCKED',
+        
+        // Capture errors
+        CAPTURE_OWN_PIECE: 'CAPTURE_OWN_PIECE',
+        
+        // Special move errors
         INVALID_CASTLING: 'INVALID_CASTLING',
+        INVALID_PROMOTION: 'INVALID_PROMOTION',
+        INVALID_EN_PASSANT: 'INVALID_EN_PASSANT',
+        INVALID_EN_PASSANT_TARGET: 'INVALID_EN_PASSANT_TARGET',
+        
+        // Check/checkmate errors
         KING_IN_CHECK: 'KING_IN_CHECK',
         PINNED_PIECE_INVALID_MOVE: 'PINNED_PIECE_INVALID_MOVE',
-        PATH_BLOCKED: 'PATH_BLOCKED',
-        GAME_OVER: 'GAME_OVER'
+        DOUBLE_CHECK_KING_ONLY: 'DOUBLE_CHECK_KING_ONLY',
+        CHECK_NOT_RESOLVED: 'CHECK_NOT_RESOLVED',
+        
+        // Game state errors
+        GAME_NOT_ACTIVE: 'GAME_NOT_ACTIVE',
+        INVALID_STATUS: 'INVALID_STATUS',
+        INVALID_STATUS_TRANSITION: 'INVALID_STATUS_TRANSITION',
+        MISSING_WINNER: 'MISSING_WINNER',
+        INVALID_WINNER_FOR_DRAW: 'INVALID_WINNER_FOR_DRAW',
+        TURN_SEQUENCE_VIOLATION: 'TURN_SEQUENCE_VIOLATION',
+        TURN_HISTORY_MISMATCH: 'TURN_HISTORY_MISMATCH',
+        INVALID_COLOR: 'INVALID_COLOR',
+        
+        // System errors
+        SYSTEM_ERROR: 'SYSTEM_ERROR',
+        VALIDATION_FAILURE: 'VALIDATION_FAILURE',
+        STATE_CORRUPTION: 'STATE_CORRUPTION'
     }
 };
 
