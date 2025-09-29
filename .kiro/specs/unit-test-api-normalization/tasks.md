@@ -384,7 +384,7 @@
   - Fix AI expansion edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 6.1, 6.2, 7.1, 7.2_
 
-- [ ] 49. Normalize tests/gameManager.test.js - Game manager tests
+- [x] 49. Normalize tests/gameManager.test.js - Game manager tests
   - Update game manager tests to use current API patterns
   - Fix manager functionality to expect current response structure
   - Normalize manager integration to use current validation
@@ -392,7 +392,7 @@
   - Fix game manager edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 7.1, 7.2, 7.3_
 
-- [ ] 50. Normalize tests/serverIntegration.test.js - Server integration
+- [x] 50. Normalize tests/serverIntegration.test.js - Server integration
   - Update server integration tests to use current API patterns
   - Fix server communication to expect current response format
   - Normalize server validation to use current error codes
@@ -400,7 +400,7 @@
   - Fix server integration edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 7.1, 7.2, 7.3, 7.4_
 
-- [ ] 51. Normalize tests/serverComponentsExpansion.test.js - Extended server tests
+- [x] 51. Normalize tests/serverComponentsExpansion.test.js - Extended server tests
   - Update extended server tests to use current API patterns
   - Fix server component integration to expect current responses
   - Normalize server expansion to use current validation
