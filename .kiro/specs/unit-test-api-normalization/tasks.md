@@ -264,7 +264,7 @@
   - Fix additional movement edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 
-- [ ] 34. Normalize tests/pieceMovementPatterns.test.js - Movement patterns
+- [x] 34. Normalize tests/pieceMovementPatterns.test.js - Movement patterns
   - Update movement pattern tests to use current API structure
   - Fix pattern validation to expect current response format
   - Normalize pattern recognition to use current validation
@@ -280,7 +280,7 @@
   - Fix game flow edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 6.1, 6.2, 6.3, 7.1, 7.2_
 
-- [ ] 36. Normalize tests/integrationTests.test.js - Integration tests
+- [x] 36. Normalize tests/integrationTests.test.js - Integration tests
   - Update integration tests to use current API patterns
   - Fix component integration to expect current response format
   - Normalize system integration to use current validation
@@ -288,7 +288,7 @@
   - Fix integration edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 7.1, 7.2, 7.3, 7.4_
 
-- [ ] 37. Normalize tests/comprehensive.test.js - Comprehensive functionality
+- [x] 37. Normalize tests/comprehensive.test.js - Comprehensive functionality
   - Update comprehensive tests to use current API structure
   - Fix comprehensive scenarios to expect current response format
   - Normalize comprehensive validation to use current patterns
@@ -296,7 +296,7 @@
   - Fix comprehensive edge cases to use current error codes
   - _Requirements: 1.1, 1.2, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6_
 
-- [ ] 38. Normalize tests/basicFunctionality.test.js - Basic functionality
+- [x] 38. Normalize tests/basicFunctionality.test.js - Basic functionality
   - Update basic functionality tests to use current API patterns
   - Fix basic operations to expect current response structure
   - Normalize basic validation to use current error codes
@@ -304,7 +304,7 @@
   - Fix basic functionality edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 7.1, 7.2, 7.3_
 
-- [ ] 39. Normalize tests/chessGameValidation.test.js - Game validation
+- [x] 39. Normalize tests/chessGameValidation.test.js - Game validation
   - Update game validation tests to use current validation API
   - Fix validation scenarios to expect current response format
   - Normalize validation rules to use current error codes
@@ -312,7 +312,7 @@
   - Fix game validation edge cases to use current error handling
   - _Requirements: 1.1, 1.2, 3.1, 3.2, 3.3, 6.1, 6.2_
 
-- [ ] 40. Normalize tests/performanceTests.test.js - Performance tests
+- [x] 40. Normalize tests/performanceTests.test.js - Performance tests
   - Update performance tests to use current API patterns
   - Fix performance benchmarks to expect current response structure
   - Normalize performance validation to use current timing patterns
