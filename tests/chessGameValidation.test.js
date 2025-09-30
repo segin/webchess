@@ -2342,16 +2342,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       });
 
       test('should handle queen moves from corner and edge positions', () => {
-        game = new ChessGame(); // Reset game
-        // Test queen from corner
-        game.board[0][0] = { type: 'queen', color: 'white' };
-        game.board[7][3] = null; // Remove original queen
-        
-        // Clear some paths
-        game.board[0][1] = null;
-        game.board[1][0] = null;
-        game.board[1][1] = null;
-        
+        // Test each move individually with fresh game state
         const cornerMoves = [
           { row: 0, col: 7 }, // Horizontal across top rank
           { row: 7, col: 0 }, // Vertical down left file
@@ -2359,32 +2350,33 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
         ];
         
         cornerMoves.forEach((to) => {
+          game = new ChessGame(); // Fresh game for each test
+          game.board[0][0] = { type: 'queen', color: 'white' };
+          game.board[7][3] = null; // Remove original queen
+          
           // Clear path for each move
           if (to.row === 0) {
             // Clear horizontal path
-            for (let col = 1; col < 7; col++) {
+            for (let col = 1; col < 8; col++) {
               game.board[0][col] = null;
             }
           } else if (to.col === 0) {
             // Clear vertical path
-            for (let row = 1; row < 7; row++) {
+            for (let row = 1; row < 8; row++) {
               game.board[row][0] = null;
             }
           } else {
             // Clear diagonal path
-            for (let i = 1; i < 7; i++) {
-              game.board[i][i] = null;
+            for (let i = 1; i < 8; i++) {
+              if (i < 8 && i < 8) {
+                game.board[i][i] = null;
+              }
             }
           }
           
           const move = { from: { row: 0, col: 0 }, to: to };
           const result = game.makeMove(move);
           expect(result.success).toBe(true);
-          
-          // Reset for next test
-          game.board[0][0] = { type: 'queen', color: 'white' };
-          game.board[to.row][to.col] = null;
-          game.currentTurn = 'white';
         });
       });
     });
@@ -2718,16 +2710,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       });
 
       test('should handle queen moves from corner and edge positions', () => {
-        game = new ChessGame(); // Reset game
-        // Test queen from corner
-        game.board[0][0] = { type: 'queen', color: 'white' };
-        game.board[7][3] = null; // Remove original queen
-        
-        // Clear some paths
-        game.board[0][1] = null;
-        game.board[1][0] = null;
-        game.board[1][1] = null;
-        
+        // Test each move individually with fresh game state
         const cornerMoves = [
           { row: 0, col: 7 }, // Horizontal across top rank
           { row: 7, col: 0 }, // Vertical down left file
@@ -2735,32 +2718,33 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
         ];
         
         cornerMoves.forEach((to) => {
+          game = new ChessGame(); // Fresh game for each test
+          game.board[0][0] = { type: 'queen', color: 'white' };
+          game.board[7][3] = null; // Remove original queen
+          
           // Clear path for each move
           if (to.row === 0) {
             // Clear horizontal path
-            for (let col = 1; col < 7; col++) {
+            for (let col = 1; col < 8; col++) {
               game.board[0][col] = null;
             }
           } else if (to.col === 0) {
             // Clear vertical path
-            for (let row = 1; row < 7; row++) {
+            for (let row = 1; row < 8; row++) {
               game.board[row][0] = null;
             }
           } else {
             // Clear diagonal path
-            for (let i = 1; i < 7; i++) {
-              game.board[i][i] = null;
+            for (let i = 1; i < 8; i++) {
+              if (i < 8 && i < 8) {
+                game.board[i][i] = null;
+              }
             }
           }
           
           const move = { from: { row: 0, col: 0 }, to: to };
           const result = game.makeMove(move);
           expect(result.success).toBe(true);
-          
-          // Reset for next test
-          game.board[0][0] = { type: 'queen', color: 'white' };
-          game.board[to.row][to.col] = null;
-          game.currentTurn = 'white';
         });
       });
     });
@@ -2821,7 +2805,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
         game = new ChessGame(); // Reset game
         // Clear path and place enemy piece for capture
         game.board[7][4] = null; // Clear king (move it elsewhere)
-        game.board[0][4] = { type: 'king', color: 'white' }; // Move white king to safe spot
+        game.board[7][0] = { type: 'king', color: 'white' }; // Move white king to safe spot (replace rook)
         game.board[7][5] = { type: 'pawn', color: 'black' }; // Place enemy piece to capture
         
         const move = { from: { row: 7, col: 3 }, to: { row: 7, col: 5 } };
@@ -3253,16 +3237,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
       });
 
       test('should handle queen moves from corner and edge positions', () => {
-        game = new ChessGame(); // Reset game
-        // Test queen from corner
-        game.board[0][0] = { type: 'queen', color: 'white' };
-        game.board[7][3] = null; // Remove original queen
-        
-        // Clear some paths
-        game.board[0][1] = null;
-        game.board[1][0] = null;
-        game.board[1][1] = null;
-        
+        // Test each move individually with fresh game state
         const cornerMoves = [
           { row: 0, col: 7 }, // Horizontal across top rank
           { row: 7, col: 0 }, // Vertical down left file
@@ -3270,32 +3245,33 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
         ];
         
         cornerMoves.forEach((to) => {
+          game = new ChessGame(); // Fresh game for each test
+          game.board[0][0] = { type: 'queen', color: 'white' };
+          game.board[7][3] = null; // Remove original queen
+          
           // Clear path for each move
           if (to.row === 0) {
             // Clear horizontal path
-            for (let col = 1; col < 7; col++) {
+            for (let col = 1; col < 8; col++) {
               game.board[0][col] = null;
             }
           } else if (to.col === 0) {
             // Clear vertical path
-            for (let row = 1; row < 7; row++) {
+            for (let row = 1; row < 8; row++) {
               game.board[row][0] = null;
             }
           } else {
             // Clear diagonal path
-            for (let i = 1; i < 7; i++) {
-              game.board[i][i] = null;
+            for (let i = 1; i < 8; i++) {
+              if (i < 8 && i < 8) {
+                game.board[i][i] = null;
+              }
             }
           }
           
           const move = { from: { row: 0, col: 0 }, to: to };
           const result = game.makeMove(move);
           expect(result.success).toBe(true);
-          
-          // Reset for next test
-          game.board[0][0] = { type: 'queen', color: 'white' };
-          game.board[to.row][to.col] = null;
-          game.currentTurn = 'white';
         });
       });
     });
@@ -3651,7 +3627,7 @@ describe('ChessGame Enhanced Validation Infrastructure', () => {
         game.board[4][4] = { type: 'king', color: 'white' };
         game.board[0][4] = { type: 'king', color: 'black' }; // Black king required for valid game state
         game.board[3][6] = { type: 'rook', color: 'black' }; // Attacks row 3
-        game.board[1][1] = { type: 'bishop', color: 'black' }; // Attacks diagonal
+        game.board[2][4] = { type: 'bishop', color: 'black' }; // Attacks (3,3) but not (4,4)
         game.currentTurn = 'white';
         game.inCheck = false; // Ensure not currently in check
         game.gameStatus = 'active';
