@@ -357,10 +357,10 @@ describe('Check Resolution Validation', () => {
         to: { row: 4, col: 5 } // Still on same rank as attacking rook
       });
 
-      // Note: Current implementation incorrectly allows this move
-      // This should fail with KING_IN_CHECK but currently succeeds
-      testUtils.validateSuccessResponse(result);
-      expect(game.isInCheck('white')).toBe(true); // Still in check after move
+      // Implementation correctly rejects this move
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('CHECK_NOT_RESOLVED');
+      expect(game.isInCheck('white')).toBe(true); // Still in check after failed move
     });
 
     test('should reject king move into another check', () => {
@@ -385,10 +385,10 @@ describe('Check Resolution Validation', () => {
         to: { row: 3, col: 4 } // Moves into check from second rook
       });
 
-      // Note: Current implementation incorrectly allows this move
-      // This should fail with KING_IN_CHECK but currently succeeds
-      testUtils.validateSuccessResponse(result);
-      expect(game.isInCheck('white')).toBe(true); // Still in check after move
+      // Implementation correctly rejects this move
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('CHECK_NOT_RESOLVED');
+      expect(game.isInCheck('white')).toBe(true); // Still in check after failed move
     });
   });
 

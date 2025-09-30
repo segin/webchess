@@ -148,7 +148,7 @@ describe('Under-Tested Areas - Comprehensive Coverage Expansion', () => {
       // Set up a position where pawns create stalemate
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
       game.board[7][7] = { type: 'king', color: 'white' };
-      game.board[5][5] = { type: 'king', color: 'black' };
+      game.board[3][3] = { type: 'king', color: 'black' }; // Move black king far away
       game.board[6][6] = { type: 'pawn', color: 'black' };
       game.board[6][7] = { type: 'pawn', color: 'black' };
       game.board[7][6] = { type: 'pawn', color: 'black' };

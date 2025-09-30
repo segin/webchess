@@ -76,13 +76,14 @@ class ChessGame {
     return board;
   }
 
-  makeMove(moveOrFrom, toParam, promotionParam) {
+  makeMove(moveOrFrom, toParam, promotionParam, options = {}) {
     try {
       // Handle both calling patterns:
       // 1. makeMove({ from: {...}, to: {...}, promotion: '...' })
       // 2. makeMove({ row: 6, col: 4 }, { row: 4, col: 4 }, 'queen')
+      // 3. makeMove(move, null, null, { silent: true }) for AI operations
       let move;
-      if (toParam !== undefined) {
+      if (toParam !== undefined && toParam !== null) {
         // Called with separate parameters
         move = {
           from: moveOrFrom,
@@ -114,7 +115,7 @@ class ChessGame {
       this.executeMoveOnBoard(from, to, piece, promotion);
 
       // Update game state (pass original piece since board has changed)
-      this.updateGameState(from, to, originalPiece);
+      this.updateGameState(from, to, originalPiece, options.silent);
 
       // Check for game end conditions
       this.checkGameEnd();
@@ -1559,7 +1560,7 @@ class ChessGame {
    * @param {Object} to - Destination square
    * @param {Object} piece - The piece that moved
    */
-  updateGameState(from, to, piece) {
+  updateGameState(from, to, piece, silent = false) {
     // Validate turn sequence before updating - piece.color should match current turn
     if (this.currentTurn !== piece.color) {
       throw new Error(`Turn sequence validation failed: expected ${piece.color}, but it's ${this.currentTurn}'s turn`);
@@ -1607,15 +1608,17 @@ class ChessGame {
     this.stateManager.stateVersion++;
     this.stateVersion = this.stateManager.stateVersion;
 
-    // Validate state consistency after update
-    const consistencyCheck = this.stateManager.validateGameStateConsistency(this.getGameStateForSnapshot());
-    if (!consistencyCheck.success) {
-      // Log warnings but don't throw errors for warnings
-      if (consistencyCheck.errors.length > 0) {
-        console.warn('Game state consistency errors after move:', consistencyCheck.errors);
-      }
-      if (consistencyCheck.warnings.length > 0) {
-        console.warn('Game state consistency warnings after move:', consistencyCheck.warnings);
+    // Validate state consistency after update (skip in silent mode for AI operations)
+    if (!silent) {
+      const consistencyCheck = this.stateManager.validateGameStateConsistency(this.getGameStateForSnapshot());
+      if (!consistencyCheck.success) {
+        // Log warnings but don't throw errors for warnings
+        if (consistencyCheck.errors.length > 0) {
+          console.warn('Game state consistency errors after move:', consistencyCheck.errors);
+        }
+        if (consistencyCheck.warnings.length > 0) {
+          console.warn('Game state consistency warnings after move:', consistencyCheck.warnings);
+        }
       }
     }
   }

@@ -401,16 +401,16 @@ describe('Comprehensive Piece Movement Patterns - Part 2', () => {
       defenseGame.board = Array(8).fill(null).map(() => Array(8).fill(null));
       defenseGame.board[0][4] = { type: 'king', color: 'black' };
       defenseGame.board[7][4] = { type: 'king', color: 'white' };
-      defenseGame.board[1][3] = { type: 'rook', color: 'black' };
+      defenseGame.board[1][1] = { type: 'rook', color: 'black' }; // Move rook away from 3rd file
       defenseGame.board[1][5] = { type: 'rook', color: 'black' };
-      defenseGame.board[2][4] = { type: 'queen', color: 'black' };
+      defenseGame.board[2][2] = { type: 'queen', color: 'black' }; // Move queen to safe position
       
-      // Pieces defending each other
-      const result = defenseGame.makeMove({ from: { row: 7, col: 4 }, to: { row: 6, col: 4 } });
+      // Pieces defending each other - move king to safe square
+      const result = defenseGame.makeMove({ from: { row: 7, col: 4 }, to: { row: 7, col: 3 } });
       expect(result.success).toBe(true);
       expect(result.message).toBeDefined();
       expect(result.data).toBeDefined();
-      expect(defenseGame.board[6][4]).toEqual({ type: 'king', color: 'white' });
+      expect(defenseGame.board[7][3]).toEqual({ type: 'king', color: 'white' });
     });
 
     test('should handle piece exchanges and recaptures', () => {

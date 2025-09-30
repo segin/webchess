@@ -123,7 +123,7 @@ class ChessAI {
     }
     
     const tempGame = this.cloneGame(chessGame);
-    const result = tempGame.makeMove(move);
+    const result = tempGame.makeMove(move, null, null, { silent: true });
     
     if (!result.success) return isMaximizing ? -Infinity : Infinity;
     
