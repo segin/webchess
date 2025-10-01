@@ -56,6 +56,84 @@ describe('ChessGame - Core Functionality', () => {
       expect(gameState.castlingRights.black.kingside).toBe(true);
       expect(gameState.castlingRights.black.queenside).toBe(true);
     });
+
+    test('should initialize with correct default values', () => {
+      expect(game.board).toBeDefined();
+      expect(game.currentTurn).toBe('white');
+      expect(game.gameStatus).toBe('active');
+      expect(game.winner).toBeNull();
+      expect(game.moveHistory).toEqual([]);
+      expect(game.castlingRights).toEqual({
+        white: { kingside: true, queenside: true },
+        black: { kingside: true, queenside: true }
+      });
+      expect(game.enPassantTarget).toBeNull();
+      expect(game.inCheck).toBe(false);
+    });
+
+    test('should initialize state manager and error handler', () => {
+      expect(game.stateManager).toBeDefined();
+      expect(game.errorHandler).toBeDefined();
+      
+      // Test additional properties that might exist
+      if (game.gameMetadata) {
+        expect(game.gameMetadata).toBeDefined();
+      }
+      if (game.positionHistory) {
+        expect(game.positionHistory).toBeDefined();
+      }
+      if (game.stateVersion) {
+        expect(game.stateVersion).toBeDefined();
+      }
+      if (game.halfMoveClock !== undefined) {
+        expect(typeof game.halfMoveClock).toBe('number');
+      }
+      if (game.fullMoveNumber !== undefined) {
+        expect(typeof game.fullMoveNumber).toBe('number');
+      }
+      if (game.checkDetails !== undefined) {
+        expect(game.checkDetails).toBeNull();
+      }
+    });
+
+    test('should initialize board with correct piece positions', () => {
+      // Test white pieces
+      expect(game.board[7][0]).toEqual({ type: 'rook', color: 'white' });
+      expect(game.board[7][1]).toEqual({ type: 'knight', color: 'white' });
+      expect(game.board[7][2]).toEqual({ type: 'bishop', color: 'white' });
+      expect(game.board[7][3]).toEqual({ type: 'queen', color: 'white' });
+      expect(game.board[7][4]).toEqual({ type: 'king', color: 'white' });
+      expect(game.board[7][5]).toEqual({ type: 'bishop', color: 'white' });
+      expect(game.board[7][6]).toEqual({ type: 'knight', color: 'white' });
+      expect(game.board[7][7]).toEqual({ type: 'rook', color: 'white' });
+
+      // Test white pawns
+      for (let i = 0; i < 8; i++) {
+        expect(game.board[6][i]).toEqual({ type: 'pawn', color: 'white' });
+      }
+
+      // Test black pieces
+      expect(game.board[0][0]).toEqual({ type: 'rook', color: 'black' });
+      expect(game.board[0][1]).toEqual({ type: 'knight', color: 'black' });
+      expect(game.board[0][2]).toEqual({ type: 'bishop', color: 'black' });
+      expect(game.board[0][3]).toEqual({ type: 'queen', color: 'black' });
+      expect(game.board[0][4]).toEqual({ type: 'king', color: 'black' });
+      expect(game.board[0][5]).toEqual({ type: 'bishop', color: 'black' });
+      expect(game.board[0][6]).toEqual({ type: 'knight', color: 'black' });
+      expect(game.board[0][7]).toEqual({ type: 'rook', color: 'black' });
+
+      // Test black pawns
+      for (let i = 0; i < 8; i++) {
+        expect(game.board[1][i]).toEqual({ type: 'pawn', color: 'black' });
+      }
+
+      // Test empty squares
+      for (let row = 2; row < 6; row++) {
+        for (let col = 0; col < 8; col++) {
+          expect(game.board[row][col]).toBeNull();
+        }
+      }
+    });
   });
 
   describe('Pawn Movement Validation', () => {
