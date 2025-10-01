@@ -25,7 +25,12 @@
     "daemon:status": "sudo systemctl status webchess",
     "daemon:logs": "sudo journalctl -u webchess -f"
   },
-  "keywords": ["chess", "multiplayer", "nodejs", "websocket"],
+  "keywords": [
+    "chess",
+    "multiplayer",
+    "nodejs",
+    "websocket"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
@@ -35,6 +40,8 @@
   },
   "devDependencies": {
     "jest": "^30.0.5",
-    "nodemon": "^3.0.1"
+    "nodemon": "^3.0.1",
+    "socket.io-client": "^4.8.1",
+    "supertest": "^7.1.4"
   }
 }

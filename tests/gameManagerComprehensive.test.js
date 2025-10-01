@@ -353,7 +353,7 @@ describe('GameManager - Comprehensive Coverage', () => {
             };
 
             gameManager.handleDisconnect(hostId);
-            
+
             // The callback should have executed and cleaned up the game
             setTimeout(() => {
                 expect(gameManager.games.has(gameId)).toBe(false);
@@ -574,7 +574,7 @@ describe('GameManager - Comprehensive Coverage', () => {
         test('should handle pause of non-active game', () => {
             // End the game first
             gameManager.endGame(gameId, 'checkmate', hostId);
-            
+
             const result = gameManager.pauseGame(gameId);
             expect(result.success).toBe(false);
             expect(result.message).toBe('Game is not active');
@@ -727,7 +727,7 @@ describe('GameManager - Comprehensive Coverage', () => {
             expect(stats.wins).toBe(1);
             expect(stats.losses).toBe(1);
             expect(stats.draws).toBe(1);
-            expect(stats.winRate).toBe(1/3);
+            expect(stats.winRate).toBe(1 / 3);
         });
 
         test('should get server statistics', () => {
