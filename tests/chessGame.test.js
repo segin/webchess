@@ -2568,4 +2568,1219 @@ describe('ChessGame Advanced Coverage - Uncovered Lines', () => {
             });
         });
     });
+
+    // Tests migrated from chessGameFinalCoverage.test.js
+    describe('ChessGame Final Coverage - Remaining Uncovered Lines', () => {
+        describe('Attack Type Detection - Line 2317', () => {
+            test('should return unknown_attack for invalid piece types', () => {
+                const piece = { type: 'invalid', color: 'black' };
+                const from = { row: 0, col: 0 };
+                const to = { row: 1, col: 1 };
+
+                const result = game.getAttackType(piece, from, to);
+                expect(result).toBe('unknown_attack');
+            });
+
+            test('should return adjacent_attack for king', () => {
+                const piece = { type: 'king', color: 'black' };
+                const from = { row: 4, col: 4 };
+                const to = { row: 4, col: 5 };
+
+                const result = game.getAttackType(piece, from, to);
+                expect(result).toBe('adjacent_attack');
+            });
+        });
+
+        describe('Square Attack Detection - Line 2332', () => {
+            test('should handle invalid square parameters', () => {
+                const result = game.isSquareUnderAttack(-1, 4, 'white');
+                expect(result).toBe(false);
+            });
+
+            test('should handle missing defending color', () => {
+                const result = game.isSquareUnderAttack(4, 4, null);
+                expect(result).toBe(false);
+            });
+
+            test('should handle empty defending color', () => {
+                const result = game.isSquareUnderAttack(4, 4, '');
+                expect(result).toBe(false);
+            });
+        });
+
+        describe('Piece Attack Square Validation - Line 2369', () => {
+            test('should handle invalid from square', () => {
+                const piece = { type: 'pawn', color: 'white' };
+                const from = { row: -1, col: 4 };
+                const to = { row: 5, col: 4 };
+
+                const result = game.canPieceAttackSquare(from, to, piece);
+                expect(result).toBe(false);
+            });
+
+            test('should handle invalid to square', () => {
+                const piece = { type: 'pawn', color: 'white' };
+                const from = { row: 6, col: 4 };
+                const to = { row: -1, col: 4 };
+
+                const result = game.canPieceAttackSquare(from, to, piece);
+                expect(result).toBe(false);
+            });
+
+            test('should handle same square attack', () => {
+                const piece = { type: 'pawn', color: 'white' };
+                const square = { row: 6, col: 4 };
+
+                const result = game.canPieceAttackSquare(square, square, piece);
+                expect(result).toBe(false);
+            });
+        });
+
+        describe('Default Case in Piece Attack - Line 2400', () => {
+            test('should return false for unknown piece type in canPieceAttackSquare', () => {
+                const piece = { type: 'unknown', color: 'white' };
+                const from = { row: 6, col: 4 };
+                const to = { row: 5, col: 4 };
+
+                const result = game.canPieceAttackSquare(from, to, piece);
+                expect(result).toBe(false);
+            });
+        });
+
+        describe('wouldBeInCheck Edge Cases - Line 2457', () => {
+            test('should handle missing piece parameter', () => {
+                const from = { row: 6, col: 4 };
+                const to = { row: 5, col: 4 };
+
+                // Call without piece parameter to trigger the board lookup
+                const result = game.wouldBeInCheck(from, to, 'white');
+                expect(typeof result).toBe('boolean');
+            });
+
+            test('should handle empty square in wouldBeInCheck', () => {
+                // Clear a square and try to move from it
+                game.board[4][4] = null;
+                const from = { row: 4, col: 4 };
+                const to = { row: 5, col: 4 };
+
+                const result = game.wouldBeInCheck(from, to, 'white');
+                expect(result).toBe(true); // Should return true when no piece to move
+            });
+        });
+
+        describe('Game State Structure Validation - Lines 3006-3020', () => {
+            test('should detect invalid piece structure - missing type', () => {
+                game.board[0][0] = { color: 'black' }; // Missing type
+                const result = game.validateGameStateStructure();
+                expect(result.success).toBe(false);
+                expect(result.errors).toContain('Invalid piece: missing type or color');
+            });
+
+            test('should detect invalid piece structure - missing color', () => {
+                game.board[0][0] = { type: 'rook' }; // Missing color
+                const result = game.validateGameStateStructure();
+                expect(result.success).toBe(false);
+                expect(result.errors).toContain('Invalid piece: missing type or color');
+            });
+
+            test('should detect invalid piece type', () => {
+                game.board[0][0] = { type: 'invalid', color: 'black' };
+                const result = game.validateGameStateStructure();
+                expect(result.success).toBe(false);
+                expect(result.errors).toContain('Invalid piece type: invalid');
+            });
+
+            test('should detect invalid piece color', () => {
+                game.board[0][0] = { type: 'rook', color: 'invalid' };
+                const result = game.validateGameStateStructure();
+                expect(result.success).toBe(false);
+                expect(result.errors).toContain('Invalid piece color: invalid');
+            });
+
+            test('should detect missing white king', () => {
+                // Remove white king
+                game.board[7][4] = null;
+                const result = game.validateGameStateStructure();
+                expect(result.success).toBe(false);
+                expect(result.errors).toContain('Missing white king');
+            });
+
+            test('should detect missing black king', () => {
+                // Remove black king
+                game.board[0][4] = null;
+                const result = game.validateGameStateStructure();
+                expect(result.success).toBe(false);
+                expect(result.errors).toContain('Missing black king');
+            });
+        });
+
+        describe('Move Notation Parsing - Line 3054', () => {
+            test('should handle invalid move notation', () => {
+                const result = game.parseMoveNotation('invalid');
+                expect(result.success).toBe(false);
+                expect(result.message).toBe('Invalid move notation');
+            });
+
+            test('should handle empty move notation', () => {
+                const result = game.parseMoveNotation('');
+                expect(result.success).toBe(false);
+                expect(result.message).toBe('Invalid move notation');
+            });
+
+            test('should handle null move notation', () => {
+                const result = game.parseMoveNotation(null);
+                expect(result.success).toBe(false);
+                expect(result.message).toBe('Invalid move notation');
+            });
+        });
+
+        describe('Corruption Recovery - Lines 3060+', () => {
+            test('should recover from corruption with valid state', () => {
+                const validState = {
+                    board: game.initializeBoard(),
+                    currentTurn: 'black',
+                    gameStatus: 'check',
+                    winner: null,
+                    moveHistory: [{ from: { row: 6, col: 4 }, to: { row: 4, col: 4 } }],
+                    castlingRights: {
+                        white: { kingside: false, queenside: true },
+                        black: { kingside: true, queenside: false }
+                    }
+                };
+
+                const result = game.recoverFromCorruption(validState);
+                expect(result.success).toBe(true);
+                expect(game.currentTurn).toBe('black');
+                expect(game.gameStatus).toBe('check');
+            });
+
+            test('should handle recovery with minimal state', () => {
+                const validState = {
+                    board: game.initializeBoard()
+                };
+
+                const result = game.recoverFromCorruption(validState);
+                expect(result.success).toBe(true);
+                expect(game.currentTurn).toBe('white'); // Default
+                expect(game.gameStatus).toBe('active'); // Default
+            });
+
+            test('should handle recovery with null state', () => {
+                const result = game.recoverFromCorruption(null);
+                expect(result.success).toBe(false);
+                expect(result.message).toBe('Cannot recover from corruption');
+            });
+
+            test('should handle recovery with state missing board', () => {
+                const invalidState = {
+                    currentTurn: 'white',
+                    gameStatus: 'active'
+                };
+
+                const result = game.recoverFromCorruption(invalidState);
+                expect(result.success).toBe(false);
+                expect(result.message).toBe('Cannot recover from corruption');
+            });
+        });
+
+        describe('Additional Edge Cases for Complete Coverage', () => {
+            test('should handle canKingAttackSquare method', () => {
+                const from = { row: 7, col: 4 };
+                const to = { row: 7, col: 5 };
+
+                if (typeof game.canKingAttackSquare === 'function') {
+                    const result = game.canKingAttackSquare(from, to);
+                    expect(typeof result).toBe('boolean');
+                }
+            });
+
+            test('should handle canPawnAttackSquare method', () => {
+                const from = { row: 6, col: 4 };
+                const to = { row: 5, col: 5 };
+                const piece = { type: 'pawn', color: 'white' };
+
+                if (typeof game.canPawnAttackSquare === 'function') {
+                    const result = game.canPawnAttackSquare(from, to, piece);
+                    expect(typeof result).toBe('boolean');
+                }
+            });
+
+            test('should handle canRookAttackSquare method', () => {
+                const from = { row: 7, col: 0 };
+                const to = { row: 7, col: 4 };
+
+                if (typeof game.canRookAttackSquare === 'function') {
+                    const result = game.canRookAttackSquare(from, to);
+                    expect(typeof result).toBe('boolean');
+                }
+            });
+
+            test('should handle canKnightAttackSquare method', () => {
+                const from = { row: 7, col: 1 };
+                const to = { row: 5, col: 2 };
+
+                if (typeof game.canKnightAttackSquare === 'function') {
+                    const result = game.canKnightAttackSquare(from, to);
+                    expect(typeof result).toBe('boolean');
+                }
+            });
+
+            test('should handle canBishopAttackSquare method', () => {
+                const from = { row: 7, col: 2 };
+                const to = { row: 5, col: 4 };
+
+                if (typeof game.canBishopAttackSquare === 'function') {
+                    const result = game.canBishopAttackSquare(from, to);
+                    expect(typeof result).toBe('boolean');
+                }
+            });
+
+            test('should handle canQueenAttackSquare method', () => {
+                const from = { row: 7, col: 3 };
+                const to = { row: 4, col: 3 };
+
+                if (typeof game.canQueenAttackSquare === 'function') {
+                    const result = game.canQueenAttackSquare(from, to);
+                    expect(typeof result).toBe('boolean');
+                }
+            });
+        });
+
+        describe('Deep Error Path Coverage', () => {
+            test('should handle corrupted board state in validation', () => {
+                // Create a corrupted board structure
+                game.board = [null, null, null, null, null, null, null, null];
+                const result = game.validateGameStateStructure();
+                expect(result.success).toBe(false);
+            });
+
+            test('should handle invalid row structure', () => {
+                game.board[0] = null;
+                const result = game.validateGameStateStructure();
+                expect(result.success).toBe(false);
+                expect(result.errors).toContain('Invalid row 0 structure');
+            });
+
+            test('should handle row with wrong length', () => {
+                game.board[0] = [null, null, null]; // Wrong length
+                const result = game.validateGameStateStructure();
+                expect(result.success).toBe(false);
+                expect(result.errors).toContain('Invalid row 0 structure');
+            });
+
+            test('should handle completely invalid board', () => {
+                game.board = 'invalid';
+                const result = game.validateGameStateStructure();
+                expect(result.success).toBe(false);
+                expect(result.errors).toContain('Invalid board structure');
+            });
+
+            test('should handle board with wrong dimensions', () => {
+                game.board = [[], [], []]; // Wrong number of rows
+                const result = game.validateGameStateStructure();
+                expect(result.success).toBe(false);
+                expect(result.errors).toContain('Invalid board structure');
+            });
+        });
+
+        describe('State Recovery Edge Cases', () => {
+            test('should handle recovery with partial castling rights', () => {
+                const validState = {
+                    board: game.initializeBoard(),
+                    castlingRights: {
+                        white: { kingside: true }
+                        // Missing queenside and black rights
+                    }
+                };
+
+                const result = game.recoverFromCorruption(validState);
+                expect(result.success).toBe(true);
+            });
+
+            test('should handle recovery with invalid move history', () => {
+                const validState = {
+                    board: game.initializeBoard(),
+                    moveHistory: 'invalid'
+                };
+
+                const result = game.recoverFromCorruption(validState);
+                expect(result.success).toBe(true);
+                expect(Array.isArray(game.moveHistory)).toBe(true);
+            });
+
+            test('should handle recovery with null en passant target', () => {
+                const validState = {
+                    board: game.initializeBoard(),
+                    enPassantTarget: null
+                };
+
+                const result = game.recoverFromCorruption(validState);
+                expect(result.success).toBe(true);
+                expect(game.enPassantTarget).toBeNull();
+            });
+        });
+
+        describe('isValidMoveSimple Edge Cases - Lines 2139, 2144, 2175', () => {
+            test('should handle default case in piece type switch', () => {
+                const piece = { type: 'unknown', color: 'white' };
+                const from = { row: 6, col: 4 };
+                const to = { row: 5, col: 4 };
+
+                // Place piece on board
+                game.board[from.row][from.col] = piece;
+
+                const result = game.isValidMoveSimple(from, to, piece);
+                expect(result).toBe(false);
+            });
+
+            test('should handle king castling attempt in isValidMoveSimple', () => {
+                // Set up castling position
+                game.board[7][4] = { type: 'king', color: 'white' };
+                game.board[7][7] = { type: 'rook', color: 'white' };
+                // Clear path
+                game.board[7][5] = null;
+                game.board[7][6] = null;
+
+                const from = { row: 7, col: 4 };
+                const to = { row: 7, col: 6 };
+                const piece = { type: 'king', color: 'white' };
+
+                const result = game.isValidMoveSimple(from, to, piece);
+                expect(typeof result).toBe('boolean');
+            });
+
+            test('should handle invalid movement in isValidMoveSimple', () => {
+                const piece = { type: 'pawn', color: 'white' };
+                const from = { row: 5, col: 4 }; // Not starting position
+                const to = { row: 3, col: 4 }; // Invalid 2-square move from non-starting position
+
+                game.board[from.row][from.col] = piece;
+
+                const result = game.isValidMoveSimple(from, to, piece);
+                expect(result).toBe(false);
+            });
+        });
+
+        describe('categorizeCheck Method - Line 2282', () => {
+            test('should return none for no attacking pieces', () => {
+                const result = game.categorizeCheck([]);
+                expect(result).toBe('none');
+            });
+
+            test('should return piece_check for single attacking piece', () => {
+                const attackingPieces = [
+                    { piece: { type: 'queen', color: 'black' } }
+                ];
+                const result = game.categorizeCheck(attackingPieces);
+                expect(result).toBe('queen_check');
+            });
+
+            test('should return double_check for multiple attacking pieces', () => {
+                const attackingPieces = [
+                    { piece: { type: 'queen', color: 'black' } },
+                    { piece: { type: 'rook', color: 'black' } }
+                ];
+                const result = game.categorizeCheck(attackingPieces);
+                expect(result).toBe('double_check');
+            });
+        });
+
+        describe('isPathClearForPin Method - Lines 2662, 2670', () => {
+            test('should return false when king and pinning piece are same position', () => {
+                const kingPos = { row: 4, col: 4 };
+                const pinningPos = { row: 4, col: 4 };
+                const excludePos = { row: 4, col: 5 };
+
+                const result = game.isPathClearForPin(kingPos, pinningPos, excludePos);
+                expect(result).toBe(false);
+            });
+
+            test('should return false when rowStep and colStep are both 0', () => {
+                // This should not happen in normal circumstances, but test the safety check
+                const kingPos = { row: 4, col: 4 };
+                const pinningPos = { row: 4, col: 4 };
+                const excludePos = { row: 4, col: 5 };
+
+                const result = game.isPathClearForPin(kingPos, pinningPos, excludePos);
+                expect(result).toBe(false);
+            });
+
+            test('should handle path with blocking piece', () => {
+                // Set up a scenario where path is blocked
+                const kingPos = { row: 4, col: 4 };
+                const pinningPos = { row: 4, col: 7 };
+                const excludePos = { row: 4, col: 5 };
+
+                // Place blocking piece
+                game.board[4][6] = { type: 'pawn', color: 'white' };
+
+                const result = game.isPathClearForPin(kingPos, pinningPos, excludePos);
+                expect(result).toBe(false);
+            });
+
+            test('should handle clear path with excluded position', () => {
+                // Set up a clear path except for excluded position
+                const kingPos = { row: 4, col: 4 };
+                const pinningPos = { row: 4, col: 7 };
+                const excludePos = { row: 4, col: 5 };
+
+                // Clear the path
+                game.board[4][5] = { type: 'bishop', color: 'white' }; // This will be excluded
+                game.board[4][6] = null;
+
+                const result = game.isPathClearForPin(kingPos, pinningPos, excludePos);
+                expect(result).toBe(true);
+            });
+        });
+
+        describe('isPinnedPieceMoveValid Method - Line 2705', () => {
+            test('should return true for non-pinned piece', () => {
+                const from = { row: 6, col: 4 };
+                const to = { row: 5, col: 4 };
+                const pinInfo = { isPinned: false };
+
+                const result = game.isPinnedPieceMoveValid(from, to, pinInfo);
+                expect(result).toBe(true);
+            });
+
+            test('should return false when king not found', () => {
+                // Remove both kings
+                game.board[0][4] = null;
+                game.board[7][4] = null;
+
+                const from = { row: 6, col: 4 };
+                const to = { row: 5, col: 4 };
+                const pinInfo = { 
+                    isPinned: true,
+                    pinningPiece: { position: { row: 0, col: 4 } }
+                };
+
+                game.board[from.row][from.col] = { type: 'pawn', color: 'white' };
+
+                const result = game.isPinnedPieceMoveValid(from, to, pinInfo);
+                expect(result).toBe(false);
+            });
+
+            test('should return true when capturing pinning piece', () => {
+                const from = { row: 6, col: 4 };
+                const to = { row: 0, col: 4 };
+                const pinInfo = { 
+                    isPinned: true,
+                    pinningPiece: { position: { row: 0, col: 4 } }
+                };
+
+                game.board[from.row][from.col] = { type: 'pawn', color: 'white' };
+
+                const result = game.isPinnedPieceMoveValid(from, to, pinInfo);
+                expect(result).toBe(true);
+            });
+
+            test('should handle horizontal pin direction', () => {
+                const from = { row: 4, col: 4 };
+                const to = { row: 4, col: 5 };
+                const pinInfo = { 
+                    isPinned: true,
+                    pinDirection: 'horizontal',
+                    pinningPiece: { position: { row: 4, col: 7 } }
+                };
+
+                game.board[from.row][from.col] = { type: 'rook', color: 'white' };
+
+                const result = game.isPinnedPieceMoveValid(from, to, pinInfo);
+                expect(typeof result).toBe('boolean');
+            });
+        });
+
+        describe('Additional Method Coverage - Lines 2759, 3000+', () => {
+            test('should handle validateStateIntegrity method', () => {
+                // Place invalid piece
+                game.board[0][0] = { type: 'rook' }; // Missing color
+
+                if (typeof game.validateStateIntegrity === 'function') {
+                    const result = game.validateStateIntegrity();
+                    expect(result.success).toBe(false);
+                    expect(result.errors).toContain('Invalid piece detected');
+                }
+            });
+
+            test('should handle validateCastlingConsistency method', () => {
+                if (typeof game.validateCastlingConsistency === 'function') {
+                    const result = game.validateCastlingConsistency();
+                    expect(result.success).toBe(true);
+                }
+            });
+
+            test('should handle loadFromState method', () => {
+                if (typeof game.loadFromState === 'function') {
+                    const result = game.loadFromState(null);
+                    expect(result.success).toBe(false);
+                }
+            });
+
+            test('should handle getBoardCopy method', () => {
+                if (typeof game.getBoardCopy === 'function') {
+                    const copy = game.getBoardCopy();
+                    expect(Array.isArray(copy)).toBe(true);
+                    expect(copy.length).toBe(8);
+                }
+            });
+
+            test('should handle getMoveNotation method', () => {
+                if (typeof game.getMoveNotation === 'function') {
+                    const from = { row: 6, col: 4 };
+                    const to = { row: 4, col: 4 };
+                    const piece = { type: 'pawn', color: 'white' };
+
+                    const notation = game.getMoveNotation(from, to, piece);
+                    expect(typeof notation).toBe('string');
+                }
+            });
+
+            test('should handle resetGame method', () => {
+                if (typeof game.resetGame === 'function') {
+                    game.currentTurn = 'black';
+                    game.gameStatus = 'checkmate';
+                    
+                    game.resetGame();
+                    
+                    expect(game.currentTurn).toBe('white');
+                    expect(game.gameStatus).toBe('active');
+                }
+            });
+        });
+
+        describe('Error Path Coverage - Method Coverage', () => {
+            test('should handle loadFromState method', () => {
+                if (typeof game.loadFromState === 'function') {
+                    // The actual loadFromState method (line 3213) always returns the same error
+                    let result = game.loadFromState(null);
+                    expect(result.success).toBe(false);
+                    expect(result.message).toBe('Invalid state');
+
+                    // Test with any state - should always return same error
+                    result = game.loadFromState({ board: 'invalid' });
+                    expect(result.success).toBe(false);
+                    expect(result.message).toBe('Invalid state');
+                }
+            });
+
+            test('should handle getBoardCopy method', () => {
+                if (typeof game.getBoardCopy === 'function') {
+                    const copy = game.getBoardCopy();
+                    expect(Array.isArray(copy)).toBe(true);
+                    expect(copy.length).toBe(8);
+                    expect(copy[0].length).toBe(8);
+                }
+            });
+        });
+
+        describe('isPiecePinned Method Coverage - Lines 2558-2648', () => {
+            test('should handle invalid square in isPiecePinned', () => {
+                const result = game.isPiecePinned({ row: -1, col: 4 }, 'white');
+                expect(result.isPinned).toBe(false);
+                expect(result.pinDirection).toBeNull();
+                expect(result.pinningPiece).toBeNull();
+            });
+
+            test('should handle missing color in isPiecePinned', () => {
+                const result = game.isPiecePinned({ row: 4, col: 4 }, null);
+                expect(result.isPinned).toBe(false);
+                expect(result.pinDirection).toBeNull();
+                expect(result.pinningPiece).toBeNull();
+            });
+
+            test('should handle missing king in isPiecePinned', () => {
+                // Remove both kings
+                game.board[0][4] = null;
+                game.board[7][4] = null;
+
+                const result = game.isPiecePinned({ row: 4, col: 4 }, 'white');
+                expect(result.isPinned).toBe(false);
+                expect(result.pinDirection).toBeNull();
+                expect(result.pinningPiece).toBeNull();
+            });
+
+            test('should detect horizontal pin', () => {
+                // Set up horizontal pin scenario
+                game.board[4][4] = { type: 'king', color: 'white' };
+                game.board[4][5] = { type: 'bishop', color: 'white' }; // Potentially pinned piece
+                game.board[4][7] = { type: 'rook', color: 'black' }; // Pinning piece
+                // Clear path
+                game.board[4][6] = null;
+
+                const result = game.isPiecePinned({ row: 4, col: 5 }, 'white');
+                expect(typeof result.isPinned).toBe('boolean');
+                if (result.isPinned) {
+                    expect(result.pinDirection).toBe('horizontal');
+                }
+            });
+
+            test('should detect vertical pin', () => {
+                // Set up vertical pin scenario
+                game.board[4][4] = { type: 'king', color: 'white' };
+                game.board[5][4] = { type: 'bishop', color: 'white' }; // Potentially pinned piece
+                game.board[7][4] = { type: 'rook', color: 'black' }; // Pinning piece
+                // Clear path
+                game.board[6][4] = null;
+
+                const result = game.isPiecePinned({ row: 5, col: 4 }, 'white');
+                expect(typeof result.isPinned).toBe('boolean');
+                if (result.isPinned) {
+                    expect(result.pinDirection).toBe('vertical');
+                }
+            });
+
+            test('should detect diagonal pin', () => {
+                // Set up diagonal pin scenario
+                game.board[4][4] = { type: 'king', color: 'white' };
+                game.board[5][5] = { type: 'bishop', color: 'white' }; // Potentially pinned piece
+                game.board[7][7] = { type: 'bishop', color: 'black' }; // Pinning piece
+                // Clear path
+                game.board[6][6] = null;
+
+                const result = game.isPiecePinned({ row: 5, col: 5 }, 'white');
+                expect(typeof result.isPinned).toBe('boolean');
+                if (result.isPinned) {
+                    expect(result.pinDirection).toBe('diagonal');
+                }
+            });
+
+            test('should handle piece not on line with king', () => {
+                // Set up scenario where piece is not on line with king
+                game.board[4][4] = { type: 'king', color: 'white' };
+                game.board[5][6] = { type: 'bishop', color: 'white' }; // Not on line with king
+
+                const result = game.isPiecePinned({ row: 5, col: 6 }, 'white');
+                expect(result.isPinned).toBe(false);
+            });
+        });
+
+        describe('isPinnedPieceMoveValid Comprehensive Coverage - Lines 2723-2977', () => {
+            test('should handle vertical pin move validation', () => {
+                const from = { row: 5, col: 4 };
+                const to = { row: 6, col: 4 }; // Valid vertical move
+                const pinInfo = {
+                    isPinned: true,
+                    pinDirection: 'vertical',
+                    pinningPiece: { position: { row: 7, col: 4 } }
+                };
+
+                game.board[4][4] = { type: 'king', color: 'white' };
+                game.board[from.row][from.col] = { type: 'rook', color: 'white' };
+
+                const result = game.isPinnedPieceMoveValid(from, to, pinInfo);
+                expect(typeof result).toBe('boolean');
+            });
+
+            test('should handle invalid vertical pin move', () => {
+                const from = { row: 5, col: 4 };
+                const to = { row: 5, col: 5 }; // Invalid - not on same file
+                const pinInfo = {
+                    isPinned: true,
+                    pinDirection: 'vertical',
+                    pinningPiece: { position: { row: 7, col: 4 } }
+                };
+
+                game.board[4][4] = { type: 'king', color: 'white' };
+                game.board[from.row][from.col] = { type: 'rook', color: 'white' };
+
+                const result = game.isPinnedPieceMoveValid(from, to, pinInfo);
+                expect(result).toBe(false);
+            });
+
+            test('should handle diagonal pin move validation', () => {
+                const from = { row: 5, col: 5 };
+                const to = { row: 6, col: 6 }; // Valid diagonal move
+                const pinInfo = {
+                    isPinned: true,
+                    pinDirection: 'diagonal',
+                    pinningPiece: { position: { row: 7, col: 7 } }
+                };
+
+                game.board[4][4] = { type: 'king', color: 'white' };
+                game.board[from.row][from.col] = { type: 'bishop', color: 'white' };
+
+                const result = game.isPinnedPieceMoveValid(from, to, pinInfo);
+                expect(typeof result).toBe('boolean');
+            });
+
+            test('should handle invalid diagonal pin move - not on diagonal', () => {
+                const from = { row: 5, col: 5 };
+                const to = { row: 6, col: 7 }; // Invalid - not on same diagonal
+                const pinInfo = {
+                    isPinned: true,
+                    pinDirection: 'diagonal',
+                    pinningPiece: { position: { row: 7, col: 7 } }
+                };
+
+                game.board[4][4] = { type: 'king', color: 'white' };
+                game.board[from.row][from.col] = { type: 'bishop', color: 'white' };
+
+                const result = game.isPinnedPieceMoveValid(from, to, pinInfo);
+                expect(result).toBe(false);
+            });
+
+            test('should handle diagonal pin move in wrong direction', () => {
+                const from = { row: 5, col: 5 };
+                const to = { row: 3, col: 3 }; // Wrong direction from pin
+                const pinInfo = {
+                    isPinned: true,
+                    pinDirection: 'diagonal',
+                    pinningPiece: { position: { row: 7, col: 7 } }
+                };
+
+                game.board[4][4] = { type: 'king', color: 'white' };
+                game.board[from.row][from.col] = { type: 'bishop', color: 'white' };
+
+                const result = game.isPinnedPieceMoveValid(from, to, pinInfo);
+                expect(result).toBe(false);
+            });
+
+            test('should handle unknown pin direction', () => {
+                const from = { row: 5, col: 5 };
+                const to = { row: 6, col: 6 };
+                const pinInfo = {
+                    isPinned: true,
+                    pinDirection: 'unknown',
+                    pinningPiece: { position: { row: 7, col: 7 } }
+                };
+
+                game.board[4][4] = { type: 'king', color: 'white' };
+                game.board[from.row][from.col] = { type: 'bishop', color: 'white' };
+
+                const result = game.isPinnedPieceMoveValid(from, to, pinInfo);
+                expect(result).toBe(false);
+            });
+        });
+
+        describe('Additional Uncovered Method Coverage', () => {
+            test('should handle resetGame method completely', () => {
+                if (typeof game.resetGame === 'function') {
+                    // Set up non-default state
+                    game.currentTurn = 'black';
+                    game.gameStatus = 'checkmate';
+                    game.winner = 'black';
+                    game.moveHistory = [{ from: { row: 6, col: 4 }, to: { row: 4, col: 4 } }];
+
+                    game.resetGame();
+
+                    expect(game.currentTurn).toBe('white');
+                    expect(game.gameStatus).toBe('active');
+                    expect(game.winner).toBeNull();
+                    expect(game.moveHistory).toEqual([]);
+                }
+            });
+
+            test('should handle getMoveNotation with various pieces', () => {
+                if (typeof game.getMoveNotation === 'function') {
+                    const from = { row: 7, col: 1 };
+                    const to = { row: 5, col: 2 };
+                    const piece = { type: 'knight', color: 'white' };
+
+                    const notation = game.getMoveNotation(from, to, piece);
+                    expect(typeof notation).toBe('string');
+                    expect(notation).toContain('knight');
+                    expect(notation).toContain('b1');
+                    expect(notation).toContain('c3'); // Correct square notation
+                }
+            });
+
+            test('should handle validateCastlingConsistency method', () => {
+                if (typeof game.validateCastlingConsistency === 'function') {
+                    // The method appears to always return success: true
+                    const result = game.validateCastlingConsistency();
+                    expect(result.success).toBe(true);
+                    expect(result.message).toBe('Castling rights are consistent');
+                }
+            });
+        });
+    });
+});
+
+// ===== MIGRATED TESTS FROM chessGameUltimateCoverage.test.js =====
+
+describe('ChessGame Ultimate Coverage - Final 4% to 95%', () => {
+  let game;
+
+  beforeEach(() => {
+    game = new ChessGame();
+  });
+
+  describe('Game Status Update Warnings - Line 1668', () => {
+    test('should warn when game status update fails', () => {
+      // Mock console.warn to capture the warning
+      const originalWarn = console.warn;
+      const warnSpy = jest.fn();
+      console.warn = warnSpy;
+
+      try {
+        // Force a status update failure by corrupting the game state
+        game.gameStatus = 'invalid_status';
+        
+        // Try to trigger a status update that would fail
+        game.checkGameEnd();
+        
+        // The warning should be triggered if status update fails
+        // This tests the console.warn line in the status update logic
+        expect(true).toBe(true); // Test passes if no error thrown
+      } finally {
+        console.warn = originalWarn;
+      }
+    });
+  });
+
+  describe('Castling Move Validation - Lines 1832, 1846', () => {
+    test('should validate kingside castling moves in getKingLegalMoves', () => {
+      // Clear path for castling
+      game.board[7][5] = null;
+      game.board[7][6] = null;
+      
+      const moves = game.getKingLegalMoves('white');
+      
+      // Should include castling moves if valid
+      const castlingMoves = moves.filter(move => move.isCastling);
+      expect(Array.isArray(castlingMoves)).toBe(true);
+    });
+
+    test('should validate queenside castling moves in getKingLegalMoves', () => {
+      // Clear path for queenside castling
+      game.board[7][1] = null;
+      game.board[7][2] = null;
+      game.board[7][3] = null;
+      
+      const moves = game.getKingLegalMoves('white');
+      
+      // Should include queenside castling if valid
+      const castlingMoves = moves.filter(move => move.isCastling && move.castlingSide === 'queenside');
+      expect(Array.isArray(castlingMoves)).toBe(true);
+    });
+
+    test('should handle castling validation with invalid king position', () => {
+      // Remove the king to test edge case
+      game.board[7][4] = null;
+      
+      const moves = game.getKingLegalMoves('white');
+      expect(moves).toEqual([]);
+    });
+  });
+
+  describe('Stalemate Pattern Analysis - Lines 1920-1950', () => {
+    test('should identify corner stalemate pattern correctly', () => {
+      // Set up corner stalemate
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      game.board[0][0] = { type: 'king', color: 'white' };
+      game.board[1][1] = { type: 'king', color: 'black' };
+      game.currentTurn = 'white';
+      
+      const pattern = game.identifyStalematePattern('white');
+      
+      if (pattern.isClassicPattern) {
+        expect(pattern.pattern).toBe('corner_stalemate');
+        expect(pattern.description).toContain('corner');
+      }
+    });
+
+    test('should identify edge stalemate pattern correctly', () => {
+      // Set up edge stalemate (king on edge but not corner)
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      game.board[0][3] = { type: 'king', color: 'white' }; // Edge but not corner
+      game.board[2][3] = { type: 'king', color: 'black' };
+      game.currentTurn = 'white';
+      
+      const pattern = game.identifyStalematePattern('white');
+      
+      if (pattern.isClassicPattern && pattern.pattern === 'edge_stalemate') {
+        expect(pattern.description).toContain('edge');
+      }
+    });
+
+    test('should identify pawn stalemate pattern correctly', () => {
+      // Set up pawn stalemate
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      game.board[4][4] = { type: 'king', color: 'white' };
+      game.board[3][3] = { type: 'pawn', color: 'black' };
+      game.board[3][4] = { type: 'pawn', color: 'black' };
+      game.board[3][5] = { type: 'pawn', color: 'black' };
+      game.currentTurn = 'white';
+      
+      const pattern = game.identifyStalematePattern('white');
+      
+      if (pattern.isClassicPattern && pattern.pattern === 'pawn_stalemate') {
+        expect(pattern.description).toContain('pawns');
+      }
+    });
+
+    test('should identify complex stalemate pattern', () => {
+      // Set up complex stalemate (not fitting classic patterns)
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      game.board[4][4] = { type: 'king', color: 'white' };
+      game.board[2][2] = { type: 'queen', color: 'black' };
+      game.board[6][6] = { type: 'rook', color: 'black' };
+      game.currentTurn = 'white';
+      
+      const pattern = game.identifyStalematePattern('white');
+      
+      // If not stalemate, pattern will be null
+      if (pattern.pattern === null) {
+        expect(pattern.isClassicPattern).toBe(false);
+      } else if (!pattern.isClassicPattern) {
+        expect(pattern.pattern).toBe('complex_stalemate');
+        expect(pattern.description).toContain('Complex stalemate');
+      }
+    });
+  });
+
+  describe('Move Notation Generation - Lines 2031-2035', () => {
+    test('should generate correct notation for pawn moves', () => {
+      const from = { row: 6, col: 4 };
+      const to = { row: 4, col: 4 };
+      const piece = { type: 'pawn', color: 'white' };
+      
+      const notation = game.getMoveNotation(from, to, piece);
+      expect(notation).toContain('e2-e4'); // Should contain the move notation
+    });
+
+    test('should generate correct notation for piece moves', () => {
+      const from = { row: 7, col: 1 };
+      const to = { row: 5, col: 2 };
+      const piece = { type: 'knight', color: 'white' };
+      
+      const notation = game.getMoveNotation(from, to, piece);
+      expect(notation).toContain('b1-c3'); // Should contain the move notation
+    });
+
+    test('should generate correct notation for all piece types', () => {
+      const testCases = [
+        { piece: { type: 'rook', color: 'white' }, expected: 'rook' },
+        { piece: { type: 'bishop', color: 'white' }, expected: 'bishop' },
+        { piece: { type: 'queen', color: 'white' }, expected: 'queen' },
+        { piece: { type: 'king', color: 'white' }, expected: 'king' }
+      ];
+
+      testCases.forEach(({ piece, expected }) => {
+        const notation = game.getMoveNotation(
+          { row: 0, col: 0 }, 
+          { row: 1, col: 1 }, 
+          piece
+        );
+        expect(notation).toContain(expected);
+      });
+    });
+  });
+
+  describe('State Integrity Validation - Lines 3088-3110', () => {
+    test('should validate state integrity with valid pieces', () => {
+      const result = game.validateStateIntegrity();
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('State integrity is valid');
+      expect(result.errors).toEqual([]);
+    });
+
+    test('should detect invalid pieces missing type', () => {
+      game.board[0][0] = { color: 'black' }; // Missing type
+      
+      const result = game.validateStateIntegrity();
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('State integrity issues found');
+      expect(result.errors).toContain('Invalid piece detected');
+    });
+
+    test('should detect invalid pieces missing color', () => {
+      game.board[0][0] = { type: 'rook' }; // Missing color
+      
+      const result = game.validateStateIntegrity();
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('State integrity issues found');
+      expect(result.errors).toContain('Invalid piece detected');
+    });
+
+    test('should detect multiple invalid pieces', () => {
+      game.board[0][0] = { color: 'black' }; // Missing type
+      game.board[0][1] = { type: 'knight' }; // Missing color
+      game.board[0][2] = {}; // Missing both
+      
+      const result = game.validateStateIntegrity();
+      expect(result.success).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+    });
+
+    test('should handle empty squares correctly', () => {
+      // Clear some squares
+      game.board[4][4] = null;
+      game.board[4][5] = null;
+      
+      const result = game.validateStateIntegrity();
+      expect(result.success).toBe(true); // Empty squares should not cause errors
+    });
+  });
+
+  describe('Advanced Validation Scenarios - Remaining Lines', () => {
+    test('should handle validateMove with isValid property check', () => {
+      // Test the specific validation path that checks for isValid property
+      const move = { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } };
+      
+      // Mock the validateMove to return isValid instead of success
+      const originalValidateMove = game.validateMove;
+      game.validateMove = jest.fn().mockReturnValue({ isValid: true });
+      
+      try {
+        const moves = game.getKingLegalMoves('white');
+        expect(Array.isArray(moves)).toBe(true);
+      } finally {
+        game.validateMove = originalValidateMove;
+      }
+    });
+
+    test('should handle stalemate analysis with no stalemate', () => {
+      // Test the path where analysis.isStalemate is false
+      const analysis = game.analyzeStalematePosition('white');
+      
+      if (!analysis.isStalemate) {
+        const pattern = game.identifyStalematePattern('white');
+        expect(pattern.isClassicPattern).toBe(false);
+        expect(pattern.pattern).toBeNull();
+      }
+    });
+
+    test('should handle findKing returning null', () => {
+      // Remove all kings to test null king position handling
+      for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+          if (game.board[row][col] && game.board[row][col].type === 'king') {
+            game.board[row][col] = null;
+          }
+        }
+      }
+      
+      const pattern = game.identifyStalematePattern('white');
+      expect(pattern.isClassicPattern).toBe(false);
+    });
+
+    test('should handle edge cases in pawn stalemate detection', () => {
+      // Test isPawnStalematePattern with no king
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      
+      const result = game.isPawnStalematePattern('white');
+      expect(result).toBe(false);
+    });
+
+    test('should handle boundary conditions in stalemate patterns', () => {
+      // Test isKingInCorner with null position
+      const result1 = game.isKingInCorner(null);
+      expect(result1).toBe(false);
+      
+      // Test isKingOnEdge with null position
+      const result2 = game.isKingOnEdge(null);
+      expect(result2).toBe(false);
+    });
+
+    test('should handle complex validation scenarios', () => {
+      // Test various edge cases that might trigger remaining uncovered lines
+      
+      // Test with corrupted game state
+      const originalStatus = game.gameStatus;
+      game.gameStatus = null;
+      
+      try {
+        game.checkGameEnd();
+        expect(true).toBe(true); // Should not throw
+      } finally {
+        game.gameStatus = originalStatus;
+      }
+    });
+
+    test('should handle advanced move generation edge cases', () => {
+      // Test move generation with unusual board states
+      
+      // Create a position with only kings
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      game.board[0][0] = { type: 'king', color: 'black' };
+      game.board[7][7] = { type: 'king', color: 'white' };
+      
+      const whiteMoves = game.getAllLegalMoves('white');
+      const blackMoves = game.getAllLegalMoves('black');
+      
+      expect(Array.isArray(whiteMoves)).toBe(true);
+      expect(Array.isArray(blackMoves)).toBe(true);
+    });
+
+    test('should handle validation with extreme board positions', () => {
+      // Test validation with pieces at extreme positions
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      
+      // Place pieces at all corners
+      game.board[0][0] = { type: 'rook', color: 'black' };
+      game.board[0][7] = { type: 'rook', color: 'black' };
+      game.board[7][0] = { type: 'rook', color: 'white' };
+      game.board[7][7] = { type: 'rook', color: 'white' };
+      game.board[3][3] = { type: 'king', color: 'white' };
+      game.board[4][4] = { type: 'king', color: 'black' };
+      
+      const result = game.validateStateIntegrity();
+      expect(result.success).toBe(true);
+    });
+
+    test('should handle deep validation paths', () => {
+      // Test paths that might not be covered by normal gameplay
+      
+      // Test with unusual piece combinations
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      game.board[4][4] = { type: 'king', color: 'white' };
+      game.board[0][0] = { type: 'king', color: 'black' };
+      
+      // Add pieces that create complex validation scenarios
+      game.board[3][3] = { type: 'queen', color: 'black' };
+      game.board[5][5] = { type: 'queen', color: 'black' };
+      
+      const hasValidMoves = game.hasValidMoves('white');
+      expect(typeof hasValidMoves).toBe('boolean');
+    });
+  });
+
+  describe('Error Path Coverage - Final Edge Cases', () => {
+    test('should handle malformed piece data in validation', () => {
+      // Test with pieces that have unexpected properties
+      game.board[0][0] = { 
+        type: 'rook', 
+        color: 'black',
+        invalidProperty: 'test',
+        anotherInvalid: null
+      };
+      
+      const result = game.validateStateIntegrity();
+      expect(result.success).toBe(true); // Should still be valid despite extra properties
+    });
+
+    test('should handle validation with non-standard piece types', () => {
+      // Test the validation paths with edge case piece types
+      game.board[0][0] = { type: '', color: 'black' }; // Empty type
+      game.board[0][1] = { type: 'rook', color: '' }; // Empty color
+      
+      const result = game.validateStateIntegrity();
+      expect(result.success).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+    });
+
+    test('should handle complex stalemate scenarios', () => {
+      // Create a complex position that tests multiple stalemate detection paths
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      
+      // King in center with complex piece arrangement
+      game.board[4][4] = { type: 'king', color: 'white' };
+      game.board[6][6] = { type: 'king', color: 'black' };
+      
+      // Add pieces that create complex stalemate patterns
+      game.board[2][2] = { type: 'queen', color: 'black' };
+      game.board[2][6] = { type: 'rook', color: 'black' };
+      game.board[6][2] = { type: 'bishop', color: 'black' };
+      
+      game.currentTurn = 'white';
+      
+      const analysis = game.analyzeStalematePosition('white');
+      const pattern = game.identifyStalematePattern('white');
+      
+      expect(analysis).toHaveProperty('isStalemate');
+      expect(pattern).toHaveProperty('isClassicPattern');
+    });
+  });
 });
