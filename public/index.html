@@ -7,6 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#667eea">
+    <meta name="description" content="Play chess online with friends in real-time. WebChess offers multiplayer chess games, practice mode, and AI opponents. No registration required.">
     <title>WebChess - Online Chess Game</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♔</text></svg>">
     <link rel="stylesheet" href="styles.css">
@@ -21,7 +22,7 @@
 <body>
     <a href="#main-content" class="skip-link">Skip to main content</a>
     <div class="container">
-        <header>
+        <header role="banner">
             <h1>WebChess</h1>
             <p>Two-Player Online Chess</p>
         </header>
@@ -38,24 +39,24 @@
 
             <!-- Main Menu -->
             <div id="main-menu" class="screen hidden">
-                <div class="menu-buttons">
+                <nav class="menu-buttons" role="navigation" aria-label="Main menu options">
                     <div id="resume-section" class="resume-section hidden">
-                        <button id="resume-btn" class="btn btn-success">Resume Game</button>
+                        <button id="resume-btn" class="btn btn-success" aria-label="Resume your active chess game">Resume Game</button>
                         <p id="resume-info" class="resume-info">Return to your active game</p>
                     </div>
                     <button id="host-btn" class="btn btn-primary" aria-label="Host a new chess game">Host Game</button>
                     <button id="join-btn" class="btn btn-primary" aria-label="Join an existing chess game">Join Game</button>
                     <button id="practice-btn" class="btn btn-secondary" aria-label="Start practice mode">Practice</button>
                     <button id="run-tests-btn" class="btn btn-warning" aria-label="Run test suite">🧪 Run Tests</button>
-                </div>
+                </nav>
             </div>
 
             <!-- Host Game Screen -->
             <div id="host-screen" class="screen hidden">
                 <h2>Host Game</h2>
-                <div class="game-info">
+                <div class="game-info" role="status" aria-live="polite">
                     <p>Share this Game ID with your opponent:</p>
-                    <div id="game-id-display" class="game-id-large"></div>
+                    <div id="game-id-display" class="game-id-large" role="text" aria-label="Game ID for sharing"></div>
                     <p class="status">Waiting for opponent to join...</p>
                 </div>
                 <button id="cancel-host-btn" class="btn btn-secondary" aria-label="Cancel hosting game">Cancel</button>
@@ -63,13 +64,13 @@
 
             <!-- Join Game Screen -->
             <div id="join-screen" class="screen hidden">
-                <h2>Join Game</h2>
-                <div class="join-form">
+                <h2 id="join-screen-title">Join Game</h2>
+                <form class="join-form" role="form" aria-labelledby="join-screen-title">
                     <label for="game-id-input">Enter Game ID:</label>
-                    <input type="text" id="game-id-input" placeholder="Enter 6-character game ID" maxlength="6" aria-describedby="game-id-help" aria-required="true">
+                    <input type="text" id="game-id-input" placeholder="Enter 6-character game ID" maxlength="6" aria-describedby="game-id-help" aria-required="true" autocomplete="off" spellcheck="false">
                     <div id="game-id-help" class="sr-only">Enter the 6-character game ID provided by your opponent</div>
-                    <button id="join-game-btn" class="btn btn-primary" aria-label="Join game with entered ID">Join Game</button>
-                </div>
+                    <button id="join-game-btn" class="btn btn-primary" aria-label="Join game with entered ID" type="button">Join Game</button>
+                </form>
                 <button id="cancel-join-btn" class="btn btn-secondary" aria-label="Return to main menu">Back to Menu</button>
                 <div id="join-error" class="error-message hidden" role="alert" aria-live="assertive"></div>
             </div>
@@ -110,12 +111,12 @@
             <div id="game-screen" class="screen hidden">
                 <div class="game-header">
                     <div class="game-info">
-                        <span id="game-id-small"></span>
-                        <span id="player-color"></span>
+                        <span id="game-id-small" role="text" aria-label="Current game ID"></span>
+                        <span id="player-color" role="text" aria-label="Your piece color"></span>
                     </div>
-                    <div class="game-status">
-                        <span id="turn-indicator"></span>
-                        <span id="check-indicator" class="hidden">CHECK!</span>
+                    <div class="game-status" role="status" aria-live="assertive">
+                        <span id="turn-indicator" aria-label="Current turn indicator"></span>
+                        <span id="check-indicator" class="hidden" role="alert">CHECK!</span>
                     </div>
                     <div class="game-actions">
                         <button id="resign-btn" class="btn btn-danger" aria-label="Resign from current game">Resign</button>
@@ -142,8 +143,8 @@
                         </div>
                         
                         <div class="connection-status">
-                            <div id="connection-indicator" class="connection-indicator connected">
-                                <span class="indicator-dot"></span>
+                            <div id="connection-indicator" class="connection-indicator connected" role="status" aria-live="polite" aria-label="Connection status">
+                                <span class="indicator-dot" aria-hidden="true"></span>
                                 <span class="indicator-text">Connected</span>
                             </div>
                         </div>
@@ -179,9 +180,9 @@
 
             <!-- Game End Screen -->
             <div id="game-end-screen" class="screen hidden">
-                <div class="game-end-content">
+                <div class="game-end-content" role="dialog" aria-labelledby="game-end-title" aria-modal="true">
                     <h2 id="game-end-title">Game Over</h2>
-                    <p id="game-end-message"></p>
+                    <p id="game-end-message" role="status"></p>
                     <div class="game-end-actions">
                         <button id="new-game-btn" class="btn btn-primary" aria-label="Start a new game">New Game</button>
                         <button id="back-to-menu-btn" class="btn btn-secondary" aria-label="Return to main menu">Back to Menu</button>
