@@ -109,3 +109,4 @@ devTemp.js
 
 # Test backup directories (temporary, should not be committed)
 tests_backup_*/
+lighthouse-report.html
