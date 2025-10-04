@@ -8,6 +8,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#667eea">
     <title>WebChess - Online Chess Game</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♔</text></svg>">
     <link rel="stylesheet" href="styles.css">
     <script>
         // Cache busting for CSS
@@ -18,18 +19,19 @@
     </script>
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
     <div class="container">
         <header>
             <h1>WebChess</h1>
             <p>Two-Player Online Chess</p>
         </header>
 
-        <main>
+        <main role="main" id="main-content">
             <!-- Loading Screen -->
-            <div id="loading-screen" class="screen">
+            <div id="loading-screen" class="screen" role="status" aria-live="polite">
                 <div class="loading-content">
                     <h2>Loading WebChess...</h2>
-                    <div class="loading-spinner"></div>
+                    <div class="loading-spinner" aria-hidden="true"></div>
                     <p id="loading-status">Initializing game engine...</p>
                 </div>
             </div>
@@ -41,10 +43,10 @@
                         <button id="resume-btn" class="btn btn-success">Resume Game</button>
                         <p id="resume-info" class="resume-info">Return to your active game</p>
                     </div>
-                    <button id="host-btn" class="btn btn-primary">Host Game</button>
-                    <button id="join-btn" class="btn btn-primary">Join Game</button>
-                    <button id="practice-btn" class="btn btn-secondary">Practice</button>
-                    <button id="run-tests-btn" class="btn btn-warning">🧪 Run Tests</button>
+                    <button id="host-btn" class="btn btn-primary" aria-label="Host a new chess game">Host Game</button>
+                    <button id="join-btn" class="btn btn-primary" aria-label="Join an existing chess game">Join Game</button>
+                    <button id="practice-btn" class="btn btn-secondary" aria-label="Start practice mode">Practice</button>
+                    <button id="run-tests-btn" class="btn btn-warning" aria-label="Run test suite">🧪 Run Tests</button>
                 </div>
             </div>
 
@@ -56,7 +58,7 @@
                     <div id="game-id-display" class="game-id-large"></div>
                     <p class="status">Waiting for opponent to join...</p>
                 </div>
-                <button id="cancel-host-btn" class="btn btn-secondary">Cancel</button>
+                <button id="cancel-host-btn" class="btn btn-secondary" aria-label="Cancel hosting game">Cancel</button>
             </div>
 
             <!-- Join Game Screen -->
@@ -64,11 +66,12 @@
                 <h2>Join Game</h2>
                 <div class="join-form">
                     <label for="game-id-input">Enter Game ID:</label>
-                    <input type="text" id="game-id-input" placeholder="Enter 6-character game ID" maxlength="6">
-                    <button id="join-game-btn" class="btn btn-primary">Join Game</button>
+                    <input type="text" id="game-id-input" placeholder="Enter 6-character game ID" maxlength="6" aria-describedby="game-id-help" aria-required="true">
+                    <div id="game-id-help" class="sr-only">Enter the 6-character game ID provided by your opponent</div>
+                    <button id="join-game-btn" class="btn btn-primary" aria-label="Join game with entered ID">Join Game</button>
                 </div>
-                <button id="cancel-join-btn" class="btn btn-secondary">Back to Menu</button>
-                <div id="join-error" class="error-message hidden"></div>
+                <button id="cancel-join-btn" class="btn btn-secondary" aria-label="Return to main menu">Back to Menu</button>
+                <div id="join-error" class="error-message hidden" role="alert" aria-live="assertive"></div>
             </div>
 
             <!-- Practice Mode Selection Screen -->
@@ -76,31 +79,31 @@
                 <h2>Practice Mode</h2>
                 <div class="practice-options">
                     <div class="practice-option">
-                        <button id="practice-self-btn" class="btn btn-primary">Play Both Sides</button>
-                        <p>Control both white and black pieces</p>
+                        <button id="practice-self-btn" class="btn btn-primary" aria-describedby="practice-self-desc">Play Both Sides</button>
+                        <p id="practice-self-desc">Control both white and black pieces</p>
                     </div>
                     <div class="practice-option">
-                        <button id="practice-ai-white-btn" class="btn btn-primary">Play as White vs AI</button>
-                        <p>You play white, AI plays black</p>
+                        <button id="practice-ai-white-btn" class="btn btn-primary" aria-describedby="practice-white-desc">Play as White vs AI</button>
+                        <p id="practice-white-desc">You play white, AI plays black</p>
                     </div>
                     <div class="practice-option">
-                        <button id="practice-ai-black-btn" class="btn btn-primary">Play as Black vs AI</button>
-                        <p>You play black, AI plays white</p>
+                        <button id="practice-ai-black-btn" class="btn btn-primary" aria-describedby="practice-black-desc">Play as Black vs AI</button>
+                        <p id="practice-black-desc">You play black, AI plays white</p>
                     </div>
                     <div class="practice-option">
-                        <button id="practice-ai-vs-ai-btn" class="btn btn-secondary">Watch AI vs AI</button>
-                        <p>Watch two AI players compete</p>
+                        <button id="practice-ai-vs-ai-btn" class="btn btn-secondary" aria-describedby="practice-ai-desc">Watch AI vs AI</button>
+                        <p id="practice-ai-desc">Watch two AI players compete</p>
                     </div>
                 </div>
                 <div class="ai-difficulty">
                     <label for="difficulty-select">AI Difficulty:</label>
-                    <select id="difficulty-select">
+                    <select id="difficulty-select" aria-label="Select AI difficulty level">
                         <option value="easy">Easy</option>
                         <option value="medium" selected>Medium</option>
                         <option value="hard">Hard</option>
                     </select>
                 </div>
-                <button id="cancel-practice-btn" class="btn btn-secondary">Back to Menu</button>
+                <button id="cancel-practice-btn" class="btn btn-secondary" aria-label="Return to main menu">Back to Menu</button>
             </div>
 
             <!-- Game Board Screen -->
@@ -115,27 +118,27 @@
                         <span id="check-indicator" class="hidden">CHECK!</span>
                     </div>
                     <div class="game-actions">
-                        <button id="resign-btn" class="btn btn-danger">Resign</button>
-                        <button id="leave-game-btn" class="btn btn-secondary">Leave Game</button>
-                        <button id="debug-dump-btn" class="btn btn-warning">🐛 Debug</button>
-                        <button id="mobile-chat-toggle" class="btn btn-info mobile-only hidden">Chat</button>
-                        <button id="fullscreen-btn" class="btn btn-secondary mobile-only">⛶</button>
+                        <button id="resign-btn" class="btn btn-danger" aria-label="Resign from current game">Resign</button>
+                        <button id="leave-game-btn" class="btn btn-secondary" aria-label="Leave current game">Leave Game</button>
+                        <button id="debug-dump-btn" class="btn btn-warning" aria-label="Show debug information">🐛 Debug</button>
+                        <button id="mobile-chat-toggle" class="btn btn-info mobile-only hidden" aria-label="Toggle chat window">Chat</button>
+                        <button id="fullscreen-btn" class="btn btn-secondary mobile-only" aria-label="Toggle fullscreen mode">⛶</button>
                         <div id="ai-controls" class="ai-controls hidden">
-                            <button id="pause-ai-btn" class="btn btn-warning">Pause</button>
-                            <button id="step-ai-btn" class="btn btn-info">Step</button>
+                            <button id="pause-ai-btn" class="btn btn-warning" aria-label="Pause AI moves">Pause</button>
+                            <button id="step-ai-btn" class="btn btn-info" aria-label="Make AI move one step">Step</button>
                         </div>
                     </div>
                 </div>
 
                 <div class="game-content">
                     <div class="chess-board-container">
-                        <div id="chess-board" class="chess-board"></div>
+                        <div id="chess-board" class="chess-board" role="grid" aria-label="Chess board with 8x8 squares"></div>
                     </div>
                     
                     <div class="game-sidebar">
                         <div class="move-history">
                             <h3>Move History</h3>
-                            <div id="move-list" class="move-list"></div>
+                            <div id="move-list" class="move-list" role="log" aria-label="Game move history" aria-live="polite"></div>
                         </div>
                         
                         <div class="connection-status">
@@ -147,10 +150,11 @@
                         
                         <div id="chat-section" class="chat-section hidden">
                             <h3>Chat</h3>
-                            <div id="chat-messages" class="chat-messages"></div>
+                            <div id="chat-messages" class="chat-messages" role="log" aria-label="Chat messages" aria-live="polite"></div>
                             <div class="chat-input">
-                                <input type="text" id="chat-input" placeholder="Type a message..." maxlength="200">
-                                <button id="send-chat-btn" class="btn btn-sm">Send</button>
+                                <label for="chat-input" class="sr-only">Chat message</label>
+                                <input type="text" id="chat-input" placeholder="Type a message..." maxlength="200" aria-label="Type chat message">
+                                <button id="send-chat-btn" class="btn btn-sm" aria-label="Send chat message">Send</button>
                             </div>
                         </div>
                     </div>
@@ -162,12 +166,13 @@
                 <div class="mobile-chat-card">
                     <div class="mobile-chat-header">
                         <h3>Chat</h3>
-                        <button id="mobile-chat-close" class="btn btn-sm btn-secondary">×</button>
+                        <button id="mobile-chat-close" class="btn btn-sm btn-secondary" aria-label="Close chat">×</button>
                     </div>
-                    <div id="mobile-chat-messages" class="mobile-chat-messages"></div>
+                    <div id="mobile-chat-messages" class="mobile-chat-messages" role="log" aria-label="Mobile chat messages" aria-live="polite"></div>
                     <div class="mobile-chat-input">
-                        <input type="text" id="mobile-chat-input" placeholder="Type a message..." maxlength="200">
-                        <button id="mobile-send-chat-btn" class="btn btn-sm btn-primary">Send</button>
+                        <label for="mobile-chat-input" class="sr-only">Mobile chat message</label>
+                        <input type="text" id="mobile-chat-input" placeholder="Type a message..." maxlength="200" aria-label="Type mobile chat message">
+                        <button id="mobile-send-chat-btn" class="btn btn-sm btn-primary" aria-label="Send mobile chat message">Send</button>
                     </div>
                 </div>
             </div>
@@ -178,23 +183,23 @@
                     <h2 id="game-end-title">Game Over</h2>
                     <p id="game-end-message"></p>
                     <div class="game-end-actions">
-                        <button id="new-game-btn" class="btn btn-primary">New Game</button>
-                        <button id="back-to-menu-btn" class="btn btn-secondary">Back to Menu</button>
+                        <button id="new-game-btn" class="btn btn-primary" aria-label="Start a new game">New Game</button>
+                        <button id="back-to-menu-btn" class="btn btn-secondary" aria-label="Return to main menu">Back to Menu</button>
                     </div>
                 </div>
             </div>
         </main>
 
         <!-- Pawn Promotion Modal -->
-        <div id="promotion-modal" class="modal hidden">
+        <div id="promotion-modal" class="modal hidden" role="dialog" aria-labelledby="promotion-title" aria-modal="true">
             <div class="modal-content">
-                <h3>Pawn Promotion</h3>
+                <h3 id="promotion-title">Pawn Promotion</h3>
                 <p>Choose a piece to promote your pawn:</p>
-                <div class="promotion-pieces">
-                    <button class="promotion-piece" data-piece="queen">♕</button>
-                    <button class="promotion-piece" data-piece="rook">♖</button>
-                    <button class="promotion-piece" data-piece="bishop">♗</button>
-                    <button class="promotion-piece" data-piece="knight">♘</button>
+                <div class="promotion-pieces" role="group" aria-label="Promotion piece selection">
+                    <button class="promotion-piece" data-piece="queen" aria-label="Promote to Queen">♕</button>
+                    <button class="promotion-piece" data-piece="rook" aria-label="Promote to Rook">♖</button>
+                    <button class="promotion-piece" data-piece="bishop" aria-label="Promote to Bishop">♗</button>
+                    <button class="promotion-piece" data-piece="knight" aria-label="Promote to Knight">♘</button>
                 </div>
             </div>
         </div>
@@ -267,48 +272,16 @@
         // Initialize loading status
         updateLoadingStatus('Loading scripts...');
         
-        // Load test suite files
-        const testFiles = [
-            'test_client.js',
-            'test_game_logic.js', 
-            'comprehensive_unit_tests.js',
-            'integration_tests.js',
-            'test-runner.js'
-        ];
-        
-        let loadedTestFiles = 0;
-        const totalTestFiles = testFiles.length;
-        
-        testFiles.forEach(file => {
-            const script = document.createElement('script');
-            script.src = file + '?v=' + Date.now();
-            script.onload = () => {
-                loadedTestFiles++;
-                console.log(`Test file loaded: ${file} (${loadedTestFiles}/${totalTestFiles})`);
-                if (loadedTestFiles === totalTestFiles) {
-                    console.log('All test files loaded');
-                    // Check if test runner is available and add click handler
-                    setTimeout(() => {
-                        console.log('DynamicTestRunner available:', typeof DynamicTestRunner);
-                        
-                        // Add direct click handler for test button
-                        const testBtn = document.getElementById('run-tests-btn');
-                        if (testBtn && typeof DynamicTestRunner === 'function') {
-                            console.log('Adding direct test button click handler');
-                            testBtn.addEventListener('click', (e) => {
-                                console.log('Test button clicked - creating test runner');
-                                e.preventDefault();
-                                const testRunner = new DynamicTestRunner();
-                                testRunner.createTestUI();
-                            });
-                        }
-                    }, 100);
-                }
-            };
-            script.onerror = (e) => {
-                console.error(`Failed to load test file: ${file}`, e);
-            };
-            document.head.appendChild(script);
+        // Test runner functionality - load only when needed
+        document.addEventListener('DOMContentLoaded', () => {
+            const testBtn = document.getElementById('run-tests-btn');
+            if (testBtn) {
+                testBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    // Open test runner in new window/tab
+                    window.open('/test-runner.html', '_blank');
+                });
+            }
         });
     </script>
 </body>
