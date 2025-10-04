@@ -2,8 +2,6 @@ module.exports = {
   ci: {
     collect: {
       url: ['http://localhost:3000'],
-      startServerCommand: 'npm start',
-      startServerReadyPattern: 'Server running on port',
       numberOfRuns: 3,
     },
     assert: {
