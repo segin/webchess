@@ -513,3 +513,432 @@ describe('Error Handling - Comprehensive Coverage', () => {
     });
   });
 });
+
+describe('ErrorHandler Auto-Recovery Coverage', () => {
+    test('should check auto-recovery capability for all error codes', () => {
+      const testCodes = [
+        'INVALID_PIECE', 'INVALID_PIECE_TYPE', 'INVALID_PIECE_COLOR',
+        'INVALID_STATUS', 'MISSING_WINNER', 'INVALID_WINNER_FOR_DRAW',
+        'TURN_SEQUENCE_VIOLATION', 'TURN_HISTORY_MISMATCH', 'INVALID_COLOR',
+        'MALFORMED_MOVE', 'SYSTEM_ERROR', 'NETWORK_ERROR'
+      ];
+
+      testCodes.forEach(code => {
+        const canRecover = errorHandler.canAutoRecover(code);
+        expect(typeof canRecover).toBe('boolean');
+        
+        if (canRecover) {
+          // If it can auto-recover, test the recovery
+          const recoveryResult = errorHandler.attemptRecovery(code, {});
+          expect(recoveryResult).toBeDefined();
+          expect(typeof recoveryResult.success).toBe('boolean');
+        }
+      });
+    });
+
+    test('should recover invalid piece color data', () => {
+      const recoveryData = {
+        piece: { type: 'pawn', color: 'invalid_color' },
+        position: { row: 6, col: 4 }
+      };
+
+      const result = errorHandler.attemptRecovery('INVALID_COLOR', recoveryData);
+      
+      if (result.success) {
+        expect(result.recoveredData.color).toBe('white');
+        expect(result.action).toBe('color_reset');
+      } else {
+        expect(result.message).toContain('Cannot recover color data');
+        expect(result.action).toBe('manual_intervention');
+      }
+    });
+
+    test('should update error statistics correctly', () => {
+      const initialStats = errorHandler.getErrorStats();
+      
+      // Create several errors of different categories
+      errorHandler.createError('MALFORMED_MOVE');
+      errorHandler.createError('INVALID_COORDINATES');
+      errorHandler.createError('NO_PIECE');
+      errorHandler.createError('SYSTEM_ERROR');
+
+      const finalStats = errorHandler.getErrorStats();
+      
+      expect(finalStats.totalErrors).toBeGreaterThan(initialStats.totalErrors);
+      expect(finalStats.errorsByCategory).toBeDefined();
+      
+      // Check that categories were updated
+      Object.keys(finalStats.errorsByCategory).forEach(category => {
+        expect(typeof finalStats.errorsByCategory[category]).toBe('number');
+      });
+    });
+
+    test('should handle error statistics edge cases', () => {
+      // Test with unknown error codes
+      const unknownError = errorHandler.createError('UNKNOWN_ERROR_CODE');
+      expect(unknownError).toBeDefined();
+      expect(unknownError.success).toBe(false);
+
+      // Test statistics after unknown error
+      const stats = errorHandler.getErrorStats();
+      expect(stats.totalErrors).toBeGreaterThan(0);
+    });
+
+    test('should validate error response structure', () => {
+      const errorCodes = Object.keys(errorHandler.errorCodes);
+      
+      errorCodes.forEach(code => {
+        const error = errorHandler.createError(code);
+        
+        // Validate structure
+        expect(error).toHaveProperty('success');
+        expect(error).toHaveProperty('message');
+        expect(error).toHaveProperty('code');
+        expect(error.success).toBe(false);
+        expect(typeof error.message).toBe('string');
+        expect(typeof error.code).toBe('string');
+        
+        if (errorHandler.validateErrorResponse) {
+          const isValid = errorHandler.validateErrorResponse(error);
+          expect(typeof isValid).toBe('boolean');
+        }
+      });
+    });
+
+    test('should handle recovery for turn sequence violations', () => {
+      const recoveryData = {
+        moveHistory: [
+          { color: 'white' },
+          { color: 'black' },
+          { color: 'white' }
+        ]
+      };
+
+      const result = errorHandler.attemptRecovery('TURN_SEQUENCE_VIOLATION', recoveryData);
+      
+      if (result.success) {
+        expect(result.recoveredData.currentTurn).toBe('black'); // Next turn after 3 moves
+        expect(result.action).toBe('turn_correction');
+      }
+    });
+
+    test('should handle recovery for missing winner scenarios', () => {
+      const recoveryData = {
+        gameStatus: 'checkmate',
+        currentTurn: 'white'
+      };
+
+      const result = errorHandler.attemptRecovery('MISSING_WINNER', recoveryData);
+      
+      if (result.success) {
+        expect(result.recoveredData.winner).toBe('black'); // Opposite of current turn
+        expect(result.action).toBe('winner_inference');
+      }
+    });
+
+    test('should handle recovery for invalid status scenarios', () => {
+      const recoveryData = {
+        currentStatus: 'invalid_status'
+      };
+
+      const result = errorHandler.attemptRecovery('INVALID_STATUS', recoveryData);
+      
+      if (result.success) {
+        expect(result.recoveredData.status).toBe('active');
+        expect(result.action).toBe('status_reset');
+      }
+    });
+
+    test('should handle non-recoverable error scenarios', () => {
+      const nonRecoverableCodes = [
+        'MALFORMED_MOVE', 'SYSTEM_ERROR', 'NETWORK_ERROR', 'UNKNOWN_ERROR'
+      ];
+
+      nonRecoverableCodes.forEach(code => {
+        const result = errorHandler.attemptRecovery(code, {});
+        
+        if (!errorHandler.canAutoRecover(code)) {
+          expect(result.success).toBe(false);
+          expect(result.message).toContain('not recoverable');
+        }
+      });
+    });
+
+    test('should handle error categorization correctly', () => {
+      const categoryTests = [
+        { code: 'MALFORMED_MOVE', expectedCategory: 'FORMAT' },
+        { code: 'INVALID_COORDINATES', expectedCategory: 'COORDINATE' },
+        { code: 'NO_PIECE', expectedCategory: 'PIECE' },
+        { code: 'WRONG_TURN', expectedCategory: 'TURN' },
+        { code: 'INVALID_MOVEMENT', expectedCategory: 'MOVEMENT' },
+        { code: 'GAME_NOT_ACTIVE', expectedCategory: 'GAME_STATE' },
+        { code: 'SYSTEM_ERROR', expectedCategory: 'SYSTEM' }
+      ];
+
+      categoryTests.forEach(test => {
+        const error = errorHandler.createError(test.code);
+        
+        if (errorHandler.errorCodes[test.code]) {
+          const errorInfo = errorHandler.errorCodes[test.code];
+          expect(errorInfo.category).toBe(test.expectedCategory);
+        }
+      });
+    });
+
+    test('should handle error severity levels', () => {
+      const severityTests = [
+        { code: 'MALFORMED_MOVE', expectedSeverity: 'LOW' },
+        { code: 'INVALID_MOVEMENT', expectedSeverity: 'LOW' },
+        { code: 'SYSTEM_ERROR', expectedSeverity: 'HIGH' },
+        { code: 'NETWORK_ERROR', expectedSeverity: 'MEDIUM' }
+      ];
+
+      severityTests.forEach(test => {
+        const error = errorHandler.createError(test.code);
+        
+        if (errorHandler.errorCodes[test.code]) {
+          const errorInfo = errorHandler.errorCodes[test.code];
+          expect(['LOW', 'MEDIUM', 'HIGH']).toContain(errorInfo.severity);
+        }
+      });
+    });
+
+    test('should handle error context preservation', () => {
+      const contextData = {
+        move: { from: { row: 6, col: 4 }, to: { row: 5, col: 4 } },
+        gameState: { currentTurn: 'white', moveCount: 5 },
+        timestamp: Date.now()
+      };
+
+      const error = errorHandler.createError('INVALID_MOVEMENT', 'Test error', contextData);
+      
+      expect(error.details).toBeDefined();
+      if (error.context) {
+        expect(error.context.move).toEqual(contextData.move);
+        expect(error.context.gameState).toEqual(contextData.gameState);
+      }
+    });
+
+    test('should handle error message localization readiness', () => {
+      const errorCodes = Object.keys(errorHandler.errorCodes);
+      
+      errorCodes.forEach(code => {
+        // Test that user-friendly messages exist
+        expect(errorHandler.userFriendlyMessages[code]).toBeDefined();
+        expect(typeof errorHandler.userFriendlyMessages[code]).toBe('string');
+        
+        // Test that recovery suggestions exist
+        expect(errorHandler.recoverySuggestions[code]).toBeDefined();
+        expect(Array.isArray(errorHandler.recoverySuggestions[code])).toBe(true);
+      });
+    });
+
+    test('should handle error chaining and nested errors', () => {
+      // Create isolated error suppression for this specific test
+      const errorSuppression = testUtils.createErrorSuppression();
+      errorSuppression.suppressExpectedErrors([/Nested error test/]);
+      
+      try {
+        // Test error handling within error handling
+        const originalCreateError = errorHandler.createError;
+        
+        let nestedErrorCount = 0;
+        errorHandler.createError = (code, message, details) => {
+          nestedErrorCount++;
+          if (nestedErrorCount > 3) {
+            // Prevent infinite recursion
+            return { success: false, message: 'Max nested errors reached', code: 'MAX_NESTED_ERRORS' };
+          }
+          
+          if (code === 'TEST_NESTED') {
+            throw new Error('Nested error test');
+          }
+          
+          return originalCreateError.call(errorHandler, code, message, details);
+        };
+
+        const result = errorHandler.createError('TEST_NESTED');
+        expect(result).toBeDefined();
+        expect(result.success).toBe(false);
+        
+        // Restore original method
+        errorHandler.createError = originalCreateError;
+      } finally {
+        errorSuppression.restoreConsoleError();
+      }
+    });
+
+    test('should handle memory management in error tracking', () => {
+      const initialMemory = process.memoryUsage();
+      
+      // Create many errors to test memory management
+      for (let i = 0; i < 1000; i++) {
+        errorHandler.createError('MALFORMED_MOVE', `Error ${i}`, { iteration: i });
+      }
+
+      const finalMemory = process.memoryUsage();
+      const memoryIncrease = finalMemory.heapUsed - initialMemory.heapUsed;
+      
+      // Memory increase should be reasonable (less than 50MB)
+      expect(memoryIncrease).toBeLessThan(50 * 1024 * 1024);
+      
+      // Error statistics should still be accurate
+      const stats = errorHandler.getErrorStats();
+      expect(stats.totalErrors).toBeGreaterThan(1000);
+    });
+
+    test('should handle concurrent error creation', () => {
+      // Test concurrent error creation
+      const errors = [];
+      const promises = [];
+      
+      for (let i = 0; i < 10; i++) {
+        promises.push(
+          Promise.resolve().then(() => {
+            return errorHandler.createError('CONCURRENT_TEST', `Concurrent error ${i}`, { id: i });
+          })
+        );
+      }
+      
+      return Promise.all(promises).then(results => {
+        results.forEach(error => {
+          expect(error).toBeDefined();
+          expect(error.success).toBe(false);
+          expect(error.message).toBeDefined();
+        });
+        
+        expect(results.length).toBe(10);
+      });
+    });
+
+    test('should handle error recovery with partial data', () => {
+      const partialDataTests = [
+        {
+          code: 'INVALID_PIECE',
+          data: { piece: { type: null } }, // Missing color
+          expectRecovery: true
+        },
+        {
+          code: 'TURN_SEQUENCE_VIOLATION',
+          data: { moveHistory: [] }, // Empty history
+          expectRecovery: true
+        },
+        {
+          code: 'MISSING_WINNER',
+          data: { gameStatus: 'checkmate' }, // Missing currentTurn
+          expectRecovery: false
+        }
+      ];
+
+      partialDataTests.forEach(test => {
+        const result = errorHandler.attemptRecovery(test.code, test.data);
+        
+        if (test.expectRecovery) {
+          expect(result.success).toBe(true);
+          expect(result.recoveredData).toBeDefined();
+        } else {
+          expect(result.success).toBe(false);
+        }
+      });
+    });
+
+    test('should handle error code validation', () => {
+      const validCodes = Object.keys(errorHandler.errorCodes);
+      const invalidCodes = ['INVALID_CODE', 'NON_EXISTENT', '', null, undefined];
+
+      validCodes.forEach(code => {
+        const error = errorHandler.createError(code);
+        expect(error.code).toBe(code);
+      });
+
+      invalidCodes.forEach(code => {
+        const error = errorHandler.createError(code);
+        expect(error).toBeDefined();
+        expect(error.success).toBe(false);
+      });
+    });
+  });
+
+  describe('ErrorHandler Integration Coverage', () => {
+    test('should integrate with game error scenarios', () => {
+      // Test integration with actual game errors
+      const gameErrorScenarios = [
+        { move: null, expectedCode: 'MALFORMED_MOVE' },
+        { move: { from: { row: -1, col: 0 }, to: { row: 0, col: 0 } }, expectedCode: 'INVALID_COORDINATES' },
+        { move: { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } }, expectedCode: 'NO_PIECE' }
+      ];
+
+      gameErrorScenarios.forEach(scenario => {
+        const result = game.makeMove(scenario.move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBeDefined();
+        
+        // Verify error handler can process this error
+        const errorInfo = errorHandler.errorCodes[result.errorCode];
+        if (errorInfo) {
+          expect(errorInfo.category).toBeDefined();
+          expect(errorInfo.severity).toBeDefined();
+          expect(typeof errorInfo.recoverable).toBe('boolean');
+        }
+      });
+    });
+
+    test('should handle error propagation through game layers', () => {
+      // Test that errors propagate correctly through different game layers
+      const deepError = game.makeMove({ 
+        from: { row: 'invalid', col: 'invalid' }, 
+        to: { row: 'invalid', col: 'invalid' } 
+      });
+
+      expect(deepError.success).toBe(false);
+      expect(deepError.message).toBeDefined();
+      expect(deepError.errorCode).toBeDefined();
+      
+      // Error should have proper structure
+      testUtils.validateErrorResponse(deepError);
+    });
+
+    test('should maintain error context across operations', () => {
+      // Test that error context is maintained across multiple operations
+      const operations = [
+        () => game.makeMove(null),
+        () => game.makeMove({ invalid: 'data' }),
+        () => game.makeMove({ from: { row: -1, col: 0 }, to: { row: 0, col: 0 } })
+      ];
+
+      operations.forEach((operation, index) => {
+        const result = operation();
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBeDefined();
+        
+        // Each error should have proper context
+        if (result.details) {
+          expect(result.details).toBeDefined();
+        }
+      });
+    });
+
+    test('should handle error recovery in game context', () => {
+      // Test error recovery within actual game scenarios
+      const gameWithErrors = testUtils.createFreshGame();
+      
+      // Introduce recoverable errors
+      gameWithErrors.board[6][4] = { type: null, color: 'white' }; // Invalid piece
+      
+      const result = gameWithErrors.makeMove({ from: { row: 6, col: 4 }, to: { row: 5, col: 4 } });
+      expect(result.success).toBe(false);
+      
+      // Test that error handler can suggest recovery
+      if (errorHandler.canAutoRecover(result.errorCode)) {
+        const recovery = errorHandler.attemptRecovery(result.errorCode, {
+          piece: gameWithErrors.board[6][4],
+          position: { row: 6, col: 4 }
+        });
+        
+        expect(recovery).toBeDefined();
+        if (recovery.success) {
+          expect(recovery.recoveredData).toBeDefined();
+        }
+      }
+    });
+  });

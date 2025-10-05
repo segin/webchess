@@ -429,3 +429,231 @@ describe('Game State Management', () => {
     });
   });
 });
+
+describe('GameState Transition Validation Coverage', () => {
+    let gameStateManager;
+
+    beforeEach(() => {
+      const GameStateManager = require('../src/shared/gameState');
+      gameStateManager = new GameStateManager();
+    });
+
+    test('should validate turn transitions correctly', () => {
+      const fromState = {
+        currentTurn: 'white',
+        moveHistory: [],
+        fullMoveNumber: 1
+      };
+      
+      const toState = {
+        currentTurn: 'black', // Valid transition
+        moveHistory: [{ /* move data */ }],
+        fullMoveNumber: 1
+      };
+      
+      const validation = gameStateManager.validateStateTransition(fromState, toState);
+      expect(validation.isValid).toBe(true);
+      expect(validation.errors).toHaveLength(0);
+    });
+
+    test('should detect invalid turn transitions', () => {
+      const fromState = {
+        currentTurn: 'white',
+        moveHistory: [],
+        fullMoveNumber: 1
+      };
+      
+      const toState = {
+        currentTurn: 'white', // Invalid - should be black
+        moveHistory: [{ /* move data */ }],
+        fullMoveNumber: 1
+      };
+      
+      const validation = gameStateManager.validateStateTransition(fromState, toState);
+      expect(validation.isValid).toBe(false);
+      expect(validation.errors).toContain('Invalid turn transition: white -> white');
+    });
+
+    test('should detect move history regression', () => {
+      const fromState = {
+        currentTurn: 'white',
+        moveHistory: [{ move1: true }, { move2: true }],
+        fullMoveNumber: 2
+      };
+      
+      const toState = {
+        currentTurn: 'black',
+        moveHistory: [{ move1: true }], // Decreased length
+        fullMoveNumber: 2
+      };
+      
+      const validation = gameStateManager.validateStateTransition(fromState, toState);
+      expect(validation.isValid).toBe(false);
+      expect(validation.errors).toContain('Move history cannot decrease');
+    });
+
+    test('should detect full move number regression', () => {
+      const fromState = {
+        currentTurn: 'white',
+        moveHistory: [],
+        fullMoveNumber: 5
+      };
+      
+      const toState = {
+        currentTurn: 'black',
+        moveHistory: [{ /* move data */ }],
+        fullMoveNumber: 4 // Decreased
+      };
+      
+      const validation = gameStateManager.validateStateTransition(fromState, toState);
+      expect(validation.isValid).toBe(false);
+      expect(validation.errors).toContain('Full move number cannot decrease');
+    });
+
+    test('should handle state validation with warnings', () => {
+      // Create a state that might generate warnings
+      const fromState = {
+        currentTurn: 'white',
+        moveHistory: [],
+        fullMoveNumber: 1,
+        castlingRights: { white: { kingside: true, queenside: true } }
+      };
+      
+      const toState = {
+        currentTurn: 'black',
+        moveHistory: [{ /* move data */ }],
+        fullMoveNumber: 1,
+        castlingRights: { white: { kingside: false, queenside: true } }
+      };
+      
+      const validation = gameStateManager.validateStateTransition(fromState, toState);
+      expect(validation).toHaveProperty('warnings');
+      expect(validation).toHaveProperty('success');
+    });
+  });
+
+  describe('GameState Serialization and Deserialization Coverage', () => {
+    test('should handle complex game state serialization', () => {
+      // Set up a complex game state
+      game.makeMove({ from: { row: 6, col: 4 }, to: { row: 4, col: 4 } }); // e4
+      game.makeMove({ from: { row: 1, col: 4 }, to: { row: 3, col: 4 } }); // e5
+      
+      const gameState = game.getGameState();
+      const serialized = JSON.stringify(gameState);
+      const deserialized = JSON.parse(serialized);
+      
+      expect(deserialized.currentTurn).toBe(gameState.currentTurn);
+      expect(deserialized.moveHistory).toEqual(gameState.moveHistory);
+      expect(deserialized.board).toEqual(gameState.board);
+    });
+
+    test('should maintain state consistency across operations', () => {
+      const initialState = game.getGameState();
+      
+      // Make several moves
+      const moves = [
+        { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } }, // e4
+        { from: { row: 1, col: 4 }, to: { row: 3, col: 4 } }, // e5
+        { from: { row: 7, col: 6 }, to: { row: 5, col: 5 } }, // Nf3
+        { from: { row: 0, col: 1 }, to: { row: 2, col: 2 } }  // Nc6
+      ];
+      
+      moves.forEach(move => {
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        
+        const currentState = game.getGameState();
+        expect(currentState.stateConsistency).toBeDefined();
+      });
+      
+      const finalState = game.getGameState();
+      expect(finalState.moveHistory.length).toBe(4);
+      expect(finalState.fullMoveNumber).toBe(3); // After 4 half-moves
+    });
+  });
+
+  describe('GameState Error Recovery Coverage', () => {
+    test('should handle corrupted state recovery', () => {
+      const gameState = game.getGameState();
+      
+      // Simulate state corruption
+      const corruptedState = {
+        ...gameState,
+        currentTurn: 'invalid_color',
+        board: null
+      };
+      
+      // The game should handle this gracefully
+      expect(() => {
+        game.validateGameState(corruptedState);
+      }).not.toThrow();
+    });
+
+    test('should validate board integrity', () => {
+      const gameState = game.getGameState();
+      
+      // Test with valid board
+      expect(gameState.board).toBeDefined();
+      expect(gameState.board.length).toBe(8);
+      gameState.board.forEach(row => {
+        expect(row.length).toBe(8);
+      });
+    });
+
+    test('should handle edge case state transitions', () => {
+      // Test rapid state changes
+      for (let i = 0; i < 10; i++) {
+        const state = game.getGameState();
+        expect(state.stateVersion).toBeDefined();
+        
+        // Make a move if possible
+        const validMoves = game.getAllValidMoves(game.currentTurn);
+        if (validMoves.length > 0) {
+          game.makeMove(validMoves[0]);
+        }
+      }
+    });
+  });
+
+  describe('GameState Performance and Memory Coverage', () => {
+    test('should handle large move histories efficiently', () => {
+      const startTime = Date.now();
+      
+      // Generate a long game
+      let moveCount = 0;
+      while (moveCount < 50 && game.getGameState().gameStatus === 'active') {
+        const validMoves = game.getAllValidMoves(game.currentTurn);
+        if (validMoves.length === 0) break;
+        
+        const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+        const result = game.makeMove(randomMove);
+        
+        if (result.success) {
+          moveCount++;
+          
+          // Verify state consistency
+          const state = game.getGameState();
+          expect(state.moveHistory.length).toBe(moveCount);
+        }
+      }
+      
+      const endTime = Date.now();
+      expect(endTime - startTime).toBeLessThan(5000); // Should complete in 5 seconds
+    });
+
+    test('should manage memory efficiently with position history', () => {
+      const initialMemory = process.memoryUsage();
+      
+      // Create many game states
+      for (let i = 0; i < 100; i++) {
+        const state = game.getGameState();
+        expect(state.positionHistory).toBeDefined();
+      }
+      
+      const finalMemory = process.memoryUsage();
+      const memoryIncrease = finalMemory.heapUsed - initialMemory.heapUsed;
+      
+      // Memory increase should be reasonable (less than 50MB)
+      expect(memoryIncrease).toBeLessThan(50 * 1024 * 1024);
+    });
+  });

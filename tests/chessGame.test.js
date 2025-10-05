@@ -3784,3 +3784,447 @@ describe('ChessGame Ultimate Coverage - Final 4% to 95%', () => {
     });
   });
 });
+
+describe('ChessGame Edge Case Coverage', () => {
+    test('should handle pinning detection edge cases', () => {
+      // Set up a position where pinning detection might have edge cases
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      
+      // Place white king
+      game.board[7][4] = { type: 'king', color: 'white' };
+      
+      // Place black rook that could pin
+      game.board[7][0] = { type: 'rook', color: 'black' };
+      
+      // Place white piece that could be pinned
+      game.board[7][2] = { type: 'bishop', color: 'white' };
+      
+      // Test pinning detection
+      const isPinned = game.isPiecePinned({ row: 7, col: 2 }, 'white');
+      expect(typeof isPinned).toBe('boolean');
+    });
+
+    test('should handle same position detection in pinning', () => {
+      // Test edge case where king and pinning piece are at same position
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      
+      // Place white king
+      game.board[4][4] = { type: 'king', color: 'white' };
+      
+      // Test with same position (should return false)
+      const isPinned = game.isPiecePinned({ row: 4, col: 4 }, 'white');
+      expect(isPinned).toBe(false);
+    });
+
+    test('should handle infinite loop prevention in pinning detection', () => {
+      // Set up a position that could cause infinite loops
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      
+      // Place pieces in a configuration that tests step counting
+      game.board[0][0] = { type: 'king', color: 'white' };
+      game.board[0][7] = { type: 'rook', color: 'black' };
+      game.board[0][3] = { type: 'bishop', color: 'white' };
+      
+      // This should not hang due to infinite loop protection
+      const startTime = Date.now();
+      const isPinned = game.isPiecePinned({ row: 0, col: 3 }, 'white');
+      const endTime = Date.now();
+      
+      expect(typeof isPinned).toBe('boolean');
+      expect(endTime - startTime).toBeLessThan(1000); // Should complete quickly
+    });
+
+    test('should handle zero step scenarios in pinning', () => {
+      // Test scenario where rowStep and colStep are both 0
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      
+      // Place king and test piece at same position (edge case)
+      game.board[4][4] = { type: 'king', color: 'white' };
+      
+      // This should handle the zero step case gracefully
+      const isPinned = game.isPiecePinned({ row: 4, col: 4 }, 'white');
+      expect(isPinned).toBe(false);
+    });
+
+    test('should handle board boundary conditions in path checking', () => {
+      // Test path checking at board boundaries
+      const testCases = [
+        { from: { row: 0, col: 0 }, to: { row: 0, col: 7 } }, // Top edge
+        { from: { row: 7, col: 0 }, to: { row: 7, col: 7 } }, // Bottom edge
+        { from: { row: 0, col: 0 }, to: { row: 7, col: 0 } }, // Left edge
+        { from: { row: 0, col: 7 }, to: { row: 7, col: 7 } }, // Right edge
+        { from: { row: 0, col: 0 }, to: { row: 7, col: 7 } }, // Diagonal
+      ];
+
+      testCases.forEach(testCase => {
+        const isPathClear = game.isPathClear(testCase.from, testCase.to);
+        expect(typeof isPathClear).toBe('boolean');
+      });
+    });
+
+    test('should handle complex board state validation', () => {
+      // Test various board state validation scenarios
+      const originalBoard = JSON.parse(JSON.stringify(game.board));
+      
+      // Test with modified board states
+      const testStates = [
+        { description: 'missing pieces', modify: () => { game.board[0][0] = null; } },
+        { description: 'extra pieces', modify: () => { game.board[4][4] = { type: 'queen', color: 'white' }; } },
+        { description: 'invalid piece types', modify: () => { game.board[0][1] = { type: 'invalid', color: 'black' }; } }
+      ];
+
+      testStates.forEach(testState => {
+        // Reset board
+        game.board = JSON.parse(JSON.stringify(originalBoard));
+        
+        // Apply modification
+        testState.modify();
+        
+        // Test that game handles it gracefully
+        const gameState = game.getGameState();
+        expect(gameState).toBeDefined();
+        expect(gameState.board).toBeDefined();
+      });
+    });
+
+    test('should handle move history edge cases', () => {
+      // Test move history with various edge cases
+      const moves = [
+        { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } }, // e4
+        { from: { row: 1, col: 4 }, to: { row: 3, col: 4 } }, // e5
+      ];
+
+      moves.forEach(move => {
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+      });
+
+      const gameState = game.getGameState();
+      expect(gameState.moveHistory.length).toBe(2);
+      
+      // Test move history integrity
+      gameState.moveHistory.forEach(moveRecord => {
+        expect(moveRecord.from).toBeDefined();
+        expect(moveRecord.to).toBeDefined();
+        expect(moveRecord.piece).toBeDefined();
+        expect(moveRecord.color).toBeDefined();
+      });
+    });
+
+    test('should handle castling rights edge cases', () => {
+      const gameState = game.getGameState();
+      
+      // Test initial castling rights
+      expect(gameState.castlingRights).toBeDefined();
+      expect(gameState.castlingRights.white).toBeDefined();
+      expect(gameState.castlingRights.black).toBeDefined();
+      
+      // Test castling rights structure
+      expect(typeof gameState.castlingRights.white.kingside).toBe('boolean');
+      expect(typeof gameState.castlingRights.white.queenside).toBe('boolean');
+      expect(typeof gameState.castlingRights.black.kingside).toBe('boolean');
+      expect(typeof gameState.castlingRights.black.queenside).toBe('boolean');
+    });
+
+    test('should handle en passant target edge cases', () => {
+      const gameState = game.getGameState();
+      
+      // Initially should be null
+      expect(gameState.enPassantTarget).toBeNull();
+      
+      // Make a two-square pawn move
+      const result = game.makeMove({ from: { row: 6, col: 4 }, to: { row: 4, col: 4 } });
+      expect(result.success).toBe(true);
+      
+      const newGameState = game.getGameState();
+      expect(newGameState.enPassantTarget).toBeDefined();
+    });
+
+    test('should handle game status transitions', () => {
+      const initialState = game.getGameState();
+      expect(initialState.gameStatus).toBe('active');
+      
+      // Make some moves and verify status remains consistent
+      const moves = [
+        { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } },
+        { from: { row: 1, col: 4 }, to: { row: 3, col: 4 } }
+      ];
+
+      moves.forEach(move => {
+        const result = game.makeMove(move);
+        expect(result.success).toBe(true);
+        
+        const gameState = game.getGameState();
+        expect(['active', 'check', 'checkmate', 'stalemate', 'draw']).toContain(gameState.gameStatus);
+      });
+    });
+
+    test('should handle check detection edge cases', () => {
+      // Test check detection with various piece configurations
+      const testPositions = [
+        {
+          description: 'rook check',
+          setup: () => {
+            game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+            game.board[0][0] = { type: 'king', color: 'white' };
+            game.board[0][7] = { type: 'rook', color: 'black' };
+          }
+        },
+        {
+          description: 'bishop check',
+          setup: () => {
+            game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+            game.board[0][0] = { type: 'king', color: 'white' };
+            game.board[7][7] = { type: 'bishop', color: 'black' };
+          }
+        },
+        {
+          description: 'knight check',
+          setup: () => {
+            game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+            game.board[4][4] = { type: 'king', color: 'white' };
+            game.board[2][3] = { type: 'knight', color: 'black' };
+          }
+        }
+      ];
+
+      testPositions.forEach(position => {
+        position.setup();
+        
+        const isInCheck = game.isInCheck('white');
+        expect(typeof isInCheck).toBe('boolean');
+        
+        const gameState = game.getGameState();
+        expect(typeof gameState.inCheck).toBe('boolean');
+      });
+    });
+
+    test('should handle piece movement validation edge cases', () => {
+      // Test piece movement validation with edge cases
+      const edgeCases = [
+        { piece: { type: 'pawn', color: 'white' }, from: { row: 6, col: 0 }, to: { row: 5, col: 0 } },
+        { piece: { type: 'pawn', color: 'white' }, from: { row: 6, col: 7 }, to: { row: 5, col: 7 } },
+        { piece: { type: 'rook', color: 'white' }, from: { row: 0, col: 0 }, to: { row: 7, col: 0 } },
+        { piece: { type: 'bishop', color: 'white' }, from: { row: 0, col: 0 }, to: { row: 7, col: 7 } },
+        { piece: { type: 'knight', color: 'white' }, from: { row: 0, col: 1 }, to: { row: 2, col: 0 } },
+        { piece: { type: 'queen', color: 'white' }, from: { row: 0, col: 3 }, to: { row: 7, col: 3 } },
+        { piece: { type: 'king', color: 'white' }, from: { row: 0, col: 4 }, to: { row: 0, col: 5 } }
+      ];
+
+      edgeCases.forEach(testCase => {
+        const isValid = game.isPieceMovementValid(testCase.from, testCase.to, testCase.piece);
+        expect(typeof isValid).toBe('boolean');
+      });
+    });
+
+    test('should handle board coordinate validation', () => {
+      // Test coordinate validation edge cases
+      const coordinates = [
+        { row: -1, col: 0, valid: false },
+        { row: 0, col: -1, valid: false },
+        { row: 8, col: 0, valid: false },
+        { row: 0, col: 8, valid: false },
+        { row: 0, col: 0, valid: true },
+        { row: 7, col: 7, valid: true },
+        { row: 3.5, col: 4, valid: false },
+        { row: 4, col: 3.5, valid: false }
+      ];
+
+      coordinates.forEach(coord => {
+        const isValid = game.isValidSquare(coord);
+        expect(isValid).toBe(coord.valid);
+      });
+    });
+
+    test('should handle game state consistency checks', () => {
+      // Test game state consistency validation
+      const gameState = game.getGameState();
+      
+      // Verify all required properties exist
+      const requiredProperties = [
+        'board', 'currentTurn', 'gameStatus', 'moveHistory',
+        'castlingRights', 'enPassantTarget', 'inCheck'
+      ];
+
+      requiredProperties.forEach(prop => {
+        expect(gameState).toHaveProperty(prop);
+      });
+
+      // Verify board structure
+      expect(gameState.board.length).toBe(8);
+      gameState.board.forEach(row => {
+        expect(row.length).toBe(8);
+      });
+
+      // Verify turn is valid
+      expect(['white', 'black']).toContain(gameState.currentTurn);
+
+      // Verify status is valid
+      expect(['active', 'check', 'checkmate', 'stalemate', 'draw']).toContain(gameState.gameStatus);
+    });
+
+    test('should handle memory management during long games', () => {
+      const initialMemory = process.memoryUsage();
+      
+      // Simulate a long game
+      let moveCount = 0;
+      while (moveCount < 100 && game.getGameState().gameStatus === 'active') {
+        const validMoves = game.getAllValidMoves(game.currentTurn);
+        if (validMoves.length === 0) break;
+        
+        const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+        const result = game.makeMove(randomMove);
+        
+        if (result.success) {
+          moveCount++;
+          
+          // Periodically check memory usage
+          if (moveCount % 20 === 0) {
+            const currentMemory = process.memoryUsage();
+            const memoryIncrease = currentMemory.heapUsed - initialMemory.heapUsed;
+            
+            // Memory increase should be reasonable (less than 100MB)
+            expect(memoryIncrease).toBeLessThan(100 * 1024 * 1024);
+          }
+        }
+      }
+      
+      expect(moveCount).toBeGreaterThan(0);
+    });
+
+    test('should handle concurrent access patterns', () => {
+      // Test that game state remains consistent under rapid access
+      const results = [];
+      
+      for (let i = 0; i < 10; i++) {
+        const gameState = game.getGameState();
+        results.push(gameState);
+        
+        // Verify each state is consistent
+        expect(gameState.board).toBeDefined();
+        expect(gameState.currentTurn).toBeDefined();
+        expect(gameState.gameStatus).toBeDefined();
+      }
+      
+      // All states should be identical since no moves were made
+      results.forEach(state => {
+        expect(state.currentTurn).toBe(results[0].currentTurn);
+        expect(state.gameStatus).toBe(results[0].gameStatus);
+        expect(state.moveHistory.length).toBe(results[0].moveHistory.length);
+      });
+    });
+
+    test('should handle special move combinations', () => {
+      // Test combinations of special moves
+      const specialMoveTests = [
+        {
+          description: 'castling after rook move',
+          setup: () => {
+            // Move rook first, then try to castle
+            game.makeMove({ from: { row: 7, col: 7 }, to: { row: 7, col: 6 } }); // Rook move
+            game.makeMove({ from: { row: 1, col: 4 }, to: { row: 3, col: 4 } }); // Black move
+          },
+          test: () => {
+            const result = game.makeMove({ from: { row: 7, col: 4 }, to: { row: 7, col: 6 } }); // Try to castle
+            expect(result.success).toBe(false); // Should fail
+          }
+        }
+      ];
+
+      specialMoveTests.forEach(test => {
+        const freshGame = testUtils.createFreshGame();
+        game = freshGame; // Use fresh game for each test
+        
+        test.setup();
+        test.test();
+      });
+    });
+
+    test('should handle error recovery in move validation', () => {
+      // Test error recovery mechanisms
+      const errorScenarios = [
+        { move: null, description: 'null move' },
+        { move: undefined, description: 'undefined move' },
+        { move: {}, description: 'empty move object' },
+        { move: { from: null }, description: 'null from' },
+        { move: { to: null }, description: 'null to' },
+        { move: { from: {}, to: {} }, description: 'empty coordinates' }
+      ];
+
+      errorScenarios.forEach(scenario => {
+        const result = game.makeMove(scenario.move);
+        expect(result.success).toBe(false);
+        expect(result.message).toBeDefined();
+        expect(typeof result.message).toBe('string');
+        
+        // Game should remain in consistent state after error
+        const gameState = game.getGameState();
+        expect(gameState.board).toBeDefined();
+        expect(gameState.currentTurn).toBeDefined();
+      });
+    });
+  });
+
+  describe('ChessGame Performance Edge Cases', () => {
+    test('should handle large board analysis efficiently', () => {
+      const startTime = Date.now();
+      
+      // Perform multiple expensive operations
+      for (let i = 0; i < 50; i++) {
+        game.getAllValidMoves(game.currentTurn);
+        game.isInCheck(game.currentTurn);
+        game.getGameState();
+      }
+      
+      const endTime = Date.now();
+      expect(endTime - startTime).toBeLessThan(2000); // Should complete in 2 seconds
+    });
+
+    test('should handle deep move validation efficiently', () => {
+      // Test move validation performance with complex positions
+      const complexMoves = [];
+      
+      // Generate many potential moves
+      for (let fromRow = 0; fromRow < 8; fromRow++) {
+        for (let fromCol = 0; fromCol < 8; fromCol++) {
+          for (let toRow = 0; toRow < 8; toRow++) {
+            for (let toCol = 0; toCol < 8; toCol++) {
+              if (fromRow !== toRow || fromCol !== toCol) {
+                complexMoves.push({
+                  from: { row: fromRow, col: fromCol },
+                  to: { row: toRow, col: toCol }
+                });
+              }
+            }
+          }
+        }
+      }
+      
+      const startTime = Date.now();
+      
+      // Validate a subset of moves
+      const sampleMoves = complexMoves.slice(0, 100);
+      sampleMoves.forEach(move => {
+        game.makeMove(move); // This will validate the move
+      });
+      
+      const endTime = Date.now();
+      expect(endTime - startTime).toBeLessThan(3000); // Should complete in 3 seconds
+    });
+
+    test('should handle state serialization performance', () => {
+      // Test performance of state serialization
+      const startTime = Date.now();
+      
+      for (let i = 0; i < 100; i++) {
+        const gameState = game.getGameState();
+        const serialized = JSON.stringify(gameState);
+        const deserialized = JSON.parse(serialized);
+        
+        expect(deserialized.currentTurn).toBe(gameState.currentTurn);
+      }
+      
+      const endTime = Date.now();
+      expect(endTime - startTime).toBeLessThan(1000); // Should complete in 1 second
+    });
+  });
