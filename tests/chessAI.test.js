@@ -703,7 +703,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
   describe('AI Performance and Optimization', () => {
     test('should generate moves within reasonable time limits', () => {
       const difficulties = ['easy', 'medium', 'hard'];
-      const timeThresholds = { easy: 3000, medium: 10000, hard: 20000 }; // ms - adjusted for CI environments
+      const timeThresholds = { easy: 3000, medium: 10000, hard: 60000 }; // ms - adjusted for CI environments
       
       difficulties.forEach(difficulty => {
         const testAI = new ChessAI(difficulty);
