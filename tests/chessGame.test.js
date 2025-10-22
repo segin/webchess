@@ -3786,7 +3786,13 @@ describe('ChessGame Ultimate Coverage - Final 4% to 95%', () => {
 });
 
 describe('ChessGame Edge Case Coverage', () => {
-    test('should handle pinning detection edge cases', () => {
+  let game;
+
+  beforeEach(() => {
+    game = new ChessGame();
+  });
+
+  test('should handle pinning detection edge cases', () => {
       // Set up a position where pinning detection might have edge cases
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
       
@@ -3800,8 +3806,9 @@ describe('ChessGame Edge Case Coverage', () => {
       game.board[7][2] = { type: 'bishop', color: 'white' };
       
       // Test pinning detection
-      const isPinned = game.isPiecePinned({ row: 7, col: 2 }, 'white');
-      expect(typeof isPinned).toBe('boolean');
+      const pinInfo = game.isPiecePinned({ row: 7, col: 2 }, 'white');
+      expect(typeof pinInfo).toBe('object');
+      expect(typeof pinInfo.isPinned).toBe('boolean');
     });
 
     test('should handle same position detection in pinning', () => {
@@ -3812,8 +3819,8 @@ describe('ChessGame Edge Case Coverage', () => {
       game.board[4][4] = { type: 'king', color: 'white' };
       
       // Test with same position (should return false)
-      const isPinned = game.isPiecePinned({ row: 4, col: 4 }, 'white');
-      expect(isPinned).toBe(false);
+      const pinInfo = game.isPiecePinned({ row: 4, col: 4 }, 'white');
+      expect(pinInfo.isPinned).toBe(false);
     });
 
     test('should handle infinite loop prevention in pinning detection', () => {
@@ -3827,10 +3834,11 @@ describe('ChessGame Edge Case Coverage', () => {
       
       // This should not hang due to infinite loop protection
       const startTime = Date.now();
-      const isPinned = game.isPiecePinned({ row: 0, col: 3 }, 'white');
+      const pinInfo = game.isPiecePinned({ row: 0, col: 3 }, 'white');
       const endTime = Date.now();
       
-      expect(typeof isPinned).toBe('boolean');
+      expect(typeof pinInfo).toBe('object');
+      expect(typeof pinInfo.isPinned).toBe('boolean');
       expect(endTime - startTime).toBeLessThan(1000); // Should complete quickly
     });
 
@@ -3842,8 +3850,8 @@ describe('ChessGame Edge Case Coverage', () => {
       game.board[4][4] = { type: 'king', color: 'white' };
       
       // This should handle the zero step case gracefully
-      const isPinned = game.isPiecePinned({ row: 4, col: 4 }, 'white');
-      expect(isPinned).toBe(false);
+      const pinInfo = game.isPiecePinned({ row: 4, col: 4 }, 'white');
+      expect(pinInfo.isPinned).toBe(false);
     });
 
     test('should handle board boundary conditions in path checking', () => {
@@ -4012,8 +4020,9 @@ describe('ChessGame Edge Case Coverage', () => {
       ];
 
       edgeCases.forEach(testCase => {
-        const isValid = game.isPieceMovementValid(testCase.from, testCase.to, testCase.piece);
-        expect(typeof isValid).toBe('boolean');
+        const validation = game.validateMovementPattern(testCase.from, testCase.to, testCase.piece);
+        expect(typeof validation).toBe('object');
+        expect(typeof validation.success).toBe('boolean');
       });
     });
 
@@ -4166,6 +4175,12 @@ describe('ChessGame Edge Case Coverage', () => {
   });
 
   describe('ChessGame Performance Edge Cases', () => {
+    let game;
+
+    beforeEach(() => {
+      game = new ChessGame();
+    });
+
     test('should handle large board analysis efficiently', () => {
       const startTime = Date.now();
       

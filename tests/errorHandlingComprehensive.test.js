@@ -860,6 +860,14 @@ describe('ErrorHandler Auto-Recovery Coverage', () => {
   });
 
   describe('ErrorHandler Integration Coverage', () => {
+    let game;
+    let errorHandler;
+
+    beforeEach(() => {
+      game = testUtils.createFreshGame();
+      errorHandler = new ChessErrorHandler();
+    });
+
     test('should integrate with game error scenarios', () => {
       // Test integration with actual game errors
       const gameErrorScenarios = [

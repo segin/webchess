@@ -533,6 +533,12 @@ describe('GameState Transition Validation Coverage', () => {
   });
 
   describe('GameState Serialization and Deserialization Coverage', () => {
+    let game;
+
+    beforeEach(() => {
+      game = new ChessGame();
+    });
+
     test('should handle complex game state serialization', () => {
       // Set up a complex game state
       game.makeMove({ from: { row: 6, col: 4 }, to: { row: 4, col: 4 } }); // e4
@@ -573,6 +579,12 @@ describe('GameState Transition Validation Coverage', () => {
   });
 
   describe('GameState Error Recovery Coverage', () => {
+    let game;
+
+    beforeEach(() => {
+      game = new ChessGame();
+    });
+
     test('should handle corrupted state recovery', () => {
       const gameState = game.getGameState();
       
@@ -616,6 +628,12 @@ describe('GameState Transition Validation Coverage', () => {
   });
 
   describe('GameState Performance and Memory Coverage', () => {
+    let game;
+
+    beforeEach(() => {
+      game = new ChessGame();
+    });
+
     test('should handle large move histories efficiently', () => {
       const startTime = Date.now();
       

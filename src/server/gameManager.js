@@ -1,4 +1,6 @@
-const { v4: uuidv4 } = require('uuid');
+// Use crypto.randomUUID() for Node.js 14.17+ instead of uuid package
+const { randomUUID } = require('crypto');
+const uuidv4 = randomUUID;
 const ChessGame = require('../shared/chessGame');
 
 class GameManager {

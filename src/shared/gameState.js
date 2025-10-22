@@ -1294,6 +1294,9 @@ class GameStateManager {
       // Same turn - check if it's a valid same-turn scenario
       if (fromState.moveHistory.length === toState.moveHistory.length) {
         warnings.push('No move made but turn unchanged');
+      } else {
+        // Move was made but turn didn't change - this is invalid
+        errors.push(`Invalid turn transition: ${fromState.currentTurn} -> ${toState.currentTurn}`);
       }
     } else {
       // Turn changed - validate it's the correct alternation
