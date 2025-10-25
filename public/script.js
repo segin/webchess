@@ -1244,27 +1244,33 @@ class WebChessClient {
   }
 
   handleEnPassant(move, piece) {
-    // Clear previous en passant target
-    this.gameState.enPassantTarget = null;
-    
     if (piece.type === 'pawn') {
       const rowDiff = Math.abs(move.to.row - move.from.row);
       
-      // Check if pawn moved two squares (set en passant target)
+      // Check if this is an en passant capture (before clearing the target)
+      const isEnPassantCapture = this.gameState.enPassantTarget &&
+                                 move.to.row === this.gameState.enPassantTarget.row &&
+                                 move.to.col === this.gameState.enPassantTarget.col;
+      
+      if (isEnPassantCapture) {
+        // Remove the captured pawn (which is on the same row as the moving pawn)
+        const capturedPawnRow = move.from.row;
+        this.gameState.board[capturedPawnRow][move.to.col] = null;
+      }
+      
+      // Clear previous en passant target
+      this.gameState.enPassantTarget = null;
+      
+      // Check if pawn moved two squares (set new en passant target)
       if (rowDiff === 2) {
         this.gameState.enPassantTarget = {
           row: (move.from.row + move.to.row) / 2,
           col: move.from.col
         };
       }
-      
-      // Check if this is an en passant capture
-      if (Math.abs(move.to.col - move.from.col) === 1 && 
-          this.gameState.board[move.to.row][move.to.col] === null) {
-        // Remove the captured pawn
-        const capturedPawnRow = piece.color === 'white' ? move.to.row + 1 : move.to.row - 1;
-        this.gameState.board[capturedPawnRow][move.to.col] = null;
-      }
+    } else {
+      // Clear en passant target after any non-pawn move
+      this.gameState.enPassantTarget = null;
     }
   }
 
@@ -1660,7 +1666,19 @@ class WebChessClient {
     
     // Diagonal capture
     if (dx === 1 && dy === direction) {
-      return target && target.color !== piece.color;
+      // Regular diagonal capture
+      if (target && target.color !== piece.color) {
+        return true;
+      }
+      
+      // En passant capture
+      if (this.gameState.enPassantTarget &&
+          move.to.row === this.gameState.enPassantTarget.row &&
+          move.to.col === this.gameState.enPassantTarget.col) {
+        return true;
+      }
+      
+      return false;
     }
     
     return false;
@@ -2202,7 +2220,19 @@ class ChessAI {
     
     // Diagonal capture
     if (dx === 1 && dy === direction) {
-      return target && target.color !== piece.color;
+      // Regular diagonal capture
+      if (target && target.color !== piece.color) {
+        return true;
+      }
+      
+      // En passant capture
+      if (gameState.enPassantTarget &&
+          move.to.row === gameState.enPassantTarget.row &&
+          move.to.col === gameState.enPassantTarget.col) {
+        return true;
+      }
+      
+      return false;
     }
     
     return false;
@@ -2449,7 +2479,19 @@ class ChessAI {
     
     // Diagonal capture
     if (dx === 1 && dy === direction) {
-      return target && target.color !== piece.color;
+      // Regular diagonal capture
+      if (target && target.color !== piece.color) {
+        return true;
+      }
+      
+      // En passant capture
+      if (gameState.enPassantTarget &&
+          move.to.row === gameState.enPassantTarget.row &&
+          move.to.col === gameState.enPassantTarget.col) {
+        return true;
+      }
+      
+      return false;
     }
     
     return false;
