@@ -32,7 +32,7 @@
             <div id="loading-screen" class="screen" role="status" aria-live="polite">
                 <div class="loading-content">
                     <h2>Loading WebChess...</h2>
-                    <div class="loading-spinner" aria-hidden="true"></div>
+                    <div class="loading-spinner" aria-hidden="true" role="img" aria-label="Loading spinner"></div>
                     <p id="loading-status">Initializing game engine...</p>
                 </div>
             </div>
@@ -65,44 +65,48 @@
             <!-- Join Game Screen -->
             <div id="join-screen" class="screen hidden">
                 <h2 id="join-screen-title">Join Game</h2>
-                <form class="join-form" role="form" aria-labelledby="join-screen-title">
-                    <label for="game-id-input">Enter Game ID:</label>
-                    <input type="text" id="game-id-input" placeholder="Enter 6-character game ID" maxlength="6" aria-describedby="game-id-help" aria-required="true" autocomplete="off" spellcheck="false">
-                    <div id="game-id-help" class="sr-only">Enter the 6-character game ID provided by your opponent</div>
-                    <button id="join-game-btn" class="btn btn-primary" aria-label="Join game with entered ID" type="button">Join Game</button>
+                <form class="join-form" role="form" aria-labelledby="join-screen-title" novalidate>
+                    <fieldset>
+                        <legend class="sr-only">Game ID Entry</legend>
+                        <label for="game-id-input">Enter Game ID:</label>
+                        <input type="text" id="game-id-input" placeholder="Enter 6-character game ID" maxlength="6" aria-describedby="game-id-help" aria-required="true" autocomplete="off" spellcheck="false" pattern="[A-Za-z0-9]{6}" title="Game ID must be exactly 6 characters">
+                        <div id="game-id-help" class="sr-only">Enter the 6-character game ID provided by your opponent</div>
+                        <button id="join-game-btn" class="btn btn-primary" aria-label="Join game with entered ID" type="button">Join Game</button>
+                    </fieldset>
                 </form>
                 <button id="cancel-join-btn" class="btn btn-secondary" aria-label="Return to main menu">Back to Menu</button>
-                <div id="join-error" class="error-message hidden" role="alert" aria-live="assertive"></div>
+                <div id="join-error" class="error-message hidden" role="alert" aria-live="assertive" aria-atomic="true" tabindex="-1"></div>
             </div>
 
             <!-- Practice Mode Selection Screen -->
             <div id="practice-screen" class="screen hidden">
                 <h2>Practice Mode</h2>
                 <div class="practice-options">
-                    <div class="practice-option">
+                    <div class="practice-option" role="group" aria-labelledby="practice-self-btn">
                         <button id="practice-self-btn" class="btn btn-primary" aria-describedby="practice-self-desc">Play Both Sides</button>
                         <p id="practice-self-desc">Control both white and black pieces</p>
                     </div>
-                    <div class="practice-option">
+                    <div class="practice-option" role="group" aria-labelledby="practice-ai-white-btn">
                         <button id="practice-ai-white-btn" class="btn btn-primary" aria-describedby="practice-white-desc">Play as White vs AI</button>
                         <p id="practice-white-desc">You play white, AI plays black</p>
                     </div>
-                    <div class="practice-option">
+                    <div class="practice-option" role="group" aria-labelledby="practice-ai-black-btn">
                         <button id="practice-ai-black-btn" class="btn btn-primary" aria-describedby="practice-black-desc">Play as Black vs AI</button>
                         <p id="practice-black-desc">You play black, AI plays white</p>
                     </div>
-                    <div class="practice-option">
+                    <div class="practice-option" role="group" aria-labelledby="practice-ai-vs-ai-btn">
                         <button id="practice-ai-vs-ai-btn" class="btn btn-secondary" aria-describedby="practice-ai-desc">Watch AI vs AI</button>
                         <p id="practice-ai-desc">Watch two AI players compete</p>
                     </div>
                 </div>
-                <div class="ai-difficulty">
-                    <label for="difficulty-select">AI Difficulty:</label>
-                    <select id="difficulty-select" aria-label="Select AI difficulty level">
+                <div class="ai-difficulty" role="group" aria-labelledby="difficulty-label">
+                    <label id="difficulty-label" for="difficulty-select">AI Difficulty:</label>
+                    <select id="difficulty-select" aria-label="Select AI difficulty level" aria-describedby="difficulty-help">
                         <option value="easy">Easy</option>
                         <option value="medium" selected>Medium</option>
                         <option value="hard">Hard</option>
                     </select>
+                    <div id="difficulty-help" class="sr-only">Choose the AI opponent difficulty level for practice games</div>
                 </div>
                 <button id="cancel-practice-btn" class="btn btn-secondary" aria-label="Return to main menu">Back to Menu</button>
             </div>
@@ -114,9 +118,10 @@
                         <span id="game-id-small" role="text" aria-label="Current game ID"></span>
                         <span id="player-color" role="text" aria-label="Your piece color"></span>
                     </div>
-                    <div class="game-status" role="status" aria-live="assertive">
+                    <div class="game-status" role="status" aria-live="assertive" aria-atomic="true">
                         <span id="turn-indicator" aria-label="Current turn indicator"></span>
-                        <span id="check-indicator" class="hidden" role="alert">CHECK!</span>
+                        <span id="check-indicator" class="hidden" role="alert" aria-live="assertive">CHECK!</span>
+                        <div id="game-status-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
                     </div>
                     <div class="game-actions">
                         <button id="resign-btn" class="btn btn-danger" aria-label="Resign from current game">Resign</button>
@@ -124,8 +129,8 @@
                         <button id="debug-dump-btn" class="btn btn-warning" aria-label="Show debug information">🐛 Debug</button>
                         <button id="mobile-chat-toggle" class="btn btn-info mobile-only hidden" aria-label="Toggle chat window">Chat</button>
                         <button id="fullscreen-btn" class="btn btn-secondary mobile-only" aria-label="Toggle fullscreen mode">⛶</button>
-                        <div id="ai-controls" class="ai-controls hidden">
-                            <button id="pause-ai-btn" class="btn btn-warning" aria-label="Pause AI moves">Pause</button>
+                        <div id="ai-controls" class="ai-controls hidden" role="group" aria-label="AI game controls">
+                            <button id="pause-ai-btn" class="btn btn-warning" aria-label="Pause AI moves" aria-pressed="false">Pause</button>
                             <button id="step-ai-btn" class="btn btn-info" aria-label="Make AI move one step">Step</button>
                         </div>
                     </div>
@@ -133,7 +138,9 @@
 
                 <div class="game-content">
                     <div class="chess-board-container">
-                        <div id="chess-board" class="chess-board" role="grid" aria-label="Chess board with 8x8 squares"></div>
+                        <div id="chess-board" class="chess-board" role="grid" aria-label="Chess board with 8x8 squares" tabindex="0" aria-describedby="board-help">
+                            <div id="board-help" class="sr-only">Use arrow keys to navigate the chess board. Press Enter to select a piece or make a move.</div>
+                        </div>
                     </div>
                     
                     <div class="game-sidebar">
@@ -144,7 +151,7 @@
                         
                         <div class="connection-status">
                             <div id="connection-indicator" class="connection-indicator connected" role="status" aria-live="polite" aria-label="Connection status">
-                                <span class="indicator-dot" aria-hidden="true"></span>
+                                <span class="indicator-dot" aria-hidden="true" role="img" aria-label="Connection status indicator"></span>
                                 <span class="indicator-text">Connected</span>
                             </div>
                         </div>
@@ -192,15 +199,15 @@
         </main>
 
         <!-- Pawn Promotion Modal -->
-        <div id="promotion-modal" class="modal hidden" role="dialog" aria-labelledby="promotion-title" aria-modal="true">
+        <div id="promotion-modal" class="modal hidden" role="dialog" aria-labelledby="promotion-title" aria-modal="true" aria-describedby="promotion-desc">
             <div class="modal-content">
                 <h3 id="promotion-title">Pawn Promotion</h3>
-                <p>Choose a piece to promote your pawn:</p>
-                <div class="promotion-pieces" role="group" aria-label="Promotion piece selection">
-                    <button class="promotion-piece" data-piece="queen" aria-label="Promote to Queen">♕</button>
-                    <button class="promotion-piece" data-piece="rook" aria-label="Promote to Rook">♖</button>
-                    <button class="promotion-piece" data-piece="bishop" aria-label="Promote to Bishop">♗</button>
-                    <button class="promotion-piece" data-piece="knight" aria-label="Promote to Knight">♘</button>
+                <p id="promotion-desc">Choose a piece to promote your pawn:</p>
+                <div class="promotion-pieces" role="radiogroup" aria-label="Promotion piece selection" aria-required="true">
+                    <button class="promotion-piece" data-piece="queen" aria-label="Promote to Queen" role="radio" aria-checked="false" tabindex="0">♕</button>
+                    <button class="promotion-piece" data-piece="rook" aria-label="Promote to Rook" role="radio" aria-checked="false" tabindex="-1">♖</button>
+                    <button class="promotion-piece" data-piece="bishop" aria-label="Promote to Bishop" role="radio" aria-checked="false" tabindex="-1">♗</button>
+                    <button class="promotion-piece" data-piece="knight" aria-label="Promote to Knight" role="radio" aria-checked="false" tabindex="-1">♘</button>
                 </div>
             </div>
         </div>
