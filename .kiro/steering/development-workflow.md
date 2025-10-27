@@ -41,6 +41,12 @@ npm test
 - Test files should be placed in the `tests/` directory
 - Use descriptive test names and follow the existing test patterns
 
+### Jest CLI Commands
+- `npm test` - Run all tests
+- `npm test -- --testPathPatterns="pattern"` - Run tests matching pattern (NOTE: `--testPathPattern` is deprecated, use `--testPathPatterns`)
+- `npm test -- --watch` - Run tests in watch mode
+- `npm test -- --verbose` - Run tests with verbose output
+
 ## Feature Development Process
 
 ### 1. Planning Phase

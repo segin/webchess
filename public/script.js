@@ -1759,6 +1759,7 @@ class WebChessClient {
     const whiteInCheck = this.isKingInCheck('white');
     const blackInCheck = this.isKingInCheck('black');
     
+    const wasInCheck = this.gameState.inCheck;
     this.gameState.inCheck = whiteInCheck || blackInCheck;
     
     // Check for checkmate and stalemate
@@ -1770,7 +1771,14 @@ class WebChessClient {
         // Checkmate
         this.gameState.status = 'checkmate';
         this.gameState.winner = this.gameState.currentTurn === 'white' ? 'black' : 'white';
-        this.showGameEndScreen('checkmate', this.gameState.winner);
+        
+        // Show checkmate notification before game end screen
+        this.showCheckmateNotification(this.gameState.winner, this.gameState.currentTurn);
+        
+        // Delay showing game end screen to allow notification to be seen
+        setTimeout(() => {
+          this.showGameEndScreen('checkmate', this.gameState.winner);
+        }, 2000);
       } else {
         // Stalemate
         this.gameState.status = 'stalemate';
@@ -1778,6 +1786,12 @@ class WebChessClient {
         this.showGameEndScreen('stalemate', null);
       }
       return;
+    }
+    
+    // Show check notification if player just moved into check (but not if already in check)
+    if (this.gameState.inCheck && !wasInCheck) {
+      const playerInCheck = whiteInCheck ? 'white' : 'black';
+      this.showCheckNotification(playerInCheck);
     }
     
     // Check for draw conditions
@@ -1814,6 +1828,86 @@ class WebChessClient {
     setTimeout(() => {
       document.body.removeChild(message);
     }, 2000);
+  }
+
+  showCheckNotification(color) {
+    // Show simple pop-up notification for check
+    try {
+      const message = document.createElement('div');
+      message.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #ff9800;
+        color: white;
+        padding: 15px 25px;
+        border-radius: 8px;
+        z-index: 10000;
+        font-weight: bold;
+        font-size: 1.2rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        border: 2px solid #f57c00;
+      `;
+      message.textContent = `${color.toUpperCase()} IN CHECK!`;
+      document.body.appendChild(message);
+      
+      setTimeout(() => {
+        try {
+          if (document.body.contains(message)) {
+            document.body.removeChild(message);
+          }
+        } catch (error) {
+          // Silently handle removal errors
+          console.warn('Error removing check notification:', error);
+        }
+      }, 3000);
+    } catch (error) {
+      // Silently handle DOM errors
+      console.warn('Error showing check notification:', error);
+    }
+  }
+
+  showCheckmateNotification(winner, loser) {
+    // Show simple pop-up notification for checkmate
+    try {
+      const message = document.createElement('div');
+      message.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #d32f2f;
+        color: white;
+        padding: 20px 30px;
+        border-radius: 10px;
+        z-index: 10000;
+        font-weight: bold;
+        font-size: 1.4rem;
+        text-align: center;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        border: 3px solid #b71c1c;
+      `;
+      message.innerHTML = `
+        <div style="margin-bottom: 10px;">CHECKMATE!</div>
+        <div style="font-size: 1rem;">${winner.toUpperCase()} WINS!</div>
+      `;
+      document.body.appendChild(message);
+      
+      setTimeout(() => {
+        try {
+          if (document.body.contains(message)) {
+            document.body.removeChild(message);
+          }
+        } catch (error) {
+          // Silently handle removal errors
+          console.warn('Error removing checkmate notification:', error);
+        }
+      }, 5000);
+    } catch (error) {
+      // Silently handle DOM errors
+      console.warn('Error showing checkmate notification:', error);
+    }
   }
   
   sendChatMessage() {

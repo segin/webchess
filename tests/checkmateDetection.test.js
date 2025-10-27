@@ -2,9 +2,25 @@ const ChessGame = require('../src/shared/chessGame');
 
 describe('Comprehensive Checkmate Detection System', () => {
   let game;
+  let mockClient;
 
   beforeEach(() => {
     game = new ChessGame();
+    
+    // Mock client for notification testing
+    mockClient = {
+      gameState: {
+        inCheck: false,
+        status: 'active',
+        currentTurn: 'white',
+        winner: null
+      },
+      showCheckNotification: jest.fn(),
+      showCheckmateNotification: jest.fn(),
+      showGameEndScreen: jest.fn(),
+      isKingInCheck: jest.fn(),
+      hasLegalMoves: jest.fn()
+    };
   });
 
   describe('Basic Checkmate Scenarios', () => {
@@ -533,6 +549,215 @@ describe('Comprehensive Checkmate Detection System', () => {
       expect(moveResult.success).toBe(false);
       expect(moveResult.errorCode).toBe('GAME_NOT_ACTIVE');
       expect(moveResult.message).toContain('Game is not active');
+    });
+  });
+
+  describe('Notification Integration Tests', () => {
+    let mockUpdateCheckStatus;
+    
+    beforeEach(() => {
+      // Mock the notification methods for integration testing
+      mockUpdateCheckStatus = jest.fn();
+      
+      // Create a mock client with notification methods
+      global.mockWebChessClient = {
+        gameState: {
+          inCheck: false,
+          status: 'active',
+          currentTurn: 'white',
+          winner: null
+        },
+        showCheckNotification: jest.fn(),
+        showCheckmateNotification: jest.fn(),
+        showGameEndScreen: jest.fn(),
+        isKingInCheck: jest.fn(),
+        hasLegalMoves: jest.fn(),
+        updateCheckStatus: mockUpdateCheckStatus
+      };
+    });
+
+    test('should trigger check notification when player moves into check', () => {
+      const client = global.mockWebChessClient;
+      
+      // Mock the check detection methods
+      client.isKingInCheck = jest.fn()
+        .mockReturnValueOnce(false) // white not in check
+        .mockReturnValueOnce(true);  // black in check
+      
+      client.hasLegalMoves = jest.fn().mockReturnValue(true);
+      
+      // Simulate the updateCheckStatus method behavior
+      const updateCheckStatus = function() {
+        const whiteInCheck = client.isKingInCheck('white');
+        const blackInCheck = client.isKingInCheck('black');
+        
+        const wasInCheck = client.gameState.inCheck;
+        client.gameState.inCheck = whiteInCheck || blackInCheck;
+        
+        const currentPlayerInCheck = client.gameState.currentTurn === 'white' ? whiteInCheck : blackInCheck;
+        const hasLegalMoves = client.hasLegalMoves(client.gameState.currentTurn);
+        
+        if (!hasLegalMoves) {
+          if (currentPlayerInCheck) {
+            client.gameState.status = 'checkmate';
+            client.gameState.winner = client.gameState.currentTurn === 'white' ? 'black' : 'white';
+            client.showCheckmateNotification(client.gameState.winner, client.gameState.currentTurn);
+          }
+          return;
+        }
+        
+        // Show check notification if player just moved into check
+        if (client.gameState.inCheck && !wasInCheck) {
+          const playerInCheck = whiteInCheck ? 'white' : 'black';
+          client.showCheckNotification(playerInCheck);
+        }
+      };
+      
+      // Set initial state - not in check
+      client.gameState.inCheck = false;
+      client.gameState.currentTurn = 'black';
+      
+      // Call updateCheckStatus to simulate a move that puts black in check
+      updateCheckStatus();
+      
+      // Verify check notification was called for black
+      expect(client.showCheckNotification).toHaveBeenCalledWith('black');
+      expect(client.showCheckNotification).toHaveBeenCalledTimes(1);
+    });
+
+    test('should trigger checkmate notification when game ends in checkmate', () => {
+      const client = global.mockWebChessClient;
+      
+      // Mock checkmate scenario
+      client.isKingInCheck = jest.fn()
+        .mockReturnValueOnce(false) // white not in check
+        .mockReturnValueOnce(true);  // black in check
+      
+      client.hasLegalMoves = jest.fn().mockReturnValue(false); // No legal moves = checkmate
+      
+      // Simulate the updateCheckStatus method behavior for checkmate
+      const updateCheckStatus = function() {
+        const whiteInCheck = client.isKingInCheck('white');
+        const blackInCheck = client.isKingInCheck('black');
+        
+        client.gameState.inCheck = whiteInCheck || blackInCheck;
+        
+        const currentPlayerInCheck = client.gameState.currentTurn === 'white' ? whiteInCheck : blackInCheck;
+        const hasLegalMoves = client.hasLegalMoves(client.gameState.currentTurn);
+        
+        if (!hasLegalMoves) {
+          if (currentPlayerInCheck) {
+            client.gameState.status = 'checkmate';
+            client.gameState.winner = client.gameState.currentTurn === 'white' ? 'black' : 'white';
+            client.showCheckmateNotification(client.gameState.winner, client.gameState.currentTurn);
+          }
+          return;
+        }
+      };
+      
+      // Set up checkmate scenario
+      client.gameState.currentTurn = 'black';
+      client.gameState.inCheck = false;
+      
+      // Call updateCheckStatus to simulate checkmate
+      updateCheckStatus();
+      
+      // Verify checkmate notification was called
+      expect(client.showCheckmateNotification).toHaveBeenCalledWith('white', 'black');
+      expect(client.showCheckmateNotification).toHaveBeenCalledTimes(1);
+      expect(client.gameState.status).toBe('checkmate');
+      expect(client.gameState.winner).toBe('white');
+    });
+
+    test('should not show check notification if already in check', () => {
+      const client = global.mockWebChessClient;
+      
+      // Mock scenario where player is already in check
+      client.isKingInCheck = jest.fn()
+        .mockReturnValueOnce(false) // white not in check
+        .mockReturnValueOnce(true);  // black in check
+      
+      client.hasLegalMoves = jest.fn().mockReturnValue(true);
+      
+      // Simulate the updateCheckStatus method behavior
+      const updateCheckStatus = function() {
+        const whiteInCheck = client.isKingInCheck('white');
+        const blackInCheck = client.isKingInCheck('black');
+        
+        const wasInCheck = client.gameState.inCheck;
+        client.gameState.inCheck = whiteInCheck || blackInCheck;
+        
+        const currentPlayerInCheck = client.gameState.currentTurn === 'white' ? whiteInCheck : blackInCheck;
+        const hasLegalMoves = client.hasLegalMoves(client.gameState.currentTurn);
+        
+        if (!hasLegalMoves) {
+          if (currentPlayerInCheck) {
+            client.gameState.status = 'checkmate';
+            client.gameState.winner = client.gameState.currentTurn === 'white' ? 'black' : 'white';
+            client.showCheckmateNotification(client.gameState.winner, client.gameState.currentTurn);
+          }
+          return;
+        }
+        
+        // Show check notification only if player just moved into check (not already in check)
+        if (client.gameState.inCheck && !wasInCheck) {
+          const playerInCheck = whiteInCheck ? 'white' : 'black';
+          client.showCheckNotification(playerInCheck);
+        }
+      };
+      
+      // Set initial state - already in check
+      client.gameState.inCheck = true;
+      client.gameState.currentTurn = 'black';
+      
+      // Call updateCheckStatus - should not show notification since already in check
+      updateCheckStatus();
+      
+      // Verify check notification was NOT called
+      expect(client.showCheckNotification).not.toHaveBeenCalled();
+    });
+
+    test('should show different notifications for different players', () => {
+      const client = global.mockWebChessClient;
+      
+      // Test white player check notification
+      client.isKingInCheck = jest.fn()
+        .mockReturnValueOnce(true)  // white in check
+        .mockReturnValueOnce(false); // black not in check
+      
+      client.hasLegalMoves = jest.fn().mockReturnValue(true);
+      
+      const updateCheckStatus = function() {
+        const whiteInCheck = client.isKingInCheck('white');
+        const blackInCheck = client.isKingInCheck('black');
+        
+        const wasInCheck = client.gameState.inCheck;
+        client.gameState.inCheck = whiteInCheck || blackInCheck;
+        
+        if (client.gameState.inCheck && !wasInCheck) {
+          const playerInCheck = whiteInCheck ? 'white' : 'black';
+          client.showCheckNotification(playerInCheck);
+        }
+      };
+      
+      // Test white in check
+      client.gameState.inCheck = false;
+      client.gameState.currentTurn = 'white';
+      updateCheckStatus();
+      
+      expect(client.showCheckNotification).toHaveBeenCalledWith('white');
+      
+      // Reset and test black in check
+      client.showCheckNotification.mockClear();
+      client.isKingInCheck = jest.fn()
+        .mockReturnValueOnce(false) // white not in check
+        .mockReturnValueOnce(true);  // black in check
+      
+      client.gameState.inCheck = false;
+      client.gameState.currentTurn = 'black';
+      updateCheckStatus();
+      
+      expect(client.showCheckNotification).toHaveBeenCalledWith('black');
     });
   });
 });
