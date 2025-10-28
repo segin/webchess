@@ -10,10 +10,19 @@ jobs:
   test:
     name: Test Suite
     runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental || false }}
     
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [16.x, 18.x, 20.x, 22.x, 23.x, 24.x, 25.x]
+        include:
+          - node-version: 16.x
+            experimental: true
+          - node-version: 18.x
+            experimental: true
+          - node-version: 20.x
+            experimental: true
+      fail-fast: false
     
     steps:
     - name: Checkout code
@@ -50,7 +59,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v6
       with:
-        node-version: '20.x'
+        node-version: '22.x'
         cache: 'npm'
     
     - name: Install dependencies
@@ -79,7 +88,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v6
       with:
-        node-version: '20.x'
+        node-version: '22.x'
         cache: 'npm'
     
     - name: Install dependencies
@@ -177,7 +186,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v6
       with:
-        node-version: '20.x'
+        node-version: '22.x'
         cache: 'npm'
     
     - name: Install dependencies
