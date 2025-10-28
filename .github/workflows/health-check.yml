@@ -1,129 +1,135 @@
+---
 name: Health Check & Performance
 
 on:
   schedule:
     - cron: '0 */6 * * *'  # Every 6 hours
-  workflow_dispatch:  # Allow manual triggering
+  workflow_dispatch: true  # Allow manual triggering
   deployment_status:
 
 jobs:
   health-check:
     name: Application Health Check
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v5
-    
-    - name: Health Check - Production
-      if: github.ref == 'refs/heads/main'
-      run: |
-        echo "🔍 Checking production health..."
-        # Add production health check URL
-        # curl -f https://your-production-domain.com/health || exit 1
-        echo "✅ Production health check would run here"
-    
-    - name: Health Check - Staging
-      if: github.ref == 'refs/heads/develop'
-      run: |
-        echo "🔍 Checking staging health..."
-        # Add staging health check URL
-        # curl -f https://staging.your-domain.com/health || exit 1
-        echo "✅ Staging health check would run here"
-    
-    - name: Performance Test
-      run: |
-        echo "⚡ Running performance tests..."
-        # Add performance testing tools like Artillery, k6, etc.
-        echo "✅ Performance tests would run here"
-    
-    - name: Notify on Failure
-      if: failure()
-      uses: actions/github-script@v8
-      with:
-        script: |
-          github.rest.issues.create({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            title: '🚨 Health Check Failed',
-            body: `Health check failed for commit ${context.sha}\n\nWorkflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-            labels: ['bug', 'health-check', 'critical']
-          })
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Health Check - Production
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "🔍 Checking production health..."
+          # Add production health check URL
+          # curl -f https://your-production-domain.com/health || exit 1
+          echo "✅ Production health check would run here"
+
+      - name: Health Check - Staging
+        if: github.ref == 'refs/heads/develop'
+        run: |
+          echo "🔍 Checking staging health..."
+          # Add staging health check URL
+          # curl -f https://staging.your-domain.com/health || exit 1
+          echo "✅ Staging health check would run here"
+
+      - name: Performance Test
+        run: |
+          echo "⚡ Running performance tests..."
+          # Add performance testing tools like Artillery, k6, etc.
+          echo "✅ Performance tests would run here"
+
+      - name: Notify on Failure
+        if: failure()
+        uses: actions/github-script@v8
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Health Check Failed',
+              body: 'Health check failed for commit ' + context.sha +
+              '\n\nRun: ' + context.serverUrl + '/' + context.repo.owner +
+              '/' + context.repo.repo + '/actions/runs/' + context.runId,
+              labels: ['bug', 'health-check', 'critical']
+            })
 
   lighthouse:
     name: Lighthouse Performance Audit
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v5
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v6
-      with:
-        node-version: '22.19.x'
-        cache: 'npm'
-    
-    - name: Install dependencies
-      run: npm ci
-    
-    - name: Start WebChess server
-      run: |
-        npm start &
-        echo $! > server.pid
-        sleep 10
-    
-    - name: Wait for server
-      run: |
-        timeout 30 bash -c 'until curl -f http://localhost:3000; do sleep 1; done'
-    
-    - name: Run Lighthouse
-      uses: treosh/lighthouse-ci-action@v12
-      with:
-        urls: |
-          http://localhost:3000
-        configPath: './lighthouse.config.js'
-        uploadArtifacts: true
-        temporaryPublicStorage: true
-    
-    - name: Stop server
-      run: |
-        if [ -f server.pid ]; then
-          kill $(cat server.pid) || true
-          rm server.pid
-        fi
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22.19.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start WebChess server
+        run: |
+          npm start &
+          echo $! > server.pid
+          sleep 10
+
+      - name: Wait for server
+        run: |
+          timeout 30 bash -c \
+            'until curl -f http://localhost:3000; do sleep 1; done'
+
+      - name: Run Lighthouse
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          urls: |
+            http://localhost:3000
+          configPath: './lighthouse.config.js'
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: Stop server
+        run: |
+          if [ -f server.pid ]; then
+            kill $(cat server.pid) || true
+            rm server.pid
+          fi
 
   security-headers:
     name: Security Headers Check
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v5
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v6
-      with:
-        node-version: '22.19.x'
-        cache: 'npm'
-    
-    - name: Install dependencies
-      run: npm ci
-    
-    - name: Start server
-      run: |
-        npm start &
-        echo $! > server.pid
-        sleep 10
-    
-    - name: Check security headers
-      run: |
-        echo "🔒 Checking security headers..."
-        curl -I http://localhost:3000 | grep -i "x-frame-options\|x-content-type-options\|x-xss-protection\|strict-transport-security" || echo "⚠️ Some security headers missing"
-    
-    - name: Stop server
-      run: |
-        if [ -f server.pid ]; then
-          kill $(cat server.pid) || true
-          rm server.pid
-        fi
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22.19.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start server
+        run: |
+          npm start &
+          echo $! > server.pid
+          sleep 10
+
+      - name: Check security headers
+        run: |
+          echo "🔒 Checking security headers..."
+          curl -I http://localhost:3000 | \
+            grep -iE "x-frame-options|x-content-type-options" || \
+            echo "⚠️ Some security headers missing"
+
+      - name: Stop server
+        run: |
+          if [ -f server.pid ]; then
+            kill $(cat server.pid) || true
+            rm server.pid
+          fi
