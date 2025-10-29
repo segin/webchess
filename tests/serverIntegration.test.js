@@ -273,6 +273,12 @@ describe('Server Integration Tests - Comprehensive Coverage', () => {
       playerId2 = 'player2';
     });
 
+    afterEach(() => {
+      if (gameManager && gameManager.cleanup) {
+        gameManager.cleanup();
+      }
+    });
+
     test('should handle game creation with current API', () => {
       const gameId = gameManager.createGame(playerId1);
       
@@ -348,6 +354,12 @@ describe('Server Integration Tests - Comprehensive Coverage', () => {
       errorHandler = new ChessErrorHandler();
     });
 
+    afterEach(() => {
+      if (gameManager && gameManager.cleanup) {
+        gameManager.cleanup();
+      }
+    });
+
     test('should handle invalid game IDs with current error response format', () => {
       const invalidResult = gameManager.joinGame('INVALID', 'player1');
       expect(invalidResult.success).toBe(false);
@@ -407,6 +419,12 @@ describe('Server Integration Tests - Comprehensive Coverage', () => {
 
     beforeEach(() => {
       gameManager = new GameManager();
+    });
+
+    afterEach(() => {
+      if (gameManager && gameManager.cleanup) {
+        gameManager.cleanup();
+      }
     });
 
     test('should handle player sessions with current API patterns', () => {
@@ -479,6 +497,12 @@ describe('Server Integration Tests - Comprehensive Coverage', () => {
 
     beforeEach(() => {
       gameManager = new GameManager();
+    });
+
+    afterEach(() => {
+      if (gameManager && gameManager.cleanup) {
+        gameManager.cleanup();
+      }
     });
 
     test('should handle chat messages with current API response format', () => {
@@ -581,6 +605,12 @@ describe('Server Integration Tests - Comprehensive Coverage', () => {
 
     beforeEach(() => {
       gameManager = new GameManager();
+    });
+
+    afterEach(() => {
+      if (gameManager && gameManager.cleanup) {
+        gameManager.cleanup();
+      }
     });
 
     test('should handle game statistics with current API patterns', () => {

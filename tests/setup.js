@@ -200,6 +200,11 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  // Clean up any GameManager instances to prevent timeout leaks
+  if (global.gameManager && typeof global.gameManager.cleanup === 'function') {
+    global.gameManager.cleanup();
+  }
+  
   // Restore console functions after each test
   global.testUtils.restoreErrorLogs();
   consoleUtils.disableQuiet();

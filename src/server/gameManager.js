@@ -8,6 +8,7 @@ class GameManager {
     this.games = new Map();
     this.playerToGame = new Map();
     this.disconnectedPlayers = new Map();
+    this.disconnectTimeouts = new Map(); // Track timeouts for cleanup
   }
 
   generateGameId() {
@@ -147,9 +148,12 @@ class GameManager {
           disconnectedAt: Date.now()
         });
         
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
           this.checkDisconnectedPlayer(playerId);
         }, 15 * 60 * 1000); // 15 minutes
+        
+        // Store timeout reference for cleanup
+        this.disconnectTimeouts.set(playerId, timeoutId);
       }
     }
   }
@@ -158,6 +162,8 @@ class GameManager {
     const disconnectedInfo = this.disconnectedPlayers.get(playerId);
     if (disconnectedInfo) {
       this.disconnectedPlayers.delete(playerId);
+      // Clean up timeout reference
+      this.disconnectTimeouts.delete(playerId);
       
       const game = this.games.get(disconnectedInfo.gameId);
       if (game && game.status === 'active') {
@@ -771,6 +777,22 @@ class GameManager {
       gameTimeout: 30 * 60 * 1000,
       cleanupInterval: 5 * 60 * 1000
     };
+  }
+
+  /**
+   * Clean up all pending timeouts - essential for test cleanup
+   */
+  cleanup() {
+    // Clear all disconnect timeouts
+    for (const [playerId, timeoutId] of this.disconnectTimeouts) {
+      clearTimeout(timeoutId);
+    }
+    this.disconnectTimeouts.clear();
+    
+    // Clear all game data
+    this.games.clear();
+    this.playerToGame.clear();
+    this.disconnectedPlayers.clear();
   }
 }
 

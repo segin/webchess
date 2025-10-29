@@ -9,6 +9,13 @@ describe('Concurrent Game Testing - Resource Management', () => {
     gameManager = new GameManager();
   });
 
+  afterEach(() => {
+    // Clean up any timers and resources to prevent worker process warnings
+    if (gameManager && gameManager.cleanup) {
+      gameManager.cleanup();
+    }
+  });
+
   describe('Multiple Simultaneous Games', () => {
     test('should handle many concurrent games efficiently', () => {
       const numGames = 25;

@@ -8,13 +8,19 @@
 # Update system
 sudo apt update && sudo apt upgrade -y
 
-# Install Node.js (if not already installed)
-curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+# Install Node.js 22.19 (if not already installed)
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt install -y nodejs
 
-# Verify Node.js installation
+# Verify Node.js installation (should show 22.19.x or higher)
 node --version
 npm --version
+
+# Ensure Node.js version meets requirements
+if [[ $(node --version | cut -d'v' -f2 | cut -d'.' -f1) -lt 22 ]]; then
+  echo "Error: Node.js 22.19 or higher is required"
+  exit 1
+fi
 ```
 
 ### One-Command Installation
@@ -193,9 +199,13 @@ ls -la /opt/webchess/
 
 #### Node.js issues
 ```bash
-# Verify Node.js installation
+# Verify Node.js installation (must be 22.19 or higher)
 node --version
 which node
+
+# If Node.js version is too old, reinstall:
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
 
 # Check if Node.js path is correct in service file
 cat /etc/systemd/system/webchess.service | grep ExecStart
@@ -263,7 +273,7 @@ sudo systemctl restart nginx
 - **RAM**: 256MB minimum (512MB recommended)
 - **Storage**: 100MB for application + logs
 - **Network**: Port 3000 (or custom port) accessible
-- **Node.js**: Version 16 or higher
+- **Node.js**: Version 22.19 or higher
 
 ## Security Features
 

@@ -2,6 +2,28 @@
 
 This directory contains configuration files and scripts for deploying WebChess as a system service.
 
+## System Requirements
+
+### Prerequisites
+- **Node.js**: Version 22.19 or higher
+- **npm**: Version 10.0.0 or higher (included with Node.js 22.19+)
+- **Operating System**: Ubuntu 20.04+ / Debian 11+ / CentOS 8+ / RHEL 8+
+- **Memory**: Minimum 512MB RAM (1GB+ recommended)
+- **Storage**: 100MB for application + dependencies
+
+### Node.js Installation
+If Node.js 22.19+ is not installed, install it before proceeding:
+
+```bash
+# Ubuntu/Debian - Install Node.js 22.x
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Verify installation
+node --version  # Should show v22.19.0 or higher
+npm --version   # Should show 10.0.0 or higher
+```
+
 ## Files Overview
 
 ### Core Files
@@ -106,10 +128,13 @@ sudo nano /etc/nginx/sites-available/webchess
 
 ### Common Issues
 
-1. **Port conflicts**: Change PORT in systemd service environment
-2. **Permission errors**: Check file ownership (`chown -R webchess:webchess /opt/webchess`)
-3. **Nginx conflicts**: Ensure subdomain doesn't conflict with existing sites
-4. **DNS issues**: Verify subdomain DNS points to your server
+1. **Node.js version compatibility**: Ensure Node.js 22.19+ is installed
+   - Check version: `node --version`
+   - Update if needed: Follow Node.js installation instructions above
+2. **Port conflicts**: Change PORT in systemd service environment
+3. **Permission errors**: Check file ownership (`chown -R webchess:webchess /opt/webchess`)
+4. **Nginx conflicts**: Ensure subdomain doesn't conflict with existing sites
+5. **DNS issues**: Verify subdomain DNS points to your server
 
 ### Useful Commands
 
@@ -168,7 +193,8 @@ The deployment includes several security measures:
 
 ### Recommendations
 - Use HTTPS in production
-- Keep Node.js and dependencies updated
+- Keep Node.js 22.19+ and dependencies updated
 - Monitor logs regularly
 - Use firewall (UFW) to limit access
 - Consider fail2ban for additional protection
+- Regularly update to latest Node.js 22.x LTS releases for security patches
