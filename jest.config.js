@@ -58,8 +58,21 @@ module.exports = {
   testTimeout: 30000,
   maxWorkers: '50%',
   workerIdleMemoryLimit: '512MB',
+  // CI-optimized settings for reliability
+  detectOpenHandles: true,
+  forceExit: false, // Let tests exit naturally
+  globalSetup: '<rootDir>/tests/utils/globalSetup.js',
+  globalTeardown: '<rootDir>/tests/utils/globalTeardown.js',
   // Ensure coverage is collected even for files without tests
   forceCoverageMatch: [
     'src/**/*.js'
-  ]
+  ],
+  // Test isolation and environment consistency
+  clearMocks: true,
+  resetMocks: true,
+  restoreMocks: true,
+  // Handle async operations properly
+  openHandlesTimeout: 1000,
+  // Improved error reporting for CI
+  errorOnDeprecated: true
 };

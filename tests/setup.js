@@ -7,6 +7,10 @@
 const { testUtils: errorSuppressionUtils } = require('./utils/errorSuppression');
 const { consoleUtils } = require('./utils/consoleQuiet');
 
+// Import resource management utilities
+const ResourceManager = require('./utils/ResourceManager');
+const { setupHandleDetection } = require('./utils/handleDetection');
+
 // Import standardized test patterns and data
 const { TestPositions, TestSequences, TestData } = require('./helpers/testData');
 const { 
@@ -97,6 +101,13 @@ global.testUtils = {
     AssertionPatterns.validateCastlingRights(castlingRights);
   },
   
+  // Resource management utilities
+  ResourceManager,
+  trackTimer: (timerId) => ResourceManager.trackTimer(timerId),
+  trackServer: (server) => ResourceManager.trackServer(server),
+  trackSocket: (socket) => ResourceManager.trackSocket(socket),
+  registerCleanup: (id, resource, cleanupFn) => ResourceManager.registerCleanup(id, resource, cleanupFn),
+  
   // validateErrorResponse and validateSuccessResponse are already in errorSuppressionUtils
 };
 
@@ -105,6 +116,9 @@ beforeEach(() => {
   // Clear any previous error suppression
   global.testUtils.clearSuppressedHistory();
   consoleUtils.clearHistory();
+  
+  // Initialize resource tracking for this test
+  ResourceManager.initialize();
   
   // Enable quiet console mode to reduce noise
   consoleUtils.enableQuiet([
@@ -199,11 +213,14 @@ beforeEach(() => {
   ]);
 });
 
-afterEach(() => {
+afterEach(async () => {
   // Clean up any GameManager instances to prevent timeout leaks
   if (global.gameManager && typeof global.gameManager.cleanup === 'function') {
     global.gameManager.cleanup();
   }
+  
+  // Clean up all tracked resources
+  await ResourceManager.cleanupAll();
   
   // Restore console functions after each test
   global.testUtils.restoreErrorLogs();
@@ -211,7 +228,11 @@ afterEach(() => {
 });
 
 // Global teardown
-afterAll(() => {
+afterAll(async () => {
+  // Final resource cleanup
+  await ResourceManager.cleanupAll();
+  ResourceManager.forceCleanupAll();
+  
   // Ensure console functions are restored
   global.testUtils.restoreErrorLogs();
   consoleUtils.disableQuiet();
@@ -219,6 +240,7 @@ afterAll(() => {
   // Show suppression statistics
   const suppressedStats = global.testUtils.getSuppressedInfo();
   const consoleStats = consoleUtils.getStats();
+  const resourceDiagnostics = ResourceManager.getDiagnostics();
   
   if (suppressedStats.counts.total > 0 || consoleStats.total > 0) {
     console.log('\n📊 Test Noise Suppression Summary:');
@@ -226,5 +248,11 @@ afterAll(() => {
     console.log(`   Suppressed Warnings: ${suppressedStats.counts.warnings}`);
     console.log(`   Suppressed Console Messages: ${consoleStats.total}`);
     console.log(`   Total Suppressed: ${suppressedStats.counts.total + consoleStats.total}`);
+  }
+  
+  if (resourceDiagnostics.totalResources > 0 || resourceDiagnostics.activeTimers > 0) {
+    console.log('\n🔧 Resource Management Summary:');
+    console.log(`   Resources cleaned: ${resourceDiagnostics.totalResources}`);
+    console.log(`   Timers cleared: ${resourceDiagnostics.activeTimers}`);
   }
 });
