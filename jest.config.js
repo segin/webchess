@@ -1,5 +1,8 @@
 const coverageConfig = require('./coverage.config.js');
 
+// Detect CI environment
+const isCI = process.env.CI === 'true' || process.env.NODE_ENV === 'ci';
+
 module.exports = {
   testEnvironment: 'node',
   collectCoverageFrom: [
@@ -9,7 +12,9 @@ module.exports = {
     '!src/**/*.spec.js'
   ],
   coverageDirectory: coverageConfig.reporting.directory,
-  coverageReporters: coverageConfig.reporting.formats,
+  coverageReporters: isCI 
+    ? ['text', 'lcov', 'json-summary'] // Minimal reporters for CI
+    : coverageConfig.reporting.formats, // Full reporters for local
   testMatch: [
     '**/tests/**/*.test.js',
     '**/tests/**/*.spec.js'
@@ -34,12 +39,12 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   verbose: false,
   collectCoverage: true,
-  // Reduce console noise during tests
-  silent: false,
-  // Use a quieter reporter
-  reporters: [
-    'default'
-  ],
+  // Optimize console output for CI
+  silent: isCI,
+  // Use optimized reporters for CI
+  reporters: isCI 
+    ? [['default', { silent: true, summaryThreshold: 0 }]]
+    : ['default'],
   coverageThreshold: {
     global: coverageConfig.globalThresholds,
     // Specific thresholds for chess game logic modules
@@ -55,9 +60,10 @@ module.exports = {
       ])
     )
   },
-  testTimeout: 30000,
-  maxWorkers: '50%',
-  workerIdleMemoryLimit: '512MB',
+  // CI-optimized timeouts and worker settings
+  testTimeout: isCI ? 45000 : 30000, // Longer timeout for CI
+  maxWorkers: isCI ? '25%' : '50%', // Fewer workers in CI to reduce resource contention
+  workerIdleMemoryLimit: isCI ? '256MB' : '512MB', // Lower memory limit for CI
   // CI-optimized settings for reliability
   detectOpenHandles: true,
   forceExit: false, // Let tests exit naturally
@@ -71,8 +77,40 @@ module.exports = {
   clearMocks: true,
   resetMocks: true,
   restoreMocks: true,
-  // Handle async operations properly
-  openHandlesTimeout: 1000,
+  // Handle async operations properly - optimized for CI
+  openHandlesTimeout: isCI ? 2000 : 1000, // Longer timeout for CI cleanup
   // Improved error reporting for CI
-  errorOnDeprecated: true
+  errorOnDeprecated: true,
+  // CI-specific optimizations
+  ...(isCI && {
+    // Disable watch mode plugins in CI
+    watchPlugins: [],
+    // Optimize test discovery
+    testLocationInResults: false,
+    // Reduce memory usage
+    logHeapUsage: false,
+    // Faster test execution
+    cache: false, // Disable cache in CI for consistent results
+    // Parallel execution optimization
+    maxConcurrency: 2, // Limit concurrent tests in CI
+    // Bail on first failure in CI (optional - can be enabled for faster feedback)
+    // bail: 1,
+  }),
+  // Performance optimizations
+  transform: {}, // Use default transforms, no custom transformations
+  // Module resolution optimizations
+  modulePathIgnorePatterns: [
+    '<rootDir>/coverage/',
+    '<rootDir>/deployment/',
+    '<rootDir>/node_modules/'
+  ],
+  // Snapshot serializers (none needed for this project)
+  snapshotSerializers: [],
+  // Test result processor optimizations
+  testResultsProcessor: undefined,
+  // Reduce file system operations
+  haste: {
+    computeSha1: false,
+    throwOnModuleCollision: false
+  }
 };
