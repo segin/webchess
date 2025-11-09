@@ -675,3 +675,591 @@ describe('GameState Transition Validation Coverage', () => {
       expect(memoryIncrease).toBeLessThan(50 * 1024 * 1024);
     });
   });
+
+  describe('Advanced State Validation', () => {
+    let game;
+    let stateManager;
+
+    beforeEach(() => {
+      game = new ChessGame();
+      stateManager = game.stateManager;
+    });
+
+    test('should validate board consistency with invalid board structure', () => {
+      const invalidBoard = null;
+      const result = stateManager.validateBoardConsistency(invalidBoard);
+      
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain('Invalid board structure');
+    });
+
+    test('should validate board consistency with invalid row structure', () => {
+      const invalidBoard = [null, [], [], [], [], [], [], []];
+      const result = stateManager.validateBoardConsistency(invalidBoard);
+      
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain('Row 0 has invalid structure');
+    });
+
+    test('should validate king count correctly', () => {
+      const gameState = game.getGameState();
+      const result = stateManager.validateKingCount(gameState.board);
+      
+      expect(result.isValid).toBe(true);
+      expect(result.whiteKings).toBe(1);
+      expect(result.blackKings).toBe(1);
+    });
+
+    test('should detect invalid king count', () => {
+      const invalidBoard = Array(8).fill(null).map(() => Array(8).fill(null));
+      const result = stateManager.validateKingCount(invalidBoard);
+      
+      expect(result.isValid).toBe(false);
+      expect(result.whiteKings).toBe(0);
+      expect(result.blackKings).toBe(0);
+    });
+
+    test('should validate turn consistency', () => {
+      const gameState = game.getGameState();
+      const result = stateManager.validateTurnConsistency(gameState);
+      
+      expect(result.isValid).toBe(true);
+      expect(result.expectedTurn).toBe('white');
+      expect(result.actualTurn).toBe('white');
+    });
+
+    test('should detect turn inconsistency', () => {
+      const gameState = game.getGameState();
+      gameState.currentTurn = 'black'; // Wrong turn for empty move history
+      const result = stateManager.validateTurnConsistency(gameState);
+      
+      expect(result.isValid).toBe(false);
+      expect(result.expectedTurn).toBe('white');
+      expect(result.actualTurn).toBe('black');
+    });
+
+    test('should validate en passant consistency', () => {
+      const gameState = game.getGameState();
+      const result = stateManager.validateEnPassantConsistency(gameState);
+      
+      expect(result.isValid).toBe(true);
+      expect(result.expectedTarget).toBe(null);
+      expect(result.actualTarget).toBe(null);
+    });
+  });
+
+  describe('State Tracking and History', () => {
+    let game;
+    let stateManager;
+
+    beforeEach(() => {
+      game = new ChessGame();
+      stateManager = game.stateManager;
+    });
+
+    test('should track state changes', () => {
+      const oldState = game.getGameState();
+      game.makeMove({ row: 6, col: 4 }, { row: 4, col: 4 });
+      const newState = game.getGameState();
+      
+      stateManager.trackStateChange(oldState, newState);
+      
+      expect(stateManager.stateVersion).toBeGreaterThan(1);
+    });
+
+    test('should update state version', () => {
+      const originalVersion = stateManager.stateVersion;
+      stateManager.updateStateVersion();
+      
+      expect(stateManager.stateVersion).toBe(originalVersion + 1);
+    });
+
+    test('should add position to history', () => {
+      const position = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+      const originalLength = stateManager.positionHistory.length;
+      
+      stateManager.addPositionToHistory(position);
+      
+      expect(stateManager.positionHistory.length).toBe(originalLength + 1);
+      expect(stateManager.positionHistory[stateManager.positionHistory.length - 1]).toBe(position);
+    });
+
+    test('should check for threefold repetition', () => {
+      // Add same position three times
+      const position = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+      stateManager.addPositionToHistory(position);
+      stateManager.addPositionToHistory(position);
+      stateManager.addPositionToHistory(position);
+      
+      const result = stateManager.checkThreefoldRepetition();
+      expect(result).toBe(true);
+    });
+
+    test('should not detect threefold repetition with insufficient positions', () => {
+      const result = stateManager.checkThreefoldRepetition();
+      expect(result).toBe(false);
+    });
+
+    test('should update game metadata', () => {
+      const metadata = { testProperty: 'testValue' };
+      stateManager.updateGameMetadata(metadata);
+      
+      expect(stateManager.gameMetadata.testProperty).toBe('testValue');
+    });
+  });
+
+  describe('State Snapshots and Serialization', () => {
+    let game;
+    let stateManager;
+
+    beforeEach(() => {
+      game = new ChessGame();
+      stateManager = game.stateManager;
+    });
+
+    test('should get state snapshot', () => {
+      const gameState = game.getGameState();
+      const snapshot = stateManager.getStateSnapshot(gameState);
+      
+      expect(snapshot.timestamp).toBeDefined();
+      expect(snapshot.stateVersion).toBeDefined();
+      expect(snapshot.gameState).toBeDefined();
+      expect(snapshot.metadata).toBeDefined();
+      expect(snapshot.positionHistory).toBeDefined();
+    });
+
+    test('should validate state snapshot', () => {
+      const validSnapshot = {
+        timestamp: Date.now(),
+        stateVersion: 1,
+        gameState: game.getGameState(),
+        metadata: stateManager.gameMetadata,
+        positionHistory: stateManager.positionHistory
+      };
+      
+      const result = stateManager.validateStateSnapshot(validSnapshot);
+      expect(result.isValid).toBe(true);
+    });
+
+    test('should detect invalid state snapshot', () => {
+      const invalidSnapshot = null;
+      const result = stateManager.validateStateSnapshot(invalidSnapshot);
+      
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain('Snapshot is null or undefined');
+    });
+
+    test('should serialize game state', () => {
+      const gameState = game.getGameState();
+      const serialized = stateManager.serializeGameState(gameState);
+      
+      expect(typeof serialized).toBe('string');
+      expect(serialized).toBeDefined();
+    });
+
+    test('should deserialize game state', () => {
+      const gameState = game.getGameState();
+      const serialized = stateManager.serializeGameState(gameState);
+      const deserialized = stateManager.deserializeGameState(serialized);
+      
+      expect(deserialized).toBeDefined();
+      expect(deserialized.currentTurn).toBe(gameState.currentTurn);
+    });
+
+    test('should handle invalid serialization', () => {
+      const result = stateManager.serializeGameState(null);
+      expect(result).toBe(null);
+    });
+
+    test('should handle invalid deserialization', () => {
+      const result = stateManager.deserializeGameState('invalid json');
+      expect(result).toBe(null);
+    });
+  });
+
+  describe('Checkpoints and Recovery', () => {
+    let game;
+    let stateManager;
+
+    beforeEach(() => {
+      game = new ChessGame();
+      stateManager = game.stateManager;
+    });
+
+    test('should create state checkpoint', () => {
+      const gameState = game.getGameState();
+      const checkpoint = stateManager.createStateCheckpoint(gameState);
+      
+      expect(checkpoint.id).toBeDefined();
+      expect(checkpoint.timestamp).toBeDefined();
+      expect(checkpoint.state).toBeDefined();
+      expect(checkpoint.metadata).toBeDefined();
+      expect(checkpoint.stateVersion).toBeDefined();
+    });
+
+    test('should restore from checkpoint', () => {
+      const gameState = game.getGameState();
+      const checkpoint = stateManager.createStateCheckpoint(gameState);
+      const result = stateManager.restoreFromCheckpoint(checkpoint);
+      
+      expect(result.success).toBe(true);
+      expect(result.gameState).toBeDefined();
+      expect(result.metadata).toBeDefined();
+    });
+
+    test('should handle invalid checkpoint restoration', () => {
+      const result = stateManager.restoreFromCheckpoint(null);
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Invalid checkpoint');
+    });
+
+    test('should handle corrupted checkpoint state', () => {
+      const corruptedCheckpoint = {
+        id: 'test',
+        timestamp: Date.now(),
+        state: 'invalid json',
+        metadata: {},
+        stateVersion: 1
+      };
+      
+      const result = stateManager.restoreFromCheckpoint(corruptedCheckpoint);
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Failed to deserialize checkpoint state');
+    });
+  });
+
+  describe('State Comparison and Analysis', () => {
+    let game;
+    let stateManager;
+
+    beforeEach(() => {
+      game = new ChessGame();
+      stateManager = game.stateManager;
+    });
+
+    test('should compare identical game states', () => {
+      const state1 = game.getGameState();
+      const state2 = game.getGameState();
+      const result = stateManager.compareGameStates(state1, state2);
+      
+      expect(result.identical).toBe(true);
+      expect(result.differences).toHaveLength(0);
+    });
+
+    test('should detect differences in game states', () => {
+      const state1 = game.getGameState();
+      game.makeMove({ row: 6, col: 4 }, { row: 4, col: 4 });
+      const state2 = game.getGameState();
+      
+      const result = stateManager.compareGameStates(state1, state2);
+      
+      expect(result.identical).toBe(false);
+      expect(result.differences.length).toBeGreaterThan(0);
+    });
+
+    test('should handle null state comparison', () => {
+      const state1 = game.getGameState();
+      const result = stateManager.compareGameStates(state1, null);
+      
+      expect(result.identical).toBe(false);
+      expect(result.differences).toContain('One or both states are null/undefined');
+    });
+
+    test('should analyze game progression', () => {
+      const gameState = game.getGameState();
+      const analysis = stateManager.analyzeGameProgression(gameState);
+      
+      expect(analysis.phase).toBeDefined();
+      expect(analysis.moveCount).toBeDefined();
+      expect(analysis.characteristics).toBeDefined();
+    });
+
+    test('should detect game phase correctly', () => {
+      const gameState = game.getGameState();
+      const phase = stateManager.detectGamePhase(gameState);
+      
+      expect(['opening', 'middlegame', 'endgame']).toContain(phase);
+    });
+
+    test('should calculate material balance', () => {
+      const gameState = game.getGameState();
+      const balance = stateManager.calculateMaterialBalance(gameState.board);
+      
+      expect(balance.white).toBeDefined();
+      expect(balance.black).toBeDefined();
+      expect(balance.difference).toBeDefined();
+    });
+
+    test('should handle invalid board in material calculation', () => {
+      const balance = stateManager.calculateMaterialBalance(null);
+      
+      expect(balance.white.total).toBe(0);
+      expect(balance.black.total).toBe(0);
+      expect(balance.difference).toBe(0);
+    });
+  });
+
+  describe('Piece Activity Analysis', () => {
+    let game;
+    let stateManager;
+
+    beforeEach(() => {
+      game = new ChessGame();
+      stateManager = game.stateManager;
+    });
+
+    test('should analyze piece activity', () => {
+      const gameState = game.getGameState();
+      const analysis = stateManager.analyzePieceActivity(gameState.board, 'white');
+      
+      expect(analysis.activePieces).toBeDefined();
+      expect(analysis.totalMobility).toBeDefined();
+      expect(analysis.averageMobility).toBeDefined();
+    });
+
+    test('should handle invalid board in piece activity analysis', () => {
+      const analysis = stateManager.analyzePieceActivity(null, 'white');
+      
+      expect(analysis.activePieces).toHaveLength(0);
+      expect(analysis.totalMobility).toBe(0);
+      expect(analysis.averageMobility).toBe(0);
+    });
+
+    test('should calculate piece mobility', () => {
+      const gameState = game.getGameState();
+      const mobility = stateManager.calculatePieceMobility(
+        gameState.board, 
+        7, 
+        1, 
+        { type: 'knight', color: 'white' }
+      );
+      
+      expect(typeof mobility).toBe('number');
+      expect(mobility).toBeGreaterThanOrEqual(0);
+    });
+
+    test('should validate basic move patterns', () => {
+      expect(stateManager.isBasicMoveValid('pawn', 6, 4, 5, 4)).toBe(true);
+      expect(stateManager.isBasicMoveValid('rook', 7, 0, 7, 7)).toBe(true);
+      expect(stateManager.isBasicMoveValid('knight', 7, 1, 5, 2)).toBe(true);
+      expect(stateManager.isBasicMoveValid('bishop', 7, 2, 5, 4)).toBe(true);
+      expect(stateManager.isBasicMoveValid('queen', 7, 3, 5, 3)).toBe(true);
+      expect(stateManager.isBasicMoveValid('king', 7, 4, 6, 4)).toBe(true);
+      expect(stateManager.isBasicMoveValid('invalid', 0, 0, 1, 1)).toBe(false);
+    });
+
+    test('should analyze position complexity', () => {
+      const gameState = game.getGameState();
+      const isComplex = stateManager.analyzePositionComplexity(gameState.board);
+      
+      expect(typeof isComplex).toBe('boolean');
+    });
+
+    test('should handle invalid board in complexity analysis', () => {
+      const isComplex = stateManager.analyzePositionComplexity(null);
+      expect(isComplex).toBe(false);
+    });
+  });
+
+  describe('Memory Management and Optimization', () => {
+    let game;
+    let stateManager;
+
+    beforeEach(() => {
+      game = new ChessGame();
+      stateManager = game.stateManager;
+    });
+
+    test('should clean up old states', () => {
+      // Add many positions to history
+      for (let i = 0; i < 60; i++) {
+        stateManager.addPositionToHistory(`position_${i}`);
+      }
+      
+      const originalLength = stateManager.positionHistory.length;
+      stateManager.cleanupOldStates(50);
+      
+      expect(stateManager.positionHistory.length).toBeLessThanOrEqual(50);
+    });
+
+    test('should get memory usage information', () => {
+      const usage = stateManager.getMemoryUsage();
+      
+      expect(usage.positionHistorySize).toBeDefined();
+      expect(usage.metadataSize).toBeDefined();
+      expect(usage.totalSize).toBeDefined();
+      expect(usage.positionCount).toBeDefined();
+    });
+
+    test('should optimize state storage', () => {
+      // Add duplicate positions
+      stateManager.addPositionToHistory('duplicate');
+      stateManager.addPositionToHistory('duplicate');
+      stateManager.addPositionToHistory('unique');
+      
+      const originalLength = stateManager.positionHistory.length;
+      stateManager.optimizeStateStorage();
+      
+      // Should remove duplicates
+      expect(stateManager.positionHistory.length).toBeLessThanOrEqual(originalLength);
+    });
+  });
+
+  describe('State Transition Validation', () => {
+    let game;
+    let stateManager;
+
+    beforeEach(() => {
+      game = new ChessGame();
+      stateManager = game.stateManager;
+    });
+
+    test('should validate valid state transition', () => {
+      const fromState = game.getGameState();
+      game.makeMove({ row: 6, col: 4 }, { row: 4, col: 4 });
+      const toState = game.getGameState();
+      
+      const result = stateManager.validateStateTransition(fromState, toState);
+      
+      expect(result.isValid).toBe(true);
+      expect(result.success).toBe(true);
+    });
+
+    test('should detect invalid turn transition', () => {
+      const fromState = game.getGameState();
+      const toState = { ...fromState };
+      toState.currentTurn = 'invalid_color';
+      
+      const result = stateManager.validateStateTransition(fromState, toState);
+      
+      expect(result.isValid).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+    });
+
+    test('should detect decreasing move history', () => {
+      const fromState = game.getGameState();
+      game.makeMove({ row: 6, col: 4 }, { row: 4, col: 4 });
+      const toState = game.getGameState();
+      
+      // Simulate decreasing move history
+      toState.moveHistory = [];
+      
+      const result = stateManager.validateStateTransition(fromState, toState);
+      
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain('Move history cannot decrease');
+    });
+  });
+
+  describe('Castling Rights Validation', () => {
+    let game;
+    let stateManager;
+
+    beforeEach(() => {
+      game = new ChessGame();
+      stateManager = game.stateManager;
+    });
+
+    test('should validate castling rights consistency', () => {
+      const gameState = game.getGameState();
+      const result = stateManager.validateCastlingRightsConsistency(
+        gameState.board, 
+        gameState.castlingRights
+      );
+      
+      expect(result).toBe(true);
+    });
+
+    test('should detect invalid castling rights', () => {
+      const invalidBoard = Array(8).fill(null).map(() => Array(8).fill(null));
+      const castlingRights = {
+        white: { kingside: true, queenside: true },
+        black: { kingside: true, queenside: true }
+      };
+      
+      const result = stateManager.validateCastlingRightsConsistency(invalidBoard, castlingRights);
+      expect(result).toBe(false);
+    });
+
+    test('should handle null parameters in castling validation', () => {
+      const result = stateManager.validateCastlingRightsConsistency(null, null);
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('Move History Management', () => {
+    let game;
+    let stateManager;
+
+    beforeEach(() => {
+      game = new ChessGame();
+      stateManager = game.stateManager;
+    });
+
+    test('should add move to history', () => {
+      const move = {
+        from: { row: 6, col: 4 },
+        to: { row: 4, col: 4 },
+        piece: 'pawn',
+        color: 'white'
+      };
+      
+      const result = stateManager.addMove(move);
+      
+      expect(result.success).toBe(true);
+      expect(result.move).toBeDefined();
+      expect(result.move.timestamp).toBeDefined();
+      expect(result.move.moveNumber).toBeDefined();
+    });
+
+    test('should validate move history', () => {
+      const result = stateManager.validateMoveHistory();
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('Move history is valid');
+    });
+
+    test('should detect invalid move in history', () => {
+      stateManager.moveHistory = [null];
+      const result = stateManager.validateMoveHistory();
+      
+      expect(result.success).toBe(false);
+      expect(result.errors).toContain('Invalid move at index 0');
+    });
+
+    test('should validate castling rights structure', () => {
+      const result = stateManager.validateCastlingRights();
+      expect(result.success).toBe(true);
+    });
+
+    test('should detect invalid castling rights structure', () => {
+      stateManager.castlingRights = null;
+      const result = stateManager.validateCastlingRights();
+      
+      expect(result.success).toBe(false);
+      expect(result.errors).toContain('Castling rights must be an object');
+    });
+
+    test('should validate en passant target', () => {
+      const result = stateManager.validateEnPassantTarget();
+      expect(result.success).toBe(true);
+    });
+
+    test('should validate game status', () => {
+      const result = stateManager.validateGameStatus();
+      expect(result.success).toBe(true);
+    });
+
+    test('should validate current turn', () => {
+      const result = stateManager.validateCurrentTurn();
+      expect(result.success).toBe(true);
+    });
+
+    test('should detect invalid current turn', () => {
+      stateManager.currentTurn = 'invalid';
+      const result = stateManager.validateCurrentTurn();
+      
+      expect(result.success).toBe(false);
+      expect(result.errors).toContain('Invalid current turn: invalid');
+    });
+  });
+});
