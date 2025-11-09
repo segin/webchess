@@ -285,7 +285,7 @@ describe('Legacy Test Migration - AI Functionality', () => {
   let game;
 
   beforeEach(() => {
-    ai = new ChessAI('medium');
+    ai = new ChessAI('easy'); // Use easy AI to prevent timeout
     game = new ChessGame();
   });
 

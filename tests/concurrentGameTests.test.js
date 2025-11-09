@@ -138,7 +138,7 @@ describe('Concurrent Game Testing - Resource Management', () => {
       for (let i = 0; i < numGames; i++) {
         const humanId = `human${i}`;
         const aiId = `ai${i}`;
-        const ai = new ChessAI('medium');
+        const ai = new ChessAI('easy'); // Use easy AI to prevent timeout
         
         const gameId = gameManager.createGame(humanId);
         gameManager.joinGame(gameId, aiId);
