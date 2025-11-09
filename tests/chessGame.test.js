@@ -4243,3 +4243,196 @@ describe('ChessGame Edge Case Coverage', () => {
       expect(endTime - startTime).toBeLessThan(1000); // Should complete in 1 second
     });
   });
+
+  describe('Error Path Coverage - System Errors', () => {
+    test('should handle system errors in move format validation', () => {
+      // Create a corrupted game instance to trigger system errors
+      const corruptedGame = new ChessGame();
+      
+      // Mock the errorHandler to throw an error during validation
+      const originalCreateError = corruptedGame.errorHandler.createError;
+      corruptedGame.errorHandler.createError = jest.fn(() => {
+        throw new Error('Simulated system error in error handler');
+      });
+
+      const result = corruptedGame.validateMoveFormat(null);
+      
+      // Should handle the error gracefully
+      expect(result).toBeDefined();
+      expect(result.success).toBe(false);
+      
+      // Restore original method
+      corruptedGame.errorHandler.createError = originalCreateError;
+    });
+
+    test('should handle system errors in coordinate validation', () => {
+      const corruptedGame = new ChessGame();
+      
+      // Mock isValidSquare to throw an error
+      const originalIsValidSquare = corruptedGame.isValidSquare;
+      corruptedGame.isValidSquare = jest.fn(() => {
+        throw new Error('Simulated coordinate validation error');
+      });
+
+      const result = corruptedGame.validateCoordinates(
+        { row: 0, col: 0 }, 
+        { row: 1, col: 1 }
+      );
+      
+      expect(result).toBeDefined();
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('SYSTEM_ERROR');
+      
+      // Restore original method
+      corruptedGame.isValidSquare = originalIsValidSquare;
+    });
+
+    test('should handle system errors in game state validation', () => {
+      const corruptedGame = new ChessGame();
+      
+      // Corrupt the game status to trigger error handling
+      corruptedGame.gameStatus = null;
+      
+      const result = corruptedGame.validateGameState();
+      
+      expect(result).toBeDefined();
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('Error Path Coverage - Edge Cases', () => {
+    test('should handle invalid piece types in movement validation', () => {
+      const invalidPiece = { type: 'invalid_piece', color: 'white' };
+      
+      const result = game.validateMovementPattern(
+        { row: 0, col: 0 },
+        { row: 1, col: 1 },
+        invalidPiece
+      );
+      
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('UNKNOWN_PIECE_TYPE');
+    });
+
+    test('should handle malformed move objects', () => {
+      // Test with null move
+      let result = game.validateMoveFormat(null);
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('MALFORMED_MOVE');
+
+      // Test with non-object move
+      result = game.validateMoveFormat("invalid");
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('MALFORMED_MOVE');
+
+      // Test with missing from/to
+      result = game.validateMoveFormat({});
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('INVALID_FORMAT');
+
+      // Test with invalid coordinate types
+      result = game.validateMoveFormat({
+        from: { row: "invalid", col: 0 },
+        to: { row: 1, col: 1 }
+      });
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('INVALID_COORDINATES');
+
+      // Test with non-finite coordinates
+      result = game.validateMoveFormat({
+        from: { row: Infinity, col: 0 },
+        to: { row: 1, col: 1 }
+      });
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('INVALID_COORDINATES');
+    });
+
+    test('should handle invalid coordinates in validation', () => {
+      // Test out of bounds coordinates
+      let result = game.validateCoordinates(
+        { row: -1, col: 0 },
+        { row: 1, col: 1 }
+      );
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('INVALID_COORDINATES');
+
+      result = game.validateCoordinates(
+        { row: 0, col: 8 },
+        { row: 1, col: 1 }
+      );
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('INVALID_COORDINATES');
+
+      // Test same square coordinates
+      result = game.validateCoordinates(
+        { row: 0, col: 0 },
+        { row: 0, col: 0 }
+      );
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('INVALID_COORDINATES');
+    });
+
+    test('should handle invalid piece data', () => {
+      // Place an invalid piece on the board
+      game.board[0][0] = { type: null, color: 'white' };
+      
+      let result = game.validatePieceAtSquare({ row: 0, col: 0 });
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('INVALID_PIECE');
+
+      // Test invalid piece type
+      game.board[0][0] = { type: 'invalid_type', color: 'white' };
+      result = game.validatePieceAtSquare({ row: 0, col: 0 });
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('INVALID_PIECE_TYPE');
+
+      // Test invalid piece color
+      game.board[0][0] = { type: 'pawn', color: 'invalid_color' };
+      result = game.validatePieceAtSquare({ row: 0, col: 0 });
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('INVALID_PIECE_COLOR');
+    });
+
+    test('should handle game not active state', () => {
+      game.gameStatus = 'checkmate';
+      
+      const result = game.validateGameState();
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('GAME_NOT_ACTIVE');
+    });
+  });
+
+  describe('Move Notation and Utility Functions', () => {
+    test('should generate move notation correctly', () => {
+      const notation = game.getMoveNotation(
+        { row: 6, col: 4 },
+        { row: 4, col: 4 },
+        { type: 'pawn', color: 'white' }
+      );
+      expect(notation).toBe('pawne2-e4');
+    });
+
+    test('should handle parse move notation', () => {
+      const result = game.parseMoveNotation('e2-e4');
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Invalid move notation');
+    });
+
+    test('should reset game correctly', () => {
+      // Make some moves first
+      game.makeMove({ row: 6, col: 4 }, { row: 4, col: 4 });
+      game.makeMove({ row: 1, col: 4 }, { row: 3, col: 4 });
+
+      // Reset the game
+      game.resetGame();
+
+      const gameState = game.getGameState();
+      expect(gameState.currentTurn).toBe('white');
+      expect(gameState.gameStatus).toBe('active');
+      expect(gameState.winner).toBe(null);
+      expect(gameState.moveHistory).toHaveLength(0);
+      expect(gameState.fullMoveNumber).toBe(1);
+      expect(gameState.halfMoveClock).toBe(0);
+    });
+  });
+
