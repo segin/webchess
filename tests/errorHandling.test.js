@@ -729,6 +729,260 @@ describe('Comprehensive Error Handling System', () => {
       });
     });
   });
+
+  describe('Uncovered Error Handler Methods', () => {
+    test('should get recovery options for all error codes', () => {
+      const errorCodes = Object.keys(errorHandler.errorCodes);
+      
+      errorCodes.forEach(code => {
+        const options = errorHandler.getRecoveryOptions(code);
+        
+        expect(options).toBeDefined();
+        expect(typeof options.automatic).toBe('boolean');
+        expect(Array.isArray(options.suggestions)).toBe(true);
+        expect(Array.isArray(options.actions)).toBe(true);
+      });
+    });
+
+    test('should get recovery actions for unknown error codes', () => {
+      const actions = errorHandler.getRecoveryActions('UNKNOWN_ERROR_CODE');
+      
+      expect(Array.isArray(actions)).toBe(true);
+      expect(actions).toEqual(['manual_intervention']);
+    });
+
+    test('should get recovery actions for known error codes', () => {
+      const knownCodes = [
+        'INVALID_PIECE', 'INVALID_PIECE_TYPE', 'INVALID_PIECE_COLOR',
+        'INVALID_STATUS', 'INVALID_STATUS_TRANSITION', 'MISSING_WINNER',
+        'INVALID_WINNER_FOR_DRAW', 'TURN_SEQUENCE_VIOLATION', 'TURN_HISTORY_MISMATCH',
+        'INVALID_COLOR', 'SYSTEM_ERROR', 'VALIDATION_FAILURE', 'STATE_CORRUPTION'
+      ];
+
+      knownCodes.forEach(code => {
+        const actions = errorHandler.getRecoveryActions(code);
+        
+        expect(Array.isArray(actions)).toBe(true);
+        expect(actions.length).toBeGreaterThan(0);
+        expect(actions).not.toEqual(['manual_intervention']);
+      });
+    });
+
+    test('should recover winner data for draw conditions', () => {
+      const recoveryResult = errorHandler.attemptRecovery('INVALID_WINNER_FOR_DRAW', {
+        gameStatus: 'stalemate',
+        winner: 'white'
+      });
+      
+      expect(recoveryResult.success).toBe(true);
+      expect(recoveryResult.message).toContain('Winner cleared for draw condition');
+      expect(recoveryResult.recoveredData.winner).toBe(null);
+    });
+
+    test('should fail to recover color data without context', () => {
+      const recoveryResult = errorHandler.attemptRecovery('INVALID_COLOR', {});
+      
+      expect(recoveryResult.success).toBe(false);
+      expect(recoveryResult.message).toContain('Cannot recover color data');
+    });
+
+    test('should recover color data with invalid color', () => {
+      const recoveryResult = errorHandler.attemptRecovery('INVALID_COLOR', {
+        color: 'red'
+      });
+      
+      expect(recoveryResult.success).toBe(true);
+      expect(recoveryResult.message).toContain('Color reset to white (default)');
+      expect(recoveryResult.recoveredData.color).toBe('white');
+    });
+
+    test('should generate unique error IDs', () => {
+      const id1 = errorHandler.generateErrorId();
+      const id2 = errorHandler.generateErrorId();
+      
+      expect(typeof id1).toBe('string');
+      expect(typeof id2).toBe('string');
+      expect(id1).not.toBe(id2);
+      expect(id1).toMatch(/^err_\d+_[a-z0-9]+$/);
+      expect(id2).toMatch(/^err_\d+_[a-z0-9]+$/);
+    });
+
+    test('should log errors with different severity levels', () => {
+      // Create isolated error suppression for this specific test
+      const errorSuppression = testUtils.createErrorSuppression();
+      errorSuppression.suppressExpectedErrors([
+        /CRITICAL ERROR/,
+        /HIGH SEVERITY ERROR/,
+        /Error:/
+      ]);
+      
+      try {
+        // Test CRITICAL severity logging
+        errorHandler.logError({
+          severity: 'CRITICAL',
+          errorCode: 'STATE_CORRUPTION',
+          message: 'Critical test error'
+        });
+
+        // Test HIGH severity logging
+        errorHandler.logError({
+          severity: 'HIGH',
+          errorCode: 'SYSTEM_ERROR',
+          message: 'High severity test error'
+        });
+
+        // Test default severity logging
+        errorHandler.logError({
+          severity: 'MEDIUM',
+          errorCode: 'INVALID_MOVE',
+          message: 'Medium severity test error'
+        });
+
+        // Test undefined severity (should use default)
+        errorHandler.logError({
+          errorCode: 'MALFORMED_MOVE',
+          message: 'No severity test error'
+        });
+      } finally {
+        errorSuppression.restoreConsoleError();
+      }
+    });
+
+    test('should validate error response structure', () => {
+      const validError = {
+        success: false,
+        isValid: false,
+        message: 'Test error',
+        errorCode: 'TEST_ERROR',
+        category: 'TEST',
+        severity: 'HIGH',
+        recoverable: false,
+        errors: [],
+        suggestions: [],
+        details: {}
+      };
+
+      const invalidError = {
+        success: false,
+        message: 'Test error'
+        // Missing required fields
+      };
+
+      if (errorHandler.validateErrorResponse) {
+        expect(errorHandler.validateErrorResponse(validError)).toBe(true);
+        expect(errorHandler.validateErrorResponse(invalidError)).toBe(false);
+      }
+    });
+
+    test('should check auto-recovery capability for all error codes', () => {
+      const autoRecoverableCodes = [
+        'INVALID_PIECE', 'INVALID_PIECE_TYPE', 'INVALID_PIECE_COLOR',
+        'INVALID_STATUS', 'MISSING_WINNER', 'INVALID_WINNER_FOR_DRAW',
+        'TURN_SEQUENCE_VIOLATION', 'TURN_HISTORY_MISMATCH', 'INVALID_COLOR'
+      ];
+
+      const nonRecoverableCodes = [
+        'MALFORMED_MOVE', 'INVALID_COORDINATES', 'NO_PIECE', 'WRONG_TURN',
+        'INVALID_MOVEMENT', 'PATH_BLOCKED', 'KING_IN_CHECK'
+      ];
+
+      autoRecoverableCodes.forEach(code => {
+        expect(errorHandler.canAutoRecover(code)).toBe(true);
+      });
+
+      nonRecoverableCodes.forEach(code => {
+        expect(errorHandler.canAutoRecover(code)).toBe(false);
+      });
+    });
+
+    test('should handle recovery options for unknown error codes', () => {
+      const options = errorHandler.getRecoveryOptions('UNKNOWN_ERROR_CODE');
+      
+      expect(options).toBeDefined();
+      expect(typeof options.automatic).toBe('boolean');
+      expect(Array.isArray(options.suggestions)).toBe(true);
+      expect(options.suggestions).toEqual([]); // Should be empty for unknown codes
+      expect(Array.isArray(options.actions)).toBe(true);
+    });
+
+    test('should recover piece data with valid type but invalid color', () => {
+      const recoveryResult = errorHandler.attemptRecovery('INVALID_PIECE', {
+        piece: { type: 'queen', color: 'red' },
+        position: { row: 6, col: 4 }
+      });
+      
+      expect(recoveryResult.success).toBe(true);
+      expect(recoveryResult.recoveredData.type).toBe('queen'); // Should keep valid type
+      expect(recoveryResult.recoveredData.color).toBe('white'); // Should fix invalid color
+    });
+
+    test('should recover piece data with invalid type but valid color', () => {
+      const recoveryResult = errorHandler.attemptRecovery('INVALID_PIECE', {
+        piece: { type: 'invalid_piece', color: 'black' },
+        position: { row: 6, col: 4 }
+      });
+      
+      expect(recoveryResult.success).toBe(true);
+      expect(recoveryResult.recoveredData.type).toBe('pawn'); // Should fix invalid type
+      expect(recoveryResult.recoveredData.color).toBe('black'); // Should keep valid color
+    });
+
+    test('should determine winner for checkmate with black turn', () => {
+      const recoveryResult = errorHandler.attemptRecovery('MISSING_WINNER', {
+        gameStatus: 'checkmate',
+        currentTurn: 'black'
+      });
+      
+      expect(recoveryResult.success).toBe(true);
+      expect(recoveryResult.recoveredData.winner).toBe('white'); // Opposite of black turn
+    });
+
+    test('should get error statistics with zero recovery attempts', () => {
+      const freshErrorHandler = new ChessErrorHandler();
+      const stats = freshErrorHandler.getErrorStats();
+      
+      expect(stats.recoveryRate).toBe('0%');
+      expect(stats.recoveryAttempts).toBe(0);
+      expect(stats.successfulRecoveries).toBe(0);
+    });
+
+    test('should get error statistics with recovery attempts', () => {
+      const freshErrorHandler = new ChessErrorHandler();
+      
+      // Perform some recovery attempts
+      freshErrorHandler.attemptRecovery('INVALID_PIECE', {
+        piece: { type: 'pawn', color: 'white' },
+        position: { row: 6, col: 4 }
+      });
+      
+      freshErrorHandler.attemptRecovery('MALFORMED_MOVE'); // This should fail
+      
+      const stats = freshErrorHandler.getErrorStats();
+      
+      expect(stats.recoveryAttempts).toBe(2);
+      expect(stats.successfulRecoveries).toBe(1);
+      expect(stats.recoveryRate).toBe('50.00%');
+    });
+
+    test('should create success response with custom metadata', () => {
+      const success = errorHandler.createSuccess('Custom success', { key: 'value' }, { timestamp: Date.now() });
+      
+      testUtils.validateSuccessResponse(success);
+      expect(success.message).toBe('Custom success');
+      expect(success.data).toEqual({ key: 'value' });
+      expect(success.metadata).toBeDefined();
+      expect(success.metadata.timestamp).toBeDefined();
+    });
+
+    test('should create success response with default parameters', () => {
+      const success = errorHandler.createSuccess();
+      
+      testUtils.validateSuccessResponse(success);
+      expect(success.message).toBe('Operation successful');
+      expect(success.data).toEqual({});
+      expect(success.metadata).toEqual({});
+    });
+  });
 });
 
 // Export for use in other test files
