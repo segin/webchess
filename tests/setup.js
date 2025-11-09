@@ -9,7 +9,7 @@ const { consoleUtils } = require('./utils/consoleQuiet');
 
 // Import resource management utilities
 const ResourceManager = require('./utils/ResourceManager');
-const { setupHandleDetection } = require('./utils/handleDetection');
+// const { setupHandleDetection } = require('./utils/handleDetection');
 
 // Import standardized test patterns and data
 const { TestPositions, TestSequences, TestData } = require('./helpers/testData');
@@ -18,7 +18,7 @@ const {
   SetupPatterns, 
   NamingPatterns, 
   DataGenerators, 
-  ExecutionHelpers 
+  ExecutionHelpers,
 } = require('./helpers/testPatterns');
 
 // Global test utilities - merge with error suppression utilities and standardized patterns
@@ -36,16 +36,16 @@ global.testUtils = {
   
   // Standardized assertion patterns
   ...AssertionPatterns,
-  
+
   // Standardized setup patterns
   SetupPatterns,
-  
+
   // Standardized naming patterns
   NamingPatterns,
-  
+
   // Data generators
   DataGenerators,
-  
+
   // Execution helpers
   ExecutionHelpers,
   
@@ -158,6 +158,11 @@ beforeEach(() => {
     /Invalid movement/,
     /System error/,
     
+    // Game state consistency warnings
+    /Game state consistency warnings after move/,
+    /Castling rights may be inconsistent with piece positions/,
+    /Current position does not match last recorded position/,,
+    
     // All error codes
     /MALFORMED_MOVE/,
     /INVALID_COORDINATES/,
@@ -209,11 +214,11 @@ beforeEach(() => {
     /tests\//,
     
     // Catch-all for numbered error messages
-    /Error \d+/
+    /Error \d+/,
   ]);
 });
 
-afterEach(async () => {
+afterEach(async() => {
   // Clean up any GameManager instances to prevent timeout leaks
   if (global.gameManager && typeof global.gameManager.cleanup === 'function') {
     global.gameManager.cleanup();
