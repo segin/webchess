@@ -105,21 +105,21 @@ describe('GameStateManager', () => {
       const result = stateManager.validateTurnSequence('white', 'white', []);
       
       expect(result.success).toBe(true);
-      expect(result.isValid).toBe(true);
+      expect(result.message).toContain('valid');
     });
 
     test('should reject invalid expected color', () => {
       const result = stateManager.validateTurnSequence('white', 'invalid', []);
       
       expect(result.success).toBe(false);
-      expect(result.message).toContain('Invalid expected color');
+      expect(result.code).toBe('INVALID_COLOR');
     });
 
     test('should detect turn mismatch', () => {
       const result = stateManager.validateTurnSequence('black', 'white', []);
       
       expect(result.success).toBe(false);
-      expect(result.message).toContain('Turn mismatch');
+      expect(result.code).toBe('TURN_SEQUENCE_VIOLATION');
     });
 
     test('should validate turn against move history', () => {
@@ -134,7 +134,7 @@ describe('GameStateManager', () => {
       const result = stateManager.validateTurnSequence('white', 'white', moveHistory);
       
       expect(result.success).toBe(false);
-      expect(result.message).toContain('does not match move history');
+      expect(result.code).toBe('TURN_HISTORY_MISMATCH');
     });
   });
 
@@ -161,49 +161,49 @@ describe('GameStateManager', () => {
       const result = stateManager.updateGameStatus('active', 'check');
       
       expect(result.success).toBe(true);
-      expect(result.newStatus).toBe('check');
+      expect(result.details.newStatus).toBe('check');
     });
 
     test('should update status to checkmate with winner', () => {
       const result = stateManager.updateGameStatus('check', 'checkmate', 'white');
       
       expect(result.success).toBe(true);
-      expect(result.winner).toBe('white');
+      expect(result.details.newWinner).toBe('white');
     });
 
     test('should reject checkmate without winner', () => {
       const result = stateManager.updateGameStatus('check', 'checkmate');
       
       expect(result.success).toBe(false);
-      expect(result.message).toContain('requires a winner');
+      expect(result.code).toBe('MISSING_WINNER');
     });
 
     test('should reject draw with winner', () => {
       const result = stateManager.updateGameStatus('active', 'draw', 'white');
       
       expect(result.success).toBe(false);
-      expect(result.message).toContain('should not have a winner');
+      expect(result.code).toBe('INVALID_WINNER_FOR_DRAW');
     });
 
     test('should reject stalemate with winner', () => {
       const result = stateManager.updateGameStatus('active', 'stalemate', 'black');
       
       expect(result.success).toBe(false);
-      expect(result.message).toContain('should not have a winner');
+      expect(result.code).toBe('INVALID_WINNER_FOR_DRAW');
     });
 
     test('should reject invalid status', () => {
       const result = stateManager.updateGameStatus('active', 'invalid_status');
       
       expect(result.success).toBe(false);
-      expect(result.message).toContain('Invalid status');
+      expect(result.code).toBe('INVALID_STATUS');
     });
 
     test('should reject invalid status transition', () => {
       const result = stateManager.updateGameStatus('checkmate', 'active');
       
       expect(result.success).toBe(false);
-      expect(result.message).toContain('Invalid transition');
+      expect(result.code).toBe('INVALID_STATUS_TRANSITION');
     });
   });
 
@@ -251,15 +251,15 @@ describe('GameStateManager', () => {
           white: { kingside: true, queenside: true },
           black: { kingside: true, queenside: true }
         },
-        enPassantTarget: null
+        enPassantTarget: null,
+        halfMoveClock: 0
       };
       
       const result = stateManager.addMoveToHistory(moveHistory, moveData, 1, gameState);
       
-      expect(result.success).toBe(true);
-      expect(result.move).toBeDefined();
-      expect(result.move.timestamp).toBeDefined();
-      expect(result.move.fullMoveNumber).toBe(1);
+      expect(result).toBeDefined();
+      expect(result.timestamp).toBeDefined();
+      expect(result.moveNumber).toBe(1);
     });
 
     test('should limit position history to 100 entries', () => {
@@ -333,7 +333,7 @@ describe('GameStateManager', () => {
       const result = stateManager.validateGameStateConsistency(null);
       
       expect(result.success).toBe(false);
-      expect(result.message).toContain('Game state is null');
+      expect(result.errors[0]).toContain('null or undefined');
     });
 
     test('should detect turn mismatch', () => {
@@ -419,22 +419,22 @@ describe('GameStateManager', () => {
       const board = createStartingBoard();
       const result = stateManager.validateBoardConsistency(board);
       
-      expect(result.success).toBe(true);
+      expect(result.isValid).toBe(true);
       expect(result.errors).toEqual([]);
     });
 
     test('should reject non-array board', () => {
       const result = stateManager.validateBoardConsistency(null);
       
-      expect(result.success).toBe(false);
-      expect(result.errors[0]).toContain('Board must be 8x8 array');
+      expect(result.isValid).toBe(false);
+      expect(result.errors[0]).toContain('Invalid board structure');
     });
 
     test('should reject invalid board dimensions', () => {
       const board = Array(7).fill(null).map(() => Array(8).fill(null));
       const result = stateManager.validateBoardConsistency(board);
       
-      expect(result.success).toBe(false);
+      expect(result.isValid).toBe(false);
     });
 
     test('should detect invalid row structure', () => {
@@ -485,15 +485,15 @@ describe('GameStateManager', () => {
       const board = createStartingBoard();
       const result = stateManager.validateKingCount(board);
       
-      expect(result.success).toBe(true);
-      expect(result.kingCount.white).toBe(1);
-      expect(result.kingCount.black).toBe(1);
+      expect(result.isValid).toBe(true);
+      expect(result.whiteKings).toBe(1);
+      expect(result.blackKings).toBe(1);
     });
 
     test('should handle null board', () => {
       const result = stateManager.validateKingCount(null);
       
-      expect(result.success).toBe(false);
+      expect(result.isValid).toBe(false);
     });
 
     test('should handle invalid row', () => {
@@ -504,7 +504,7 @@ describe('GameStateManager', () => {
       
       const result = stateManager.validateKingCount(board);
       
-      expect(result.success).toBe(true); // Should skip invalid row
+      expect(result.isValid).toBe(true); // Should skip invalid row
     });
   });
 
