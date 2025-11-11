@@ -539,6 +539,123 @@ describe('GameStateManager', () => {
       expect(result.isValid).toBe(false);
     });
   });
+
+  describe('En Passant Consistency Validation', () => {
+    test('should validate no en passant target', () => {
+      const gameState = {
+        moveHistory: [],
+        enPassantTarget: null
+      };
+      
+      const result = stateManager.validateEnPassantConsistency(gameState);
+      
+      expect(result.isValid).toBe(true);
+      expect(result.expectedTarget).toBe(null);
+    });
+
+    test('should validate en passant after two-square pawn move', () => {
+      const gameState = {
+        moveHistory: [{
+          piece: 'pawn',
+          from: { row: 6, col: 4 },
+          to: { row: 4, col: 4 }
+        }],
+        enPassantTarget: { row: 5, col: 4 }
+      };
+      
+      const result = stateManager.validateEnPassantConsistency(gameState);
+      
+      expect(result.isValid).toBe(true);
+      expect(result.expectedTarget).toEqual({ row: 5, col: 4 });
+    });
+
+    test('should detect en passant target mismatch', () => {
+      const gameState = {
+        moveHistory: [{
+          piece: 'pawn',
+          from: { row: 6, col: 4 },
+          to: { row: 4, col: 4 }
+        }],
+        enPassantTarget: { row: 5, col: 3 }
+      };
+      
+      const result = stateManager.validateEnPassantConsistency(gameState);
+      
+      expect(result.isValid).toBe(false);
+    });
+
+    test('should handle null game state', () => {
+      const result = stateManager.validateEnPassantConsistency(null);
+      
+      expect(result.isValid).toBe(false);
+    });
+  });
+
+  describe('Threefold Repetition Detection', () => {
+    test('should detect threefold repetition', () => {
+      const position = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -';
+      
+      stateManager.addPositionToHistory(position);
+      stateManager.addPositionToHistory('other_position');
+      stateManager.addPositionToHistory(position);
+      stateManager.addPositionToHistory('another_position');
+      stateManager.addPositionToHistory(position);
+      
+      const result = stateManager.checkThreefoldRepetition();
+      
+      expect(result).toBe(true);
+    });
+
+    test('should not detect repetition with less than 3 occurrences', () => {
+      const position = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -';
+      
+      stateManager.addPositionToHistory(position);
+      stateManager.addPositionToHistory('other_position');
+      stateManager.addPositionToHistory(position);
+      
+      const result = stateManager.checkThreefoldRepetition();
+      
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('State Version Management', () => {
+    test('should update state version', () => {
+      const initialVersion = stateManager.stateVersion;
+      stateManager.updateStateVersion();
+      
+      expect(stateManager.stateVersion).toBe(initialVersion + 1);
+    });
+  });
+
+  describe('Game Metadata Management', () => {
+    test('should update game metadata', () => {
+      const updates = {
+        customField: 'test_value',
+        totalMoves: 10
+      };
+      
+      stateManager.updateGameMetadata(updates);
+      
+      expect(stateManager.gameMetadata.customField).toBe('test_value');
+      expect(stateManager.gameMetadata.totalMoves).toBe(10);
+    });
+  });
+
+  describe('State Snapshot', () => {
+    test('should create state snapshot', () => {
+      const gameState = {
+        board: createStartingBoard(),
+        currentTurn: 'white',
+        moveHistory: []
+      };
+      
+      const snapshot = stateManager.getStateSnapshot(gameState);
+      
+      expect(snapshot.timestamp).toBeDefined();
+      expect(snapshot.stateVersion).toBe(stateManager.stateVersion);
+    });
+  });
 });
 
 // Helper function to create starting board
