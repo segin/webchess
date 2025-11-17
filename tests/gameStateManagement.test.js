@@ -1262,4 +1262,3 @@ describe('GameState Transition Validation Coverage', () => {
       expect(result.errors).toContain('Invalid current turn: invalid');
     });
   });
-});
