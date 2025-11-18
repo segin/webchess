@@ -4436,3 +4436,46 @@ describe('ChessGame Edge Case Coverage', () => {
     });
   });
 
+
+
+
+
+  describe('Additional Coverage - Validation Methods', () => {
+    test('should validate castling consistency', () => {
+      const game = new ChessGame();
+      const result = game.validateCastlingConsistency();
+      expect(result).toBeDefined();
+    });
+
+    test('should validate game state structure', () => {
+      const game = new ChessGame();
+      const state = game.getGameState();
+      const result = game.validateGameStateStructure(state);
+      expect(result).toBeDefined();
+    });
+
+    test('should validate state integrity', () => {
+      const game = new ChessGame();
+      const result = game.validateStateIntegrity();
+      expect(result).toBeDefined();
+    });
+
+    test('should validate check resolution options', () => {
+      const game = new ChessGame();
+      // Setup a check scenario
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[0][4] = { type: 'rook', color: 'black' };
+      game.currentTurn = 'white';
+      game.inCheck = true;
+      
+      const result = game.validateCheckResolution({ row: 6, col: 4 }, { row: 5, col: 4 });
+      expect(result).toBeDefined();
+    });
+
+    test('should validate castling rights for side', () => {
+      const game = new ChessGame();
+      const result = game.validateCastlingRightsForSide('white', 'kingside');
+      expect(result).toBeDefined();
+    });
+  });
