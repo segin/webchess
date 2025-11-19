@@ -49,6 +49,52 @@ describe('ErrorHandler Complete Coverage', () => {
       expect(result.message).toBe('Cannot recover winner data');
       expect(result.action).toBe('manual_intervention');
     });
+
+    test('should recover winner when white is in checkmate', () => {
+      const context = {
+        gameStatus: 'checkmate',
+        currentTurn: 'white',
+        winner: null
+      };
+      
+      const result = errorHandler.recoverWinnerData(context);
+      expect(result.success).toBe(true);
+      expect(result.recoveredData.winner).toBe('black');
+    });
+
+    test('should recover winner when black is in checkmate', () => {
+      const context = {
+        gameStatus: 'checkmate',
+        currentTurn: 'black',
+        winner: null
+      };
+      
+      const result = errorHandler.recoverWinnerData(context);
+      expect(result.success).toBe(true);
+      expect(result.recoveredData.winner).toBe('white');
+    });
+
+    test('should clear winner for stalemate', () => {
+      const context = {
+        gameStatus: 'stalemate',
+        winner: 'white'
+      };
+      
+      const result = errorHandler.recoverWinnerData(context);
+      expect(result.success).toBe(true);
+      expect(result.recoveredData.winner).toBe(null);
+    });
+
+    test('should clear winner for draw', () => {
+      const context = {
+        gameStatus: 'draw',
+        winner: 'black'
+      };
+      
+      const result = errorHandler.recoverWinnerData(context);
+      expect(result.success).toBe(true);
+      expect(result.recoveredData.winner).toBe(null);
+    });
   });
 
   describe('Recoverable Error Paths', () => {
