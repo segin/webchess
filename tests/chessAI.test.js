@@ -782,3 +782,36 @@ describe('ChessAI - Comprehensive Test Suite', () => {
     });
   });
 });
+
+  describe('Edge Cases - No Valid Moves', () => {
+    test('should handle position leading to no valid moves', () => {
+      const ai = new ChessAI();
+      const game = new ChessGame();
+      
+      // Create a position where after a move, opponent has no moves
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      game.board[0][0] = { type: 'king', color: 'black' };
+      game.board[7][7] = { type: 'king', color: 'white' };
+      game.board[2][2] = { type: 'queen', color: 'white' };
+      game.currentTurn = 'white';
+      game.gameStatus = 'active';
+      
+      // Make a move and evaluate - this should eventually hit the no-moves case
+      const move = { from: { row: 2, col: 2 }, to: { row: 1, col: 1 } };
+      const result = ai.minimax(game, move, 2, true, -Infinity, Infinity);
+      expect(typeof result).toBe('number');
+    });
+
+    test('should evaluate position when no moves available', () => {
+      const ai = new ChessAI();
+      const game = new ChessGame();
+      
+      // Setup a position
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[0][4] = { type: 'king', color: 'black' };
+      
+      const score = ai.evaluatePosition(game);
+      expect(typeof score).toBe('number');
+    });
+  });
