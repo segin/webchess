@@ -201,6 +201,18 @@ describe('GameState Coverage Boost', () => {
       expect(result.success).toBe(false);
     });
 
+    test('should validate move history', () => {
+      const result = stateManager.validateMoveHistory();
+      expect(result.success).toBe(true);
+    });
+
+    test('should detect invalid move history', () => {
+      stateManager.moveHistory = null;
+      const result = stateManager.validateMoveHistory();
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Invalid move history');
+    });
+
     test('should validate king count', () => {
       const result = stateManager.validateKingCount(game.board);
       expect(result.success).toBe(true);
@@ -365,6 +377,23 @@ describe('GameState Coverage Boost', () => {
       const serialized = stateManager.serializeGameState(state);
       const deserialized = stateManager.deserializeGameState(serialized);
       expect(deserialized).toBeDefined();
+    });
+
+    test('should handle invalid JSON in deserialize', () => {
+      const result = stateManager.deserializeGameState('invalid json {{{');
+      expect(result).toBe(null);
+    });
+
+    test('should handle checkpoint with invalid state', () => {
+      const badCheckpoint = {
+        id: 'test',
+        timestamp: Date.now(),
+        state: 'invalid json',
+        metadata: {}
+      };
+      const result = stateManager.restoreFromCheckpoint(badCheckpoint);
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Failed to deserialize checkpoint state');
     });
   });
 
