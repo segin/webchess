@@ -474,8 +474,6 @@ describe('ChessAI Coverage Expansion', () => {
       expect(medium.maxDepth).toBeLessThan(hard.maxDepth);
     });
   });
-});
-
 
   describe('Edge Cases for 100% Coverage', () => {
     test('should return null when no valid moves available', () => {
@@ -498,19 +496,18 @@ describe('ChessAI Coverage Expansion', () => {
       expect(typeof score).toBe('number');
     });
 
-    test('should handle checkmate position in minimax', () => {
-      // Setup a checkmate position
+    test('should handle stalemate position in minimax depth 2', () => {
+      // Create position where white king is stalemated
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
-      game.board[0][4] = { type: 'king', color: 'black' };
-      game.board[7][4] = { type: 'king', color: 'white' };
-      game.board[1][4] = { type: 'rook', color: 'white' };
-      game.board[1][5] = { type: 'rook', color: 'white' };
-      game.currentTurn = 'white';
+      game.board[7][0] = { type: 'king', color: 'white' };
+      game.board[5][1] = { type: 'king', color: 'black' };
+      game.board[6][2] = { type: 'queen', color: 'black' };
+      game.currentTurn = 'black';
       game.gameStatus = 'active';
       
-      // Move that leads to checkmate (no moves for black)
-      const move = { from: { row: 1, col: 4 }, to: { row: 0, col: 4 } };
-      const score = ai.minimax(game, move, 2, true, -Infinity, Infinity);
+      // Move queen to create stalemate - white will have no moves
+      const move = { from: { row: 6, col: 2 }, to: { row: 6, col: 1 } };
+      const score = ai.minimax(game, move, 2, false, -Infinity, Infinity);
       expect(typeof score).toBe('number');
     });
 
