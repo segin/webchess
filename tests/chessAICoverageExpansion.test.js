@@ -475,3 +475,54 @@ describe('ChessAI Coverage Expansion', () => {
     });
   });
 });
+
+
+  describe('Edge Cases for 100% Coverage', () => {
+    test('should return null when no valid moves available', () => {
+      // Create a stalemate position
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      game.board[0][0] = { type: 'king', color: 'white' };
+      game.board[2][1] = { type: 'king', color: 'black' };
+      game.board[1][1] = { type: 'queen', color: 'black' };
+      game.board[1][2] = { type: 'queen', color: 'black' };
+      game.currentTurn = 'white';
+      game.gameStatus = 'stalemate';
+      
+      const move = ai.getBestMove(game);
+      expect(move).toBe(null);
+    });
+
+    test('should handle negative depth in minimax', () => {
+      const move = { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } };
+      const score = ai.minimax(game, move, -1, true, -Infinity, Infinity);
+      expect(typeof score).toBe('number');
+    });
+
+    test('should handle checkmate position in minimax', () => {
+      // Setup a checkmate position
+      game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      game.board[0][4] = { type: 'king', color: 'black' };
+      game.board[7][4] = { type: 'king', color: 'white' };
+      game.board[1][4] = { type: 'rook', color: 'white' };
+      game.board[1][5] = { type: 'rook', color: 'white' };
+      game.currentTurn = 'white';
+      game.gameStatus = 'active';
+      
+      // Move that leads to checkmate (no moves for black)
+      const move = { from: { row: 1, col: 4 }, to: { row: 0, col: 4 } };
+      const score = ai.minimax(game, move, 2, true, -Infinity, Infinity);
+      expect(typeof score).toBe('number');
+    });
+
+    test('should handle getBestMove with null game', () => {
+      const move = ai.getBestMove(null);
+      expect(move).toBe(null);
+    });
+
+    test('should handle getBestMove with game missing currentTurn', () => {
+      const badGame = new ChessGame();
+      badGame.currentTurn = null;
+      const move = ai.getBestMove(badGame);
+      expect(move).toBe(null);
+    });
+  });
