@@ -1,16 +1,25 @@
 /**
  * Comprehensive Error Handler Tests
  * Tests for ChessErrorHandler class covering all error categories and recovery mechanisms
+ *
+ * vim: sw=4 ts=4 et fenc=utf-8 ft=javascript
  */
 
 const ChessErrorHandler = require('../src/shared/errorHandler');
+const ChessGame = require('../src/shared/chessGame');
 
 describe('ChessErrorHandler', () => {
   let errorHandler;
+  let game;
 
   beforeEach(() => {
     errorHandler = new ChessErrorHandler();
+    game = new ChessGame();
   });
+
+  afterEach(() => {
+      jest.restoreAllMocks();
+  })
 
   describe('Error Creation', () => {
     test('should create format error with standard message', () => {
@@ -127,11 +136,16 @@ describe('ChessErrorHandler', () => {
     });
 
     test('should not recover valid game status', () => {
-      const context = { currentStatus: 'checkmate' };
-      
-      const result = errorHandler.attemptRecovery('INVALID_STATUS', context);
-      
-      expect(result.success).toBe(false);
+        const context = { currentStatus: 'checkmate' };
+        const result = errorHandler.recoverGameStatus(context);
+        expect(result.success).toBe(false);
+      });
+
+    test('should fail to recover game status with no currentStatus property', () => {
+        const result = errorHandler.recoverGameStatus({});
+        expect(result.success).toBe(false);
+        expect(result.message).toBe('Cannot recover game status');
+        expect(result.action).toBe('manual_intervention');
     });
   });
 
@@ -201,6 +215,13 @@ describe('ChessErrorHandler', () => {
       const result = errorHandler.attemptRecovery('TURN_SEQUENCE_VIOLATION', {});
       
       expect(result.success).toBe(false);
+    });
+
+    test('should fail to recover color with no color property', () => {
+        const result = errorHandler.recoverColorData({});
+        expect(result.success).toBe(false);
+        expect(result.message).toBe('Cannot recover color data');
+        expect(result.action).toBe('manual_intervention');
     });
   });
 
@@ -380,6 +401,12 @@ describe('ChessErrorHandler', () => {
       const actions = errorHandler.getRecoveryActions('UNKNOWN_ERROR');
       expect(actions).toEqual(['manual_intervention']);
     });
+
+    test('should get recovery actions for color errors', () => {
+      const actions = errorHandler.getRecoveryActions('INVALID_COLOR');
+      expect(actions).toContain('set_default_color');
+      expect(actions).toContain('validate_color');
+    });
   });
 
   describe('Error Logging', () => {
@@ -518,6 +545,53 @@ describe('ChessErrorHandler', () => {
         expect(error.success).toBe(false);
         expect(error.errorCode).toBe(code);
       });
+    });
+  });
+
+  describe('Constructor and Initialization', () => {
+    test('should initialize error categories', () => {
+      expect(errorHandler.errorCategories).toBeDefined();
+      expect(errorHandler.errorCategories.FORMAT).toBe('FORMAT_ERROR');
+    });
+
+    test('should initialize error codes with proper structure', () => {
+      expect(errorHandler.errorCodes).toBeDefined();
+      expect(errorHandler.errorCodes.MALFORMED_MOVE).toEqual({
+        category: 'FORMAT',
+        severity: 'HIGH',
+        recoverable: false
+      });
+    });
+  });
+
+  // Integration tests from errorHandling.test.js
+  describe('Integration with ChessGame', () => {
+    test('should handle null move gracefully', () => {
+      const result = game.makeMove(null);
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('MALFORMED_MOVE');
+    });
+
+    test('should handle empty square', () => {
+      const move = { from: { row: 4, col: 4 }, to: { row: 3, col: 4 } };
+      const result = game.makeMove(move);
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('NO_PIECE');
+    });
+
+    test('should handle wrong turn', () => {
+      const move = { from: { row: 1, col: 4 }, to: { row: 2, col: 4 } };
+      const result = game.makeMove(move);
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('WRONG_TURN');
+    });
+
+    test('should handle moves when game is not active', () => {
+        game.gameStatus = 'checkmate';
+        const move = { from: { row: 6, col: 4 }, to: { row: 5, col: 4 } };
+        const result = game.makeMove(move);
+        expect(result.success).toBe(false);
+        expect(result.errorCode).toBe('GAME_NOT_ACTIVE');
     });
   });
 });
