@@ -483,9 +483,6 @@ describe('WebSocket Testing Framework', () => {
       
       // Simulate timeout error
       const timeoutError = new Error('Connection timeout');
-      mockClient.on('connect_error', (callback) => {
-        callback(timeoutError);
-      });
       
       // Test the error handler
       mockClient.on('connect_error', (error) => {
@@ -495,7 +492,9 @@ describe('WebSocket Testing Framework', () => {
       });
       
       // Trigger the error
-      const errorCallback = mockClient.on.mock.calls.find(call => call[0] === 'connect_error')[1];
+      // Find the handler we just registered (it's the last call to .on with 'connect_error')
+      const calls = mockClient.on.mock.calls.filter(call => call[0] === 'connect_error');
+      const errorCallback = calls[calls.length - 1][1];
       errorCallback(timeoutError);
     });
 
