@@ -35,7 +35,8 @@ describe('Coverage Validation Tests - Ensuring 95% Code Coverage', () => {
 
     test('should have Jest coverage configuration', () => {
       const jestConfig = require('../jest.config.js');
-      expect(jestConfig.collectCoverage).toBe(true);
+      // collectCoverage is false by default, enabled via CLI flag
+      expect(jestConfig.collectCoverage).toBe(false);
       expect(jestConfig.coverageThreshold).toBeDefined();
       expect(jestConfig.coverageThreshold.global).toBeDefined();
     });
@@ -214,7 +215,8 @@ describe('Coverage Validation Tests - Ensuring 95% Code Coverage', () => {
       expect(typeof stateManager.validateGameStateConsistency).toBe('function');
       expect(typeof stateManager.addMoveToHistory).toBe('function');
       expect(typeof stateManager.validateCastlingRights).toBe('function');
-      expect(typeof stateManager.validateEnPassantTarget).toBe('function');
+      // validateEnPassantTarget is now validateEnPassantConsistency
+      expect(typeof stateManager.validateEnPassantConsistency).toBe('function');
       expect(typeof stateManager.updateGameStatus).toBe('function');
     });
 
