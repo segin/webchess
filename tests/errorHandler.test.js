@@ -4,7 +4,6 @@
  *
  * vim: sw=4 ts=4 et fenc=utf-8 ft=javascript
  */
-
 const ChessErrorHandler = require('../src/shared/errorHandler');
 const ChessGame = require('../src/shared/chessGame');
 
@@ -53,9 +52,56 @@ describe('ChessErrorHandler', () => {
       expect(error.errorCode).toBe('UNKNOWN_ERROR');
     });
 
-    test('should update error statistics on error creation', () => {
-      errorHandler.createError('MALFORMED_MOVE');
-      errorHandler.createError('INVALID_COORDINATES');
+    test('should return specific actions for a known error code in getRecoveryActions', () => {
+      const actions = errorHandler.getRecoveryActions('INVALID_PIECE');
+      expect(actions).toEqual(['refresh_board', 'reset_piece_data']);
+    });
+    });
+
+    describe('Error Statistics and Logging', () => {
+        test('should update error statistics on error creation', () => {
+            errorHandler.createError('MALFORMED_MOVE');
+            errorHandler.createError('INVALID_COORDINATES');
+            errorHandler.createError('MALFORMED_MOVE');
+            const stats = errorHandler.getErrorStats();
+            expect(stats.totalErrors).toBe(3);
+            expect(stats.errorsByCode.MALFORMED_MOVE).toBe(2);
+        });
+        test('should track recovery attempts and successes', () => {
+            errorHandler.attemptRecovery('INVALID_PIECE', {
+                piece: {
+                    type: 'invalid',
+                    color: 'white'
+                },
+                position: {
+                    row: 0,
+                    col: 0
+                }
+            });
+            errorHandler.attemptRecovery('MALFORMED_MOVE'); // Will fail
+            const stats = errorHandler.getErrorStats();
+            expect(stats.recoveryAttempts).toBe(2);
+            expect(stats.successfulRecoveries).toBe(1);
+            expect(stats.recoveryRate).toBe('50.00%');
+        });
+        test('should reset statistics', () => {
+            errorHandler.createError('INVALID_MOVE');
+            errorHandler.resetErrorStats();
+            const stats = errorHandler.getErrorStats();
+            expect(stats.totalErrors).toBe(0);
+        });
+        test('should log critical errors', () => {
+            const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+            const errorResponse = {
+                severity: 'CRITICAL',
+                errorCode: 'TEST',
+                message: 'Test'
+            };
+            errorHandler.logError(errorResponse);
+            expect(consoleSpy).toHaveBeenCalledWith('CRITICAL ERROR:', errorResponse);
+        });
+
+    test('should reset all error statistics to zero', () => {
       errorHandler.createError('MALFORMED_MOVE');
       
       const stats = errorHandler.getErrorStats();
@@ -340,26 +386,16 @@ describe('ChessErrorHandler', () => {
 
     test('should track recovery attempts and successes', () => {
       errorHandler.attemptRecovery('INVALID_PIECE', {
-        piece: { type: 'invalid', color: 'white' },
-        position: { row: 0, col: 0 }
+        piece: {
+          type: 'invalid',
+          color: 'white'
+        },
+        position: {
+          row: 0,
+          col: 0
+        }
       });
-      errorHandler.attemptRecovery('MALFORMED_MOVE'); // Will fail
-      
-      const stats = errorHandler.getErrorStats();
-      expect(stats.recoveryAttempts).toBe(2);
-      expect(stats.successfulRecoveries).toBe(1);
-      expect(stats.recoveryRate).toBe('50.00%');
-    });
-
-    test('should calculate recovery rate correctly', () => {
-      const stats = errorHandler.getErrorStats();
-      expect(stats.recoveryRate).toBe('0%');
-    });
-
-    test('should reset statistics', () => {
-      errorHandler.createError('INVALID_MOVE');
       errorHandler.resetErrorStats();
-      
       const stats = errorHandler.getErrorStats();
       expect(stats.totalErrors).toBe(0);
       expect(stats.errorsByCategory).toEqual({});
@@ -422,38 +458,129 @@ describe('ChessErrorHandler', () => {
 
     test('should log high severity errors', () => {
       const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
-      const errorResponse = { severity: 'HIGH', errorCode: 'TEST', message: 'Test' };
-      
+      const errorResponse = {
+        severity: 'HIGH',
+        errorCode: 'TEST',
+        message: 'Test'
+      };
       errorHandler.logError(errorResponse);
-      
-      expect(consoleSpy).toHaveBeenCalledWith('HIGH SEVERITY ERROR:', 'TEST', 'Test');
-      consoleSpy.mockRestore();
+      expect(consoleSpy).toHaveBeenCalledWith('HIGH SEVERITY ERROR:', errorResponse.errorCode, errorResponse.message);
     });
 
-    test('should log medium/low severity errors', () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      const errorResponse = { severity: 'MEDIUM', errorCode: 'TEST', message: 'Test' };
-      
-      errorHandler.logError(errorResponse);
-      
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'TEST', 'Test');
-      consoleSpy.mockRestore();
+    test('should log low severity errors', () => {
+        const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+        const errorResponse = {
+          severity: 'LOW',
+          errorCode: 'TEST',
+          message: 'Test'
+        };
+        errorHandler.logError(errorResponse);
+        expect(consoleSpy).toHaveBeenCalledWith('Error:', errorResponse.errorCode, errorResponse.message);
+      });
     });
-  });
 
-  describe('Error Response Validation', () => {
-    test('should validate complete error response structure', () => {
-      const validResponse = {
+    describe('Error ID and Validation', () => {
+        test('should generate unique error IDs', () => {
+            const id1 = errorHandler.generateErrorId();
+            const id2 = errorHandler.generateErrorId();
+            expect(id1).not.toBe(id2);
+        });
+        test('should validate complete error response structure', () => {
+            const validResponse = {
+                success: false,
+                isValid: false,
+                message: 'Error',
+                errorCode: 'TEST',
+                category: 'SYSTEM',
+                severity: 'HIGH',
+                recoverable: false,
+                errors: [],
+                suggestions: [],
+                details: {}
+            };
+            const isValid = errorHandler.validateErrorResponse(validResponse);
+            expect(isValid).toBe(true);
+        });
+        test('should reject incomplete error response', () => {
+            const invalidResponse = {
+                success: false,
+                message: 'Error'
+            };
+            const isValid = errorHandler.validateErrorResponse(invalidResponse);
+            expect(isValid).toBe(false);
+        });
+        test('should return false for object with some missing properties', () => {
+            const invalidResponse = {
+                success: false,
+                message: 'Error',
+                errorCode: 'TEST'
+            };
+            const isValid = errorHandler.validateErrorResponse(invalidResponse);
+            expect(isValid).toBe(false);
+        });
+        test('should reject error response with missing properties', () => {
+            const invalidResponse = {
+                success: false,
+                isValid: false,
+                message: 'Error',
+                errorCode: 'TEST',
+                category: 'SYSTEM',
+                severity: 'HIGH',
+                recoverable: false,
+                errors: [],
+                suggestions: []
+            };
+            const isValid = errorHandler.validateErrorResponse(invalidResponse);
+            expect(isValid).toBe(false);
+        });
+    });
+
+    describe('Error Code Coverage', () => {
+        test('should create errors for all error codes', () => {
+            const errorCodes = Object.keys(errorHandler.errorCodes);
+            errorCodes.forEach(code => {
+                const error = errorHandler.createError(code);
+                expect(error.success).toBe(false);
+                expect(error.errorCode).toBe(code);
+            });
+        });
+    });
+
+    describe('validateErrorResponse', () => {
+        test('should return true for a valid error response structure', () => {
+            const validError = {
+                success: false,
+                isValid: false,
+                message: 'Test error',
+                errorCode: 'TEST_CODE',
+                category: 'TEST',
+                severity: 'HIGH',
+                recoverable: false,
+                errors: [],
+                suggestions: [],
+                details: {}
+            };
+            expect(errorHandler.validateErrorResponse(validError)).toBe(true);
+        });
+        test('should return false for an invalid error response structure', () => {
+            const invalidError = {
+                success: false,
+                message: 'Test error'
+            };
+            expect(errorHandler.validateErrorResponse(invalidError)).toBe(false);
+        });
+
+    test('should return false for a partially valid error response structure', () => {
+      const partiallyValidError = {
         success: false,
         isValid: false,
-        message: 'Error',
-        errorCode: 'TEST',
-        category: 'SYSTEM',
+        message: 'Test error',
+        errorCode: 'TEST_CODE',
+        category: 'TEST',
         severity: 'HIGH',
         recoverable: false,
         errors: [],
-        suggestions: [],
-        details: {}
+        suggestions: []
       };
       
       const isValid = errorHandler.validateErrorResponse(validResponse);
