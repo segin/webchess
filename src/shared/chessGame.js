@@ -145,10 +145,17 @@ class ChessGame {
    * @returns {Object} Validation result with detailed information
    */
   validateMove(move) {
-    // Step 1: Format validation
-    const formatValidation = this.validateMoveFormat(move);
-    if (formatValidation.success === false || formatValidation.isValid === false) {
-      return formatValidation;
+    try {
+      // Step 1: Format validation
+      const formatValidation = this.validateMoveFormat(move);
+      if (formatValidation.success === false || formatValidation.isValid === false) {
+        return formatValidation;
+      }
+    } catch (error) {
+      return this.errorHandler.createError(
+        'SYSTEM_ERROR',
+        'Error during move validation: ' + error.message
+      );
     }
 
     const { from, to, promotion } = move;
