@@ -1210,7 +1210,6 @@
   display: block;
 }
 
-/* TODO get rid of the SVGS and clean up these some more */
 .lh-metrics-toggle__input {
   opacity: 0;
   position: absolute;
