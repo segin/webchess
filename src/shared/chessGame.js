@@ -2109,21 +2109,13 @@ class ChessGame {
           continue;
         }
 
-        // Check all possible destination squares for this piece
-        for (let toRow = 0; toRow < 8; toRow++) {
-          for (let toCol = 0; toCol < 8; toCol++) {
-            const from = { row, col };
-            const to = { row: toRow, col: toCol };
+        const from = { row, col };
+        const possibleMoves = this.generatePossibleMoves(from, piece);
 
-            // Skip same square
-            if (row === toRow && col === toCol) {
-              continue;
-            }
-
-            // Use a simplified validation that doesn't trigger game end checking
-            if (this.isValidMoveSimple(from, to, piece)) {
-              return true; // Found at least one valid move
-            }
+        for (const to of possibleMoves) {
+          // Use a simplified validation that doesn't trigger game end checking
+          if (this.isValidMoveSimple(from, to, piece)) {
+            return true; // Found at least one valid move
           }
         }
       }
@@ -2781,6 +2773,11 @@ class ChessGame {
    * @returns {Array} Array of valid move objects
    */
   getAllValidMoves(color) {
+    // If game is not active, no moves are valid
+    if (this.gameStatus !== 'active') {
+      return [];
+    }
+
     const validMoves = [];
 
     // Iterate through all squares on the board
@@ -2798,11 +2795,10 @@ class ChessGame {
 
         // Validate each possible move
         for (const to of possibleMoves) {
-          const move = { from, to };
-          const validation = this.validateMove(move);
-
-          if (validation.isValid) {
-            validMoves.push(move);
+          // Use a simplified validation to improve performance
+          // The full validation is too heavy for generating all legal moves (e.g. for AI or UI highlights)
+          if (this.isValidMoveSimple(from, to, piece)) {
+            validMoves.push({ from, to });
           }
         }
       }

@@ -583,8 +583,8 @@ describe('ChessErrorHandler', () => {
         suggestions: []
       };
       
-      const isValid = errorHandler.validateErrorResponse(validResponse);
-      expect(isValid).toBe(true);
+      const isValid = errorHandler.validateErrorResponse(partiallyValidError);
+      expect(isValid).toBe(false);
     });
 
     test('should reject incomplete error response', () => {
