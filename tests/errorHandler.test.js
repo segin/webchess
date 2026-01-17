@@ -103,6 +103,8 @@ describe('ChessErrorHandler', () => {
 
     test('should reset all error statistics to zero', () => {
       errorHandler.createError('MALFORMED_MOVE');
+      errorHandler.createError('MALFORMED_MOVE');
+      errorHandler.createError('INVALID_COORDINATES');
       
       const stats = errorHandler.getErrorStats();
       expect(stats.totalErrors).toBe(3);
@@ -581,10 +583,11 @@ describe('ChessErrorHandler', () => {
         recoverable: false,
         errors: [],
         suggestions: []
+        // missing: details
       };
       
-      const isValid = errorHandler.validateErrorResponse(validResponse);
-      expect(isValid).toBe(true);
+      const isValid = errorHandler.validateErrorResponse(partiallyValidError);
+      expect(isValid).toBe(false);
     });
 
     test('should reject incomplete error response', () => {

@@ -505,7 +505,7 @@ describe('API Normalization Validation', () => {
         'castlingValidation.test.js',
         'checkDetection.test.js',
         'checkmateDetection.test.js',
-        'errorHandling.test.js'
+        'errorHandler.test.js'
       ];
       
       expectedTestFiles.forEach(expectedFile => {
