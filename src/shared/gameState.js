@@ -302,7 +302,12 @@ class GameStateManager {
       gameStateSnapshot: {
         inCheck: gameState.inCheck,
         checkDetails: gameState.checkDetails ? { ...gameState.checkDetails } : null,
-        castlingRights: JSON.parse(JSON.stringify(gameState.castlingRights)),
+        castlingRights: gameState.castlingRights
+          ? {
+              white: { ...gameState.castlingRights.white },
+              black: { ...gameState.castlingRights.black },
+            }
+          : gameState.castlingRights,
         enPassantTarget: gameState.enPassantTarget ? { ...gameState.enPassantTarget } : null,
         halfMoveClock: gameState.halfMoveClock,
         fullMoveNumber: fullMoveNumber
