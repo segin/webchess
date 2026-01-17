@@ -219,18 +219,102 @@ class ChessAI {
     
     if (!piece) return moves;
     
-    for (let toRow = 0; toRow < 8; toRow++) {
-      for (let toCol = 0; toCol < 8; toCol++) {
-        const move = {
-          from: { row, col },
-          to: { row: toRow, col: toCol }
-        };
-        
-        // Use comprehensive validation instead of lower-level methods
-        const validation = chessGame.validateMove(move);
-        if (validation.success && validation.isValid) {
-          moves.push(move);
+    // Helper to add move if valid
+    const tryAddMove = (toRow, toCol) => {
+      // Basic bounds check first
+      if (toRow < 0 || toRow > 7 || toCol < 0 || toCol > 7) return;
+
+      const move = {
+        from: { row, col },
+        to: { row: toRow, col: toCol }
+      };
+
+      // Use comprehensive validation instead of lower-level methods
+      const validation = chessGame.validateMove(move);
+      if (validation.success && validation.isValid) {
+        moves.push(move);
+      }
+    };
+
+    switch (piece.type) {
+      case 'pawn': {
+        const direction = piece.color === 'white' ? -1 : 1;
+        const startRow = piece.color === 'white' ? 6 : 1;
+
+        // Forward 1
+        tryAddMove(row + direction, col);
+
+        // Forward 2 (only if on start row)
+        if (row === startRow) {
+          tryAddMove(row + 2 * direction, col);
         }
+
+        // Captures
+        tryAddMove(row + direction, col - 1);
+        tryAddMove(row + direction, col + 1);
+        break;
+      }
+
+      case 'knight': {
+        const offsets = [
+          [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+          [1, -2], [1, 2], [2, -1], [2, 1]
+        ];
+        for (const [r, c] of offsets) {
+          tryAddMove(row + r, col + c);
+        }
+        break;
+      }
+
+      case 'bishop':
+      case 'rook':
+      case 'queen': {
+        const directions = [];
+        if (piece.type !== 'bishop') { // Rook or Queen
+          directions.push([0, 1], [0, -1], [1, 0], [-1, 0]);
+        }
+        if (piece.type !== 'rook') { // Bishop or Queen
+          directions.push([1, 1], [1, -1], [-1, 1], [-1, -1]);
+        }
+
+        for (const [dr, dc] of directions) {
+          for (let i = 1; i < 8; i++) {
+            const toRow = row + i * dr;
+            const toCol = col + i * dc;
+
+            if (toRow < 0 || toRow > 7 || toCol < 0 || toCol > 7) break;
+
+            tryAddMove(toRow, toCol);
+
+            // If we hit a piece, stop (blocked)
+            // Note: tryAddMove validates if it's a valid capture or blocked.
+            // But to optimize we should stop generating if we see a piece.
+            if (chessGame.board[toRow][toCol]) {
+              break;
+            }
+          }
+        }
+        break;
+      }
+
+      case 'king': {
+        const offsets = [
+          [-1, -1], [-1, 0], [-1, 1],
+          [0, -1],           [0, 1],
+          [1, -1], [1, 0], [1, 1]
+        ];
+        for (const [r, c] of offsets) {
+          tryAddMove(row + r, col + c);
+        }
+        
+        // Castling squares
+        // Only if on starting rank and file
+        const startRank = piece.color === 'white' ? 7 : 0;
+        if (row === startRank && col === 4) {
+          tryAddMove(row, col + 2); // Kingside
+          tryAddMove(row, col - 2); // Queenside
+        }
+        break;
       }
     }
     
