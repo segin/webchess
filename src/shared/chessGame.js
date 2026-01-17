@@ -1330,7 +1330,10 @@ class ChessGame {
    */
   updateCastlingRights(from, to, piece) {
     // Store original rights for comparison
-    const originalRights = JSON.parse(JSON.stringify(this.castlingRights));
+    const originalRights = {
+      white: { ...this.castlingRights.white },
+      black: { ...this.castlingRights.black }
+    };
 
     // Check if a rook was captured BEFORE the move (affects opponent's castling rights)
     const capturedPiece = this.board[to.row][to.col];
@@ -1411,10 +1414,14 @@ class ChessGame {
    * @param {Object} moveInfo - Information about the move
    */
   trackCastlingRightsChanges(originalRights, newRights, moveInfo) {
+    if (!this.debugMode) {
+      return;
+    }
+
     // Only log if there were actual changes
     const hasChanges = JSON.stringify(originalRights) !== JSON.stringify(newRights);
 
-    if (hasChanges && this.debugMode) {
+    if (hasChanges) {
       console.log('Castling rights updated:', {
         move: moveInfo,
         before: originalRights,
