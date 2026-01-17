@@ -288,7 +288,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       expect(typeof hardMoveCaptures).toBe('boolean');
     });
 
-    test.skip('medium AI should balance calculation and speed', () => {
+    test('medium AI should balance calculation and speed', () => {
       // SKIPPED: Medium AI can still take too long due to move generation complexity
       const mediumAI = new ChessAI('medium');
       
