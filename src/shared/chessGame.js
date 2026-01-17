@@ -2238,7 +2238,8 @@ class ChessGame {
   }
 
   /**
-   * Get detailed attack information for a square
+   * Get detailed attack information for a square using optimized reverse ray casting
+   * Instead of iterating the whole board (O(64)), looks outward from the target square
    * @param {number} row - Row of the square to check
    * @param {number} col - Column of the square to check
    * @param {string} defendingColor - Color of the defending side
@@ -2249,26 +2250,119 @@ class ChessGame {
     const attackingSquares = [];
     const attackingColor = defendingColor === 'white' ? 'black' : 'white';
 
-    // Check all squares for attacking pieces
-    for (let r = 0; r < 8; r++) {
-      for (let c = 0; c < 8; c++) {
+    // 1. Check Knight attacks
+    const knightMoves = [
+      [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+      [1, -2], [1, 2], [2, -1], [2, 1]
+    ];
+
+    for (const [rowOffset, colOffset] of knightMoves) {
+      const r = row + rowOffset;
+      const c = col + colOffset;
+      if (this.isValidSquare({ row: r, col: c })) {
         const piece = this.board[r][c];
-
-        // Skip empty squares and pieces of the defending color
-        if (!piece || piece.color !== attackingColor) {
-          continue;
-        }
-
-        // Check if this piece can attack the target square
-        if (this.canPieceAttackSquare({ row: r, col: c }, { row, col }, piece)) {
+        if (piece && piece.color === attackingColor && piece.type === 'knight') {
           attackingPieces.push({
             piece: piece,
             position: { row: r, col: c },
-            attackType: this.getAttackType(piece, { row: r, col: c }, { row, col })
+            attackType: 'knight_attack'
           });
           attackingSquares.push({ row: r, col: c });
         }
       }
+    }
+
+    // 2. Check Pawn attacks
+    const pawnDirection = defendingColor === 'white' ? -1 : 1; // Look "forward" relative to king = backward relative to pawn
+    // If king is white (at bottom), pawns attack from "above" (lower row index -> higher row index is pawn move, so we look at row - 1)
+    // Actually, pawns attack diagonally forward.
+    // A white king at (r, c) is attacked by black pawns at (r-1, c-1) and (r-1, c+1) if black pawns move "down" (increasing row)
+    // A black king at (r, c) is attacked by white pawns at (r+1, c-1) and (r+1, c+1) if white pawns move "up" (decreasing row)
+
+    const pawnAttackRow = defendingColor === 'white' ? row - 1 : row + 1;
+    if (pawnAttackRow >= 0 && pawnAttackRow < 8) {
+      for (const colOffset of [-1, 1]) {
+        const pawnAttackCol = col + colOffset;
+        if (pawnAttackCol >= 0 && pawnAttackCol < 8) {
+          const piece = this.board[pawnAttackRow][pawnAttackCol];
+          if (piece && piece.color === attackingColor && piece.type === 'pawn') {
+             attackingPieces.push({
+              piece: piece,
+              position: { row: pawnAttackRow, col: pawnAttackCol },
+              attackType: 'diagonal_attack'
+            });
+            attackingSquares.push({ row: pawnAttackRow, col: pawnAttackCol });
+          }
+        }
+      }
+    }
+
+    // 3. Check Sliding Pieces (Orthogonal: Rook, Queen)
+    const orthogonalDirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    for (const [dr, dc] of orthogonalDirs) {
+      for (let i = 1; i < 8; i++) {
+        const r = row + i * dr;
+        const c = col + i * dc;
+        if (!this.isValidSquare({ row: r, col: c })) break;
+
+        const piece = this.board[r][c];
+        if (piece) {
+          if (piece.color === attackingColor && (piece.type === 'rook' || piece.type === 'queen')) {
+             attackingPieces.push({
+              piece: piece,
+              position: { row: r, col: c },
+              attackType: dr === 0 ? 'horizontal_attack' : 'vertical_attack'
+            });
+            attackingSquares.push({ row: r, col: c });
+          }
+          break; // Blocked by any piece
+        }
+      }
+    }
+
+    // 4. Check Sliding Pieces (Diagonal: Bishop, Queen)
+    const diagonalDirs = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+    for (const [dr, dc] of diagonalDirs) {
+      for (let i = 1; i < 8; i++) {
+        const r = row + i * dr;
+        const c = col + i * dc;
+        if (!this.isValidSquare({ row: r, col: c })) break;
+
+        const piece = this.board[r][c];
+        if (piece) {
+          if (piece.color === attackingColor && (piece.type === 'bishop' || piece.type === 'queen')) {
+             attackingPieces.push({
+              piece: piece,
+              position: { row: r, col: c },
+              attackType: 'diagonal_attack'
+            });
+            attackingSquares.push({ row: r, col: c });
+          }
+          break; // Blocked by any piece
+        }
+      }
+    }
+
+    // 5. Check adjacent King (illegal but possible in analysis)
+    const kingDirs = [
+      [-1, -1], [-1, 0], [-1, 1],
+      [0, -1],           [0, 1],
+      [1, -1], [1, 0], [1, 1]
+    ];
+    for (const [dr, dc] of kingDirs) {
+        const r = row + dr;
+        const c = col + dc;
+        if (this.isValidSquare({ row: r, col: c })) {
+            const piece = this.board[r][c];
+            if (piece && piece.color === attackingColor && piece.type === 'king') {
+                 attackingPieces.push({
+                    piece: piece,
+                    position: { row: r, col: c },
+                    attackType: 'adjacent_attack'
+                  });
+                  attackingSquares.push({ row: r, col: c });
+            }
+        }
     }
 
     return {
