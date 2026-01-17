@@ -253,8 +253,11 @@ class ChessAI {
     // Copy move history (shallow copy to prevent deep recursion)
     newGame.moveHistory = [...chessGame.moveHistory];
     
-    // Copy castling rights
-    newGame.castlingRights = JSON.parse(JSON.stringify(chessGame.castlingRights));
+    // Copy castling rights - use shallow copy for performance instead of JSON.parse/stringify
+    newGame.castlingRights = {
+      white: { ...chessGame.castlingRights.white },
+      black: { ...chessGame.castlingRights.black }
+    };
     
     // Copy en passant target
     newGame.enPassantTarget = chessGame.enPassantTarget ? { ...chessGame.enPassantTarget } : null;
