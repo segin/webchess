@@ -1214,17 +1214,17 @@
   opacity: 0;
   position: absolute;
   right: 0;
-  top: 0px;
+  top: 0;
 }
 
-.lh-metrics-toggle__input + div > label > .lh-metrics-toggle__labeltext--hide,
-.lh-metrics-toggle__input:checked + div > label > .lh-metrics-toggle__labeltext--show {
+.lh-metrics-toggle__input + .lh-audit-group__header > label > .lh-metrics-toggle__labeltext--hide,
+.lh-metrics-toggle__input:checked + .lh-audit-group__header > label > .lh-metrics-toggle__labeltext--show {
   display: none;
 }
-.lh-metrics-toggle__input:checked + div > label > .lh-metrics-toggle__labeltext--hide {
+.lh-metrics-toggle__input:checked + .lh-audit-group__header > label > .lh-metrics-toggle__labeltext--hide {
   display: inline;
 }
-.lh-metrics-toggle__input:focus + div > label {
+.lh-metrics-toggle__input:focus + .lh-audit-group__header > label {
   outline: -webkit-focus-ring-color auto 3px;
 }
 
