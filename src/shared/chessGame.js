@@ -2912,19 +2912,19 @@ class ChessGame {
         moves.push(...this.generatePawnMoves(from, piece));
         break;
       case 'rook':
-        moves.push(...this.generateRookMoves(from));
+        moves.push(...this.generateRookMoves(from, piece));
         break;
       case 'knight':
-        moves.push(...this.generateKnightMoves(from));
+        moves.push(...this.generateKnightMoves(from, piece));
         break;
       case 'bishop':
-        moves.push(...this.generateBishopMoves(from));
+        moves.push(...this.generateBishopMoves(from, piece));
         break;
       case 'queen':
-        moves.push(...this.generateQueenMoves(from));
+        moves.push(...this.generateQueenMoves(from, piece));
         break;
       case 'king':
-        moves.push(...this.generateKingMoves(from));
+        moves.push(...this.generateKingMoves(from, piece));
         break;
     }
 
@@ -2944,13 +2944,13 @@ class ChessGame {
 
     // Forward moves
     const oneForward = { row: from.row + direction, col: from.col };
-    if (this.isValidSquare(oneForward)) {
+    if (this.isValidSquare(oneForward) && !this.board[oneForward.row][oneForward.col]) {
       moves.push(oneForward);
 
       // Two squares forward from starting position
       if (from.row === startRow) {
         const twoForward = { row: from.row + 2 * direction, col: from.col };
-        if (this.isValidSquare(twoForward)) {
+        if (this.isValidSquare(twoForward) && !this.board[twoForward.row][twoForward.col]) {
           moves.push(twoForward);
         }
       }
@@ -2960,18 +2960,46 @@ class ChessGame {
     const captureLeft = { row: from.row + direction, col: from.col - 1 };
     const captureRight = { row: from.row + direction, col: from.col + 1 };
 
-    if (this.isValidSquare(captureLeft)) moves.push(captureLeft);
-    if (this.isValidSquare(captureRight)) moves.push(captureRight);
+    if (this.isValidSquare(captureLeft)) {
+      const target = this.board[captureLeft.row][captureLeft.col];
+      // Include if it's an enemy piece or en passant target
+      // Note: We don't check en passant logic here fully, just geometric + occupancy
+      // En passant target is empty but valid, so we include if empty (potentially en passant)
+      // Wait, en passant target is a square. If board is empty, it might be en passant.
+      // But standard diagonal move requires capture.
+      // If we are strict: only add if enemy or en passant match.
+      // But generatePossibleMoves is "potential", validateMove does the rest.
+      // However, to optimize, we should check occupancy.
+      if (target && target.color !== piece.color) {
+        moves.push(captureLeft);
+      } else if (this.enPassantTarget &&
+                 captureLeft.row === this.enPassantTarget.row &&
+                 captureLeft.col === this.enPassantTarget.col) {
+        moves.push(captureLeft);
+      }
+    }
+
+    if (this.isValidSquare(captureRight)) {
+      const target = this.board[captureRight.row][captureRight.col];
+      if (target && target.color !== piece.color) {
+        moves.push(captureRight);
+      } else if (this.enPassantTarget &&
+                 captureRight.row === this.enPassantTarget.row &&
+                 captureRight.col === this.enPassantTarget.col) {
+        moves.push(captureRight);
+      }
+    }
 
     return moves;
   }
 
   /**
-   * Generate possible rook moves
+   * Generate possible rook moves with ray-casting
    * @param {Object} from - Source square
+   * @param {Object} piece - The piece moving
    * @returns {Array} Array of possible moves
    */
-  generateRookMoves(from) {
+  generateRookMoves(from, piece) {
     const moves = [];
     const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
 
@@ -2979,7 +3007,16 @@ class ChessGame {
       for (let i = 1; i < 8; i++) {
         const to = { row: from.row + i * rowDir, col: from.col + i * colDir };
         if (!this.isValidSquare(to)) break;
-        moves.push(to);
+
+        const target = this.board[to.row][to.col];
+        if (target) {
+          if (target.color !== piece.color) {
+            moves.push(to); // Capture
+          }
+          break; // Blocked by piece (friend or foe)
+        }
+
+        moves.push(to); // Empty square
       }
     }
 
@@ -2989,9 +3026,10 @@ class ChessGame {
   /**
    * Generate possible knight moves
    * @param {Object} from - Source square
+   * @param {Object} piece - The piece moving
    * @returns {Array} Array of possible moves
    */
-  generateKnightMoves(from) {
+  generateKnightMoves(from, piece) {
     const moves = [];
     const knightMoves = [
       [-2, -1], [-2, 1], [-1, -2], [-1, 2],
@@ -3001,7 +3039,10 @@ class ChessGame {
     for (const [rowOffset, colOffset] of knightMoves) {
       const to = { row: from.row + rowOffset, col: from.col + colOffset };
       if (this.isValidSquare(to)) {
-        moves.push(to);
+        const target = this.board[to.row][to.col];
+        if (!target || target.color !== piece.color) {
+          moves.push(to);
+        }
       }
     }
 
@@ -3009,11 +3050,12 @@ class ChessGame {
   }
 
   /**
-   * Generate possible bishop moves
+   * Generate possible bishop moves with ray-casting
    * @param {Object} from - Source square
+   * @param {Object} piece - The piece moving
    * @returns {Array} Array of possible moves
    */
-  generateBishopMoves(from) {
+  generateBishopMoves(from, piece) {
     const moves = [];
     const directions = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
 
@@ -3021,6 +3063,15 @@ class ChessGame {
       for (let i = 1; i < 8; i++) {
         const to = { row: from.row + i * rowDir, col: from.col + i * colDir };
         if (!this.isValidSquare(to)) break;
+
+        const target = this.board[to.row][to.col];
+        if (target) {
+          if (target.color !== piece.color) {
+            moves.push(to); // Capture
+          }
+          break; // Blocked by piece
+        }
+
         moves.push(to);
       }
     }
@@ -3031,21 +3082,23 @@ class ChessGame {
   /**
    * Generate possible queen moves
    * @param {Object} from - Source square
+   * @param {Object} piece - The piece moving
    * @returns {Array} Array of possible moves
    */
-  generateQueenMoves(from) {
+  generateQueenMoves(from, piece) {
     return [
-      ...this.generateRookMoves(from),
-      ...this.generateBishopMoves(from)
+      ...this.generateRookMoves(from, piece),
+      ...this.generateBishopMoves(from, piece)
     ];
   }
 
   /**
    * Generate possible king moves
    * @param {Object} from - Source square
+   * @param {Object} piece - The piece moving
    * @returns {Array} Array of possible moves
    */
-  generateKingMoves(from) {
+  generateKingMoves(from, piece) {
     const moves = [];
     const directions = [
       [-1, -1], [-1, 0], [-1, 1],
@@ -3056,7 +3109,10 @@ class ChessGame {
     for (const [rowDir, colDir] of directions) {
       const to = { row: from.row + rowDir, col: from.col + colDir };
       if (this.isValidSquare(to)) {
-        moves.push(to);
+        const target = this.board[to.row][to.col];
+        if (!target || target.color !== piece.color) {
+          moves.push(to);
+        }
       }
     }
 
