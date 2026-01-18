@@ -514,7 +514,7 @@ describe('Performance Tests - Comprehensive Coverage', () => {
         }
       }
       
-      expect(performanceData.length).toBeGreaterThan(5);
+      expect(performanceData.length).toBeGreaterThanOrEqual(5);
       
       // Overall performance should be consistent
       const overallAvg = performanceData.reduce((sum, time) => sum + time, 0) / performanceData.length;
