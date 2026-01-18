@@ -518,36 +518,6 @@
   }
 }
 
-/**
-* This media query is a temporary fallback for browsers that do not support \`@container query\`.
-* TODO: remove this media query when \`@container query\` is fully supported by browsers
-* See https://github.com/GoogleChrome/lighthouse/pull/16332
-*/
-@media only screen and (max-width: 480px) {
-  .lh-vars {
-    --audit-group-margin-bottom: 20px;
-    --edge-gap-padding: var(--default-padding);
-    --env-name-min-width: 120px;
-    --gauge-circle-size-big: 96px;
-    --gauge-circle-size: 72px;
-    --gauge-label-font-size-big: 22px;
-    --gauge-label-font-size: 14px;
-    --gauge-label-line-height-big: 26px;
-    --gauge-label-line-height: 20px;
-    --gauge-percentage-font-size-big: 34px;
-    --gauge-percentage-font-size: 26px;
-    --gauge-wrapper-width: 112px;
-    --header-padding: 16px 0 16px 0;
-    --image-preview-size: 24px;
-    --plugin-icon-size: 75%;
-    --report-font-size: 14px;
-    --report-line-height: 20px;
-    --score-icon-margin-left: 2px;
-    --score-icon-size: 10px;
-    --topbar-height: 28px;
-    --topbar-logo-size: 20px;
-  }
-}
 
 @container lh-container (max-width: 480px) {
   .lh-vars {
@@ -1149,35 +1119,6 @@
   grid-column-start: 2;
 }
 
-/**
-* This media query is a temporary fallback for browsers that do not support \`@container query\`.
-* TODO: remove this media query when \`@container query\` is fully supported by browsers
-* See https://github.com/GoogleChrome/lighthouse/pull/16332
-*/
-@media screen and (max-width: 535px) {
-  .lh-metrics-container {
-    display: block;
-  }
-
-  .lh-metric {
-    border-bottom: none !important;
-  }
-  .lh-category:not(.lh--hoisted-meta) .lh-metric:nth-last-child(1) {
-    border-bottom: 1px solid var(--report-border-color-secondary) !important;
-  }
-
-  /* Change the grid to 3 columns for narrow viewport. */
-  .lh-metric__innerwrap {
-  /**
-   * Icon -- Metric Name -- Metric Value
-   */
-    grid-template-columns: calc(var(--score-icon-size) + var(--score-icon-margin-left) + var(--score-icon-margin-right)) 2fr 1fr;
-  }
-  .lh-metric__value {
-    justify-self: end;
-    grid-column-start: unset;
-  }
-}
 
 @container lh-container (max-width: 535px) {
   .lh-metrics-container {
@@ -1832,19 +1773,6 @@
   height: var(--gauge-circle-size-big);
 }
 
-/**
-* This media query is a temporary fallback for browsers that do not support \`@container query\`.
-* TODO: remove this media query when \`@container query\` is fully supported by browsers
-* See https://github.com/GoogleChrome/lighthouse/pull/16332
-*/
-@media screen and (max-width: 780px) {
-  .lh-category-header__finalscreenshot {
-    grid-template: 1fr 1fr / none
-  }
-  .lh-category-headercol--separator {
-    display: none;
-  }
-}
 
 @container lh-container (max-width: 780px) {
   .lh-category-header__finalscreenshot {
@@ -1855,17 +1783,6 @@
   }
 }
 
-/**
-* This media query is a temporary fallback for browsers that do not support \`@container query\`.
-* TODO: remove this media query when \`@container query\` is fully supported by browsers
-* See https://github.com/GoogleChrome/lighthouse/pull/16332
-*/
-@media screen and (max-width: 964px) {
-  .lh-report {
-    margin-left: 0;
-    width: 100%;
-  }
-}
 
 /* 964 fits the min-width of the filmstrip */
 @container lh-container (max-width: 964px) {
@@ -2172,17 +2089,6 @@
   }
 }
 
-/**
-* This media query is a temporary fallback for browsers that do not support \`@container query\`.
-* TODO: remove this media query when \`@container query\` is fully supported by browsers
-* See https://github.com/GoogleChrome/lighthouse/pull/16332
-*/
-@media screen and (max-width: 780px) {
-  /* no black outline if we're not confident the entire table can be displayed within bounds */
-  .lh-expandable-details[open] {
-    animation: none;
-  }
-}
 
 @container lh-container (max-width: 780px) {
   /* no black outline if we're not confident the entire table can be displayed within bounds */
@@ -2224,17 +2130,6 @@ details[open] .lh-clump-toggletext--hide { display: block;}
   line-height: 1.4;
 }
 
-/**
-* This media query is a temporary fallback for browsers that do not support \`@container query\`.
-* TODO: remove this media query when \`@container query\` is fully supported by browsers
-* See https://github.com/GoogleChrome/lighthouse/pull/16332
-*/
-@media screen and (max-width: 535px) {
-  .lh-tooltip {
-    min-width: 45vw;
-    padding: 3vw;
-  }
-}
 
 /* shrink tooltips to not be cutoff on left edge of narrow container
    45vw is chosen to be ~= width of the left column of metrics
@@ -2378,16 +2273,6 @@ details[open] .lh-clump-toggletext--hide { display: block;}
   left: 6px;
 }
 
-/**
-* This media query is a temporary fallback for browsers that do not support \`@container query\`.
-* TODO: remove this media query when \`@container query\` is fully supported by browsers
-* See https://github.com/GoogleChrome/lighthouse/pull/16332
-*/
-@media screen and (max-width: 640px) {
-  .lh-meta__items {
-    grid-template-columns: 1fr 1fr;
-  }
-}
 
 /* Change the grid for narrow container */
 @container lh-container (max-width: 640px) {
@@ -2396,16 +2281,6 @@ details[open] .lh-clump-toggletext--hide { display: block;}
   }
 }
 
-/**
-* This media query is a temporary fallback for browsers that do not support \`@container query\`.
-* TODO: remove this media query when \`@container query\` is fully supported by browsers
-* See https://github.com/GoogleChrome/lighthouse/pull/16332
-*/
-@media screen and (max-width: 535px) {
-  .lh-meta__items {
-    display: block;
-  }
-}
 
 @container lh-container (max-width: 535px) {
   .lh-meta__items {
@@ -2767,17 +2642,6 @@ details[open] .lh-clump-toggletext--hide { display: block;}
       margin: 0 4px;
     }
 
-    /**
-    * This media query is a temporary fallback for browsers that do not support \`@container query\`.
-    * TODO: remove this media query when \`@container query\` is fully supported by browsers
-    * See https://github.com/GoogleChrome/lighthouse/pull/16332
-    */
-    @media screen and (max-width: 964px) {
-      .lh-tools__dropdown {
-        right: 0;
-        left: initial;
-      }
-    }
 
     @container lh-container (max-width: 964px) {
       .lh-tools__dropdown {
