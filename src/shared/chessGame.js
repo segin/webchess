@@ -1963,29 +1963,22 @@ class ChessGame {
           continue;
         }
 
-        // Check all possible destination squares for this piece
-        for (let toRow = 0; toRow < 8; toRow++) {
-          for (let toCol = 0; toCol < 8; toCol++) {
-            const from = { row, col };
-            const to = { row: toRow, col: toCol };
+        const from = { row, col };
+        // Efficiently generate potential moves instead of checking all board squares
+        const potentialMoves = this.generatePossibleMoves(from, piece);
 
-            // Skip same square
-            if (row === toRow && col === toCol) {
-              continue;
-            }
+        for (const to of potentialMoves) {
+          const move = { from, to };
+          const validation = this.validateMove(move);
 
-            const move = { from, to };
-            const validation = this.validateMove(move);
-
-            if (validation.isValid) {
-              legalMoves.push({
-                from: from,
-                to: to,
-                piece: piece.type,
-                color: piece.color,
-                isCapture: this.board[toRow][toCol] !== null
-              });
-            }
+          if (validation.isValid) {
+            legalMoves.push({
+              from: from,
+              to: to,
+              piece: piece.type,
+              color: piece.color,
+              isCapture: this.board[to.row][to.col] !== null
+            });
           }
         }
       }
