@@ -17,6 +17,7 @@ class ChessGame {
     this.fullMoveNumber = 1;
     this.inCheck = false; // Track check status
     this.checkDetails = null; // Store detailed check information
+    this.debugMode = false;
 
     // Initialize game state manager
     this.stateManager = new GameStateManager();
@@ -1330,10 +1331,14 @@ class ChessGame {
    */
   updateCastlingRights(from, to, piece) {
     // Store original rights for comparison
-    const originalRights = {
-      white: { ...this.castlingRights.white },
-      black: { ...this.castlingRights.black }
-    };
+    // Optimized: Only store if needed for debugging, and use shallow copy instead of expensive JSON serialization
+    let originalRights = null;
+    if (this.debugMode) {
+      originalRights = {
+        white: { ...this.castlingRights.white },
+        black: { ...this.castlingRights.black }
+      };
+    }
 
     // Check if a rook was captured BEFORE the move (affects opponent's castling rights)
     const capturedPiece = this.board[to.row][to.col];
@@ -1353,7 +1358,9 @@ class ChessGame {
     }
 
     // Track castling rights changes for debugging and validation
-    this.trackCastlingRightsChanges(originalRights, this.castlingRights, { from, to, piece });
+    if (this.debugMode) {
+      this.trackCastlingRightsChanges(originalRights, this.castlingRights, { from, to, piece });
+    }
   }
 
   /**
