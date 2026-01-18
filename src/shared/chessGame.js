@@ -2,8 +2,7 @@ const GameStateManager = require('./gameState');
 const ChessErrorHandler = require('./errorHandler');
 
 class ChessGame {
-  constructor() {
-    this.board = this.initializeBoard();
+  constructor(options = {}) {
     this.currentTurn = 'white';
     this.gameStatus = 'active';
     this.winner = null;
@@ -26,16 +25,25 @@ class ChessGame {
 
     // Enhanced game state tracking with metadata
     this.gameMetadata = this.stateManager.gameMetadata;
-
-    // Position history for threefold repetition detection
     this.positionHistory = this.stateManager.positionHistory;
-    this.positionHistory.push(this.stateManager.getFENPosition(
-      this.board, this.currentTurn, this.castlingRights, this.enPassantTarget
-    ));
 
     // Game state consistency tracking
     this.stateVersion = this.stateManager.stateVersion;
     this.lastValidatedState = null;
+
+    if (options.isClone) {
+      // For cloned games, skip expensive initialization since state will be overwritten
+      this.board = [];
+    } else {
+      // Normal initialization
+      this.board = this.initializeBoard();
+
+      // Position history for threefold repetition detection
+      // Only needed for fresh games, cloned games will have history copied or rebuilt
+      this.positionHistory.push(this.stateManager.getFENPosition(
+        this.board, this.currentTurn, this.castlingRights, this.enPassantTarget
+      ));
+    }
   }
 
   initializeBoard() {
