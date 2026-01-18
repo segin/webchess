@@ -323,7 +323,7 @@ class ChessAI {
   
   cloneGame(chessGame) {
     const ChessGame = require('./chessGame');
-    const newGame = new ChessGame();
+    const newGame = new ChessGame({ isClone: true });
     
     // Copy board state
     newGame.board = chessGame.board.map(row => row.map(piece => piece ? { ...piece } : null));
