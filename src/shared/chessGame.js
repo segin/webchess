@@ -73,7 +73,62 @@ class ChessGame {
     board[0][4] = { type: 'king', color: 'black' };
     board[7][4] = { type: 'king', color: 'white' };
 
+    // Initialize piece locations cache
+    this._rebuildPieceLocations(board);
+
     return board;
+  }
+
+  /**
+   * Rebuild the piece locations cache from the board state
+   * @param {Array} board - The board to scan (defaults to current board)
+   */
+  _rebuildPieceLocations(board = this.board) {
+    this.pieceLocations = {
+      white: [],
+      black: []
+    };
+
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = board[row][col];
+        if (piece) {
+          this.pieceLocations[piece.color].push({ row, col });
+        }
+      }
+    }
+  }
+
+  /**
+   * Update piece location in cache
+   * @param {string} color - Piece color
+   * @param {Object} from - Old location
+   * @param {Object} to - New location
+   */
+  _updatePieceLocation(color, from, to) {
+    const locations = this.pieceLocations[color];
+    const index = locations.findIndex(loc => loc.row === from.row && loc.col === from.col);
+
+    if (index !== -1) {
+      locations[index] = { row: to.row, col: to.col };
+    } else {
+      // Should not happen if cache is consistent
+      locations.push({ row: to.row, col: to.col });
+    }
+  }
+
+  /**
+   * Remove piece location from cache
+   * @param {string} color - Piece color
+   * @param {Object} location - Location to remove
+   */
+  _removePieceLocation(color, location) {
+    const locations = this.pieceLocations[color];
+    const index = locations.findIndex(loc => loc.row === location.row && loc.col === location.col);
+
+    if (index !== -1) {
+      locations.splice(index, 1);
+    }
   }
 
   makeMove(moveOrFrom, toParam, promotionParam, options = {}) {
@@ -1252,6 +1307,12 @@ class ChessGame {
       const capturedPawnRow = from.row;
       const capturedPawnCol = to.col;
       capturedPiece = this.board[capturedPawnRow][capturedPawnCol];
+
+      // Update cache for captured pawn
+      if (capturedPiece) {
+        this._removePieceLocation(capturedPiece.color, { row: capturedPawnRow, col: capturedPawnCol });
+      }
+
       this.board[capturedPawnRow][capturedPawnCol] = null;
       isEnPassant = true;
     }
@@ -1261,9 +1322,23 @@ class ChessGame {
       const rookFromCol = to.col > from.col ? 7 : 0;
       const rookToCol = to.col > from.col ? 5 : 3;
       const rook = this.board[from.row][rookFromCol];
+
+      // Update cache for rook move
+      if (rook) {
+        this._updatePieceLocation(rook.color, { row: from.row, col: rookFromCol }, { row: from.row, col: rookToCol });
+      }
+
       this.board[from.row][rookToCol] = rook;
       this.board[from.row][rookFromCol] = null;
       isCastling = true;
+    }
+
+    // Update piece locations cache for the moving piece
+    this._updatePieceLocation(piece.color, from, to);
+
+    // Update cache for standard capture
+    if (capturedPiece && !isEnPassant) {
+       this._removePieceLocation(capturedPiece.color, to);
     }
 
     // Execute the basic move
@@ -2099,6 +2174,38 @@ class ChessGame {
    * @returns {boolean} True if the color has any valid moves
    */
   hasValidMoves(color) {
+    // Optimized: Iterate through cached piece locations instead of scanning the whole board
+    const locations = this.pieceLocations[color];
+
+    // Fallback if cache is missing (should not happen in normal operation)
+    if (!locations) {
+      return this._hasValidMovesLegacy(color);
+    }
+
+    for (const from of locations) {
+      const piece = this.board[from.row][from.col];
+
+      // Safety check: verify piece exists and matches color (in case of cache desync)
+      if (!piece || piece.color !== color) {
+        continue;
+      }
+
+      // Efficiently generate potential moves
+      const potentialMoves = this.generatePossibleMoves(from, piece);
+
+      for (const to of potentialMoves) {
+        // Use a simplified validation that doesn't trigger game end checking
+        if (this.isValidMoveSimple(from, to, piece)) {
+          return true; // Found at least one valid move
+        }
+      }
+    }
+
+    return false; // No valid moves found
+  }
+
+  // Legacy implementation for fallback or verification
+  _hasValidMovesLegacy(color) {
     // Iterate through all squares to find pieces of the given color
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
@@ -3256,6 +3363,9 @@ class ChessGame {
         this.enPassantTarget = state.enPassantTarget || null;
         this.moveHistory = state.moveHistory || [];
 
+        // Rebuild piece locations cache
+        this._rebuildPieceLocations(this.board);
+
         return {
           success: true,
           message: 'State loaded successfully'
@@ -3361,6 +3471,9 @@ class ChessGame {
     ));
     this.stateVersion = this.stateManager.stateVersion;
     this.lastValidatedState = null;
+
+    // Reset piece locations cache
+    this._rebuildPieceLocations(this.board);
   }
 
   /**
