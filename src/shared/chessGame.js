@@ -2182,7 +2182,9 @@ class ChessGame {
    * @returns {boolean} True if the color has any valid moves
    */
   hasValidMoves(color) {
-    // Optimized: Iterate through cached piece locations instead of scanning the whole board
+    // Always rebuild cache to handle tests/external code that modifies board directly
+    this._rebuildPieceLocations();
+
     const locations = this.pieceLocations[color];
 
     // Fallback if cache is missing (should not happen in normal operation)

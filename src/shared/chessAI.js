@@ -328,6 +328,9 @@ class ChessAI {
     // Copy board state
     newGame.board = chessGame.board.map(row => row.map(piece => piece ? { ...piece } : null));
     
+    // Rebuild piece locations cache for the new board
+    newGame._rebuildPieceLocations();
+    
     // Copy game state
     newGame.currentTurn = chessGame.currentTurn;
     newGame.gameStatus = chessGame.gameStatus;
