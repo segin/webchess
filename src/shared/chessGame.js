@@ -2207,6 +2207,13 @@ class ChessGame {
       return false; // No king found (shouldn't happen in normal game)
     }
 
+    // Optimization: Quick boolean check first without allocations
+    if (!this.isSquareUnderAttack(kingPos.row, kingPos.col, color)) {
+      this.checkDetails = null;
+      return false;
+    }
+
+    // Only perform detailed analysis if we are actually in check
     const attackDetails = this.getAttackDetails(kingPos.row, kingPos.col, color);
 
     // Store detailed check information for debugging and UI
@@ -2422,6 +2429,7 @@ class ChessGame {
   /**
    * Enhanced square attack detection for king safety validation
    * Determines if a square is under attack by the opposing color
+   * Optimized to use reverse ray-casting (O(1)) instead of board iteration (O(64))
    * @param {number} row - Row of the square to check
    * @param {number} col - Column of the square to check
    * @param {string} defendingColor - Color of the defending side
@@ -2435,19 +2443,98 @@ class ChessGame {
 
     const attackingColor = defendingColor === 'white' ? 'black' : 'white';
 
-    // Check all squares for attacking pieces
-    for (let r = 0; r < 8; r++) {
-      for (let c = 0; c < 8; c++) {
+    // 1. Check Knight attacks
+    const knightMoves = [
+      [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+      [1, -2], [1, 2], [2, -1], [2, 1]
+    ];
+
+    for (const [rowOffset, colOffset] of knightMoves) {
+      const r = row + rowOffset;
+      const c = col + colOffset;
+      // Manually check bounds for speed optimization
+      if (r >= 0 && r < 8 && c >= 0 && c < 8) {
         const piece = this.board[r][c];
-
-        // Skip empty squares and pieces of the defending color
-        if (!piece || piece.color !== attackingColor) {
-          continue;
+        if (piece && piece.color === attackingColor && piece.type === 'knight') {
+          return true;
         }
+      }
+    }
 
-        // Check if this piece can attack the target square
-        // Use basic movement validation without check constraints to avoid infinite recursion
-        if (this.canPieceAttackSquare({ row: r, col: c }, { row, col }, piece)) {
+    // 2. Check Pawn attacks
+    // White pieces are attacked by black pawns from "above" (row-1)
+    // Black pieces are attacked by white pawns from "below" (row+1)
+    const pawnAttackRow = defendingColor === 'white' ? row - 1 : row + 1;
+    if (pawnAttackRow >= 0 && pawnAttackRow < 8) {
+      // Check both diagonals
+      if (col > 0) {
+        const piece = this.board[pawnAttackRow][col - 1];
+        if (piece && piece.color === attackingColor && piece.type === 'pawn') {
+          return true;
+        }
+      }
+      if (col < 7) {
+        const piece = this.board[pawnAttackRow][col + 1];
+        if (piece && piece.color === attackingColor && piece.type === 'pawn') {
+          return true;
+        }
+      }
+    }
+
+    // 3. Check Sliding Pieces (Orthogonal: Rook, Queen)
+    const orthogonalDirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    for (const [dr, dc] of orthogonalDirs) {
+      for (let i = 1; i < 8; i++) {
+        const r = row + i * dr;
+        const c = col + i * dc;
+
+        // Bounds check
+        if (r < 0 || r >= 8 || c < 0 || c >= 8) break;
+
+        const piece = this.board[r][c];
+        if (piece) {
+          if (piece.color === attackingColor && (piece.type === 'rook' || piece.type === 'queen')) {
+            return true;
+          }
+          break; // Blocked by any piece (friend or foe)
+        }
+      }
+    }
+
+    // 4. Check Sliding Pieces (Diagonal: Bishop, Queen)
+    const diagonalDirs = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+    for (const [dr, dc] of diagonalDirs) {
+      for (let i = 1; i < 8; i++) {
+        const r = row + i * dr;
+        const c = col + i * dc;
+
+        // Bounds check
+        if (r < 0 || r >= 8 || c < 0 || c >= 8) break;
+
+        const piece = this.board[r][c];
+        if (piece) {
+          if (piece.color === attackingColor && (piece.type === 'bishop' || piece.type === 'queen')) {
+            return true;
+          }
+          break; // Blocked by any piece
+        }
+      }
+    }
+
+    // 5. Check King attacks (adjacent)
+    // This is needed for king safety checks (kings cannot stand next to each other)
+    const kingMoves = [
+      [-1, -1], [-1, 0], [-1, 1],
+      [0, -1],           [0, 1],
+      [1, -1], [1, 0], [1, 1]
+    ];
+
+    for (const [dr, dc] of kingMoves) {
+      const r = row + dr;
+      const c = col + dc;
+      if (r >= 0 && r < 8 && c >= 0 && c < 8) {
+        const piece = this.board[r][c];
+        if (piece && piece.color === attackingColor && piece.type === 'king') {
           return true;
         }
       }
@@ -2619,9 +2706,17 @@ class ChessGame {
       this.board[from.row][from.col] = null;
 
       // Check if this move puts own king in check
-      const inCheck = this.isInCheck(color);
+      // Optimization: use isSquareUnderAttack directly to avoid isInCheck overhead
+      let kingPos;
+      if (movingPiece.type === 'king') {
+        kingPos = to; // King moved to destination
+      } else {
+        kingPos = this.findKing(color); // Scan for king
+      }
 
-      return inCheck;
+      if (!kingPos) return false; // Should not happen
+
+      return this.isSquareUnderAttack(kingPos.row, kingPos.col, color);
 
     } finally {
       // Always restore board state, even if an error occurs
