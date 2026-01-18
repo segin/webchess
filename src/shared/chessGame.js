@@ -36,6 +36,10 @@ class ChessGame {
     // Game state consistency tracking
     this.stateVersion = this.stateManager.stateVersion;
     this.lastValidatedState = null;
+
+    // Active piece tracking for performance optimization
+    this.activePieces = { white: [], black: [] };
+    this.scanBoardForPieces();
   }
 
   initializeBoard() {
@@ -74,6 +78,31 @@ class ChessGame {
     board[7][4] = { type: 'king', color: 'white' };
 
     return board;
+  }
+
+  /**
+   * Scan the board to populate the active pieces cache
+   * This provides O(1) access to pieces instead of O(64) scanning
+   */
+  scanBoardForPieces() {
+    this.activePieces = { white: [], black: [] };
+
+    // Safety check if board is not initialized
+    if (!this.board) return;
+
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = this.board[row][col];
+        if (piece) {
+          // Store minimal info needed for move generation
+          this.activePieces[piece.color].push({
+            type: piece.type,
+            color: piece.color,
+            position: { row, col }
+          });
+        }
+      }
+    }
   }
 
   makeMove(moveOrFrom, toParam, promotionParam, options = {}) {
@@ -370,7 +399,8 @@ class ChessGame {
    */
   validateGameState() {
     try {
-      if (this.gameStatus !== 'active') {
+      // Game is active if status is 'active' or 'check'
+      if (this.gameStatus !== 'active' && this.gameStatus !== 'check') {
         return this.errorHandler.createError(
           'GAME_NOT_ACTIVE',
           'Game is not active'
@@ -1312,6 +1342,9 @@ class ChessGame {
       this.fullMoveNumber,
       this.getGameStateForSnapshot()
     );
+
+    // Refresh active pieces cache after board update
+    this.scanBoardForPieces();
   }
 
   /**
@@ -1756,35 +1789,44 @@ class ChessGame {
   getAllLegalMoves(color) {
     const legalMoves = [];
 
-    // Iterate through all squares to find pieces of the given color
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const piece = this.board[row][col];
+    // Optimize: Use cached active pieces list instead of scanning board
+    const pieces = this.activePieces[color];
 
-        // Skip empty squares and opponent pieces
-        if (!piece || piece.color !== color) {
-          continue;
-        }
+    // Fallback if cache is corrupted/empty but board has pieces (shouldn't happen with proper maintenance)
+    if (!pieces || (pieces.length === 0 && this.board.some(row => row.some(p => p && p.color === color)))) {
+      this.scanBoardForPieces();
+      return this.getAllLegalMoves(color);
+    }
 
-        const from = { row, col };
-        // Efficiently generate potential moves instead of checking all board squares
-        const potentialMoves = this.generatePossibleMoves(from, piece);
+    for (const pieceInfo of pieces) {
+      const { position: from, type } = pieceInfo;
+      // Re-fetch piece from board to ensure consistency and get full object (though pieceInfo has essentials)
+      const piece = this.board[from.row][from.col];
 
-        for (const to of potentialMoves) {
-          // Check if this move is valid using the comprehensive validation
-          const move = { from, to };
-          const validation = this.validateMove(move);
+      // Verification: ensure piece hasn't moved or been captured without cache update
+      if (!piece || piece.color !== color || piece.type !== type) {
+        // Cache is stale, rebuild and retry once
+        this.scanBoardForPieces();
+        return this.getAllLegalMoves(color);
+      }
 
-          if (validation.isValid) {
-            legalMoves.push({
-              from: from,
-              to: to,
-              piece: piece.type,
-              color: piece.color,
-              isCapture: this.board[to.row][to.col] !== null,
-              notation: this.getMoveNotation(from, to, piece)
-            });
-          }
+      // Efficiently generate potential moves, checking occupancy to prevent invalid candidate generation
+      const potentialMoves = this.generatePossibleMoves(from, piece, this.board);
+
+      for (const to of potentialMoves) {
+        // Check if this move is valid using the comprehensive validation
+        const move = { from, to };
+        const validation = this.validateMove(move);
+
+        if (validation.isValid) {
+          legalMoves.push({
+            from: from,
+            to: to,
+            piece: piece.type,
+            color: piece.color,
+            isCapture: this.board[to.row][to.col] !== null,
+            notation: this.getMoveNotation(from, to, piece)
+          });
         }
       }
     }
@@ -2870,27 +2912,32 @@ class ChessGame {
   getAllValidMoves(color) {
     const validMoves = [];
 
-    // Iterate through all squares on the board
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const piece = this.board[row][col];
+    // Optimize: Use cached active pieces list instead of scanning board
+    const pieces = this.activePieces[color];
 
-        // Skip if no piece or wrong color
-        if (!piece || piece.color !== color) continue;
+    // Fallback/Safety check (same as getAllLegalMoves)
+    if (!pieces || (pieces.length === 0 && this.board.some(row => row.some(p => p && p.color === color)))) {
+      this.scanBoardForPieces();
+      return this.getAllValidMoves(color);
+    }
 
-        const from = { row, col };
+    for (const pieceInfo of pieces) {
+      const { position: from, type } = pieceInfo;
+      const piece = this.board[from.row][from.col];
 
-        // Generate all possible moves for this piece
-        const possibleMoves = this.generatePossibleMoves(from, piece);
+      // Verification: ensure piece matches cache
+      if (!piece || piece.color !== color || piece.type !== type) {
+        this.scanBoardForPieces();
+        return this.getAllValidMoves(color);
+      }
 
-        // Validate each possible move
-        for (const to of possibleMoves) {
-          const move = { from, to };
-          const validation = this.validateMove(move);
+      // Efficiently generate potential moves using occupancy-aware generator
+      const potentialMoves = this.generatePossibleMoves(from, piece, this.board);
 
-          if (validation.isValid) {
-            validMoves.push(move);
-          }
+      for (const to of potentialMoves) {
+        // Use a simplified validation that doesn't trigger game end checking
+        if (this.isValidMoveSimple(from, to, piece)) {
+          validMoves.push({ from, to });
         }
       }
     }
@@ -2904,27 +2951,30 @@ class ChessGame {
    * @param {Object} piece - Piece to generate moves for
    * @returns {Array} Array of possible destination squares
    */
-  generatePossibleMoves(from, piece) {
+  generatePossibleMoves(from, piece, board) {
     const moves = [];
+
+    // Use internal board if not provided (backward compatibility)
+    const boardState = board || this.board;
 
     switch (piece.type) {
       case 'pawn':
-        moves.push(...this.generatePawnMoves(from, piece));
+        moves.push(...this.generatePawnMoves(from, piece, boardState));
         break;
       case 'rook':
-        moves.push(...this.generateRookMoves(from));
+        moves.push(...this.generateRookMoves(from, boardState));
         break;
       case 'knight':
-        moves.push(...this.generateKnightMoves(from));
+        moves.push(...this.generateKnightMoves(from, boardState));
         break;
       case 'bishop':
-        moves.push(...this.generateBishopMoves(from));
+        moves.push(...this.generateBishopMoves(from, boardState));
         break;
       case 'queen':
-        moves.push(...this.generateQueenMoves(from));
+        moves.push(...this.generateQueenMoves(from, boardState));
         break;
       case 'king':
-        moves.push(...this.generateKingMoves(from));
+        moves.push(...this.generateKingMoves(from, boardState));
         break;
     }
 
@@ -2932,54 +2982,57 @@ class ChessGame {
   }
 
   /**
-   * Generate possible pawn moves
+   * Generate possible pawn moves with occupancy checking
    * @param {Object} from - Source square
    * @param {Object} piece - Pawn piece
+   * @param {Array} board - Board state
    * @returns {Array} Array of possible moves
    */
-  generatePawnMoves(from, piece) {
+  generatePawnMoves(from, piece, board) {
     const moves = [];
+    const boardState = board || this.board;
     const direction = piece.color === 'white' ? -1 : 1;
     const startRow = piece.color === 'white' ? 6 : 1;
 
-    // Forward moves
+    // Forward moves (only if empty)
     const oneForward = { row: from.row + direction, col: from.col };
-    if (this.isValidSquare(oneForward)) {
+    if (this.isValidSquare(oneForward) && !boardState[oneForward.row][oneForward.col]) {
       moves.push(oneForward);
 
-      // Two squares forward from starting position
+      // Two squares forward from starting position (only if path clear)
       if (from.row === startRow) {
         const twoForward = { row: from.row + 2 * direction, col: from.col };
-        if (this.isValidSquare(twoForward)) {
+        if (this.isValidSquare(twoForward) && !boardState[twoForward.row][twoForward.col]) {
           moves.push(twoForward);
         }
       }
     }
 
-    // Diagonal captures
+    // Diagonal captures (only if enemy present or en passant)
     const captureLeft = { row: from.row + direction, col: from.col - 1 };
     const captureRight = { row: from.row + direction, col: from.col + 1 };
 
-    if (this.isValidSquare(captureLeft)) moves.push(captureLeft);
-    if (this.isValidSquare(captureRight)) moves.push(captureRight);
+    if (this.isValidSquare(captureLeft)) {
+      const target = boardState[captureLeft.row][captureLeft.col];
+      // Include if enemy piece (pseudo-legal capture)
+      // Note: We also include if it's the en passant target square
+      const isEnPassant = this.enPassantTarget &&
+                          this.enPassantTarget.row === captureLeft.row &&
+                          this.enPassantTarget.col === captureLeft.col;
 
-    return moves;
-  }
+      if ((target && target.color !== piece.color) || isEnPassant) {
+        moves.push(captureLeft);
+      }
+    }
 
-  /**
-   * Generate possible rook moves
-   * @param {Object} from - Source square
-   * @returns {Array} Array of possible moves
-   */
-  generateRookMoves(from) {
-    const moves = [];
-    const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+    if (this.isValidSquare(captureRight)) {
+      const target = boardState[captureRight.row][captureRight.col];
+      const isEnPassant = this.enPassantTarget &&
+                          this.enPassantTarget.row === captureRight.row &&
+                          this.enPassantTarget.col === captureRight.col;
 
-    for (const [rowDir, colDir] of directions) {
-      for (let i = 1; i < 8; i++) {
-        const to = { row: from.row + i * rowDir, col: from.col + i * colDir };
-        if (!this.isValidSquare(to)) break;
-        moves.push(to);
+      if ((target && target.color !== piece.color) || isEnPassant) {
+        moves.push(captureRight);
       }
     }
 
@@ -2987,12 +3040,50 @@ class ChessGame {
   }
 
   /**
-   * Generate possible knight moves
+   * Generate possible rook moves with occupancy checking
    * @param {Object} from - Source square
+   * @param {Array} board - Board state
    * @returns {Array} Array of possible moves
    */
-  generateKnightMoves(from) {
+  generateRookMoves(from, board) {
     const moves = [];
+    const boardState = board || this.board;
+    const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+    const myColor = boardState[from.row][from.col]?.color;
+
+    for (const [rowDir, colDir] of directions) {
+      for (let i = 1; i < 8; i++) {
+        const to = { row: from.row + i * rowDir, col: from.col + i * colDir };
+        if (!this.isValidSquare(to)) break;
+
+        const target = boardState[to.row][to.col];
+        if (target) {
+          // If enemy, we can capture (it's a valid move target), then stop scanning this direction
+          if (target.color !== myColor) {
+            moves.push(to);
+          }
+          // If friend, we are blocked (cannot move there), stop scanning
+          break;
+        } else {
+          // Empty square, valid move, continue scanning
+          moves.push(to);
+        }
+      }
+    }
+
+    return moves;
+  }
+
+  /**
+   * Generate possible knight moves with occupancy checking
+   * @param {Object} from - Source square
+   * @param {Array} board - Board state
+   * @returns {Array} Array of possible moves
+   */
+  generateKnightMoves(from, board) {
+    const moves = [];
+    const boardState = board || this.board;
+    const myColor = boardState[from.row][from.col]?.color;
     const knightMoves = [
       [-2, -1], [-2, 1], [-1, -2], [-1, 2],
       [1, -2], [1, 2], [2, -1], [2, 1]
@@ -3001,7 +3092,11 @@ class ChessGame {
     for (const [rowOffset, colOffset] of knightMoves) {
       const to = { row: from.row + rowOffset, col: from.col + colOffset };
       if (this.isValidSquare(to)) {
-        moves.push(to);
+        const target = boardState[to.row][to.col];
+        // Can move if empty or capturing enemy
+        if (!target || target.color !== myColor) {
+          moves.push(to);
+        }
       }
     }
 
@@ -3009,19 +3104,31 @@ class ChessGame {
   }
 
   /**
-   * Generate possible bishop moves
+   * Generate possible bishop moves with occupancy checking
    * @param {Object} from - Source square
+   * @param {Array} board - Board state
    * @returns {Array} Array of possible moves
    */
-  generateBishopMoves(from) {
+  generateBishopMoves(from, board) {
     const moves = [];
+    const boardState = board || this.board;
+    const myColor = boardState[from.row][from.col]?.color;
     const directions = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
 
     for (const [rowDir, colDir] of directions) {
       for (let i = 1; i < 8; i++) {
         const to = { row: from.row + i * rowDir, col: from.col + i * colDir };
         if (!this.isValidSquare(to)) break;
-        moves.push(to);
+
+        const target = boardState[to.row][to.col];
+        if (target) {
+          if (target.color !== myColor) {
+            moves.push(to);
+          }
+          break;
+        } else {
+          moves.push(to);
+        }
       }
     }
 
@@ -3029,24 +3136,28 @@ class ChessGame {
   }
 
   /**
-   * Generate possible queen moves
+   * Generate possible queen moves with occupancy checking
    * @param {Object} from - Source square
+   * @param {Array} board - Board state
    * @returns {Array} Array of possible moves
    */
-  generateQueenMoves(from) {
+  generateQueenMoves(from, board) {
     return [
-      ...this.generateRookMoves(from),
-      ...this.generateBishopMoves(from)
+      ...this.generateRookMoves(from, board),
+      ...this.generateBishopMoves(from, board)
     ];
   }
 
   /**
-   * Generate possible king moves
+   * Generate possible king moves with occupancy checking
    * @param {Object} from - Source square
+   * @param {Array} board - Board state
    * @returns {Array} Array of possible moves
    */
-  generateKingMoves(from) {
+  generateKingMoves(from, board) {
     const moves = [];
+    const boardState = board || this.board;
+    const myColor = boardState[from.row][from.col]?.color;
     const directions = [
       [-1, -1], [-1, 0], [-1, 1],
       [0, -1], [0, 1],
@@ -3056,16 +3167,25 @@ class ChessGame {
     for (const [rowDir, colDir] of directions) {
       const to = { row: from.row + rowDir, col: from.col + colDir };
       if (this.isValidSquare(to)) {
-        moves.push(to);
+        const target = boardState[to.row][to.col];
+        if (!target || target.color !== myColor) {
+          moves.push(to);
+        }
       }
     }
 
-    // Add castling moves
+    // Add castling moves (castling validation is complex, so we delegate to validation logic)
+    // We just provide the candidates if squares are generally accessible
     if (from.row === (this.currentTurn === 'white' ? 7 : 0) && from.col === 4) {
-      // Kingside castling
-      moves.push({ row: from.row, col: 6 });
-      // Queenside castling
-      moves.push({ row: from.row, col: 2 });
+      // Only suggest if squares are not occupied (basic check)
+      // Kingside
+      if (!boardState[from.row][5] && !boardState[from.row][6]) {
+        moves.push({ row: from.row, col: 6 });
+      }
+      // Queenside
+      if (!boardState[from.row][3] && !boardState[from.row][2] && !boardState[from.row][1]) {
+        moves.push({ row: from.row, col: 2 });
+      }
     }
 
     return moves;
@@ -3168,6 +3288,11 @@ class ChessGame {
       };
     }
 
+    // Ensure pieces cache is rebuilt if recovery failed but board exists
+    if (this.board) {
+      this.scanBoardForPieces();
+    }
+
     return {
       success: false,
       message: 'Cannot recover from corruption'
@@ -3255,6 +3380,9 @@ class ChessGame {
         this.castlingRights = state.castlingRights || this.getDefaultCastlingRights();
         this.enPassantTarget = state.enPassantTarget || null;
         this.moveHistory = state.moveHistory || [];
+
+        // Refresh pieces cache
+        this.scanBoardForPieces();
 
         return {
           success: true,
@@ -3361,6 +3489,8 @@ class ChessGame {
     ));
     this.stateVersion = this.stateManager.stateVersion;
     this.lastValidatedState = null;
+
+    this.scanBoardForPieces();
   }
 
   /**
