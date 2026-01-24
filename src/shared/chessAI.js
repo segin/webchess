@@ -1,3 +1,5 @@
+const ChessGame = require('./chessGame');
+
 class ChessAI {
   constructor(difficulty = 'medium') {
     this.difficulty = difficulty;
@@ -322,14 +324,20 @@ class ChessAI {
   }
   
   cloneGame(chessGame) {
-    const ChessGame = require('./chessGame');
     const newGame = new ChessGame({ isClone: true });
     
     // Copy board state
     newGame.board = chessGame.board.map(row => row.map(piece => piece ? { ...piece } : null));
     
-    // Rebuild piece locations cache for the new board
-    newGame._rebuildPieceLocations();
+    // Copy piece locations cache directly to avoid scanning the board
+    if (chessGame.pieceLocations) {
+      newGame.pieceLocations = {
+        white: chessGame.pieceLocations.white.map(l => ({ row: l.row, col: l.col })),
+        black: chessGame.pieceLocations.black.map(l => ({ row: l.row, col: l.col }))
+      };
+    } else {
+      newGame._rebuildPieceLocations();
+    }
     
     // Copy game state
     newGame.currentTurn = chessGame.currentTurn;
