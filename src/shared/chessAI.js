@@ -329,7 +329,15 @@ class ChessAI {
     newGame.board = chessGame.board.map(row => row.map(piece => piece ? { ...piece } : null));
     
     // Rebuild piece locations cache for the new board
-    newGame._rebuildPieceLocations();
+    // Optimize: shallow copy the arrays if they exist on source
+    if (chessGame.pieceLocations) {
+      newGame.pieceLocations = {
+        white: [...chessGame.pieceLocations.white],
+        black: [...chessGame.pieceLocations.black]
+      };
+    } else {
+      newGame._rebuildPieceLocations();
+    }
     
     // Copy game state
     newGame.currentTurn = chessGame.currentTurn;
