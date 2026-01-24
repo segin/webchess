@@ -97,12 +97,19 @@ class ChessGame {
       white: [],
       black: []
     };
+    this.kingLocations = {
+      white: null,
+      black: null
+    };
 
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         const piece = board[row][col];
         if (piece) {
           this.pieceLocations[piece.color].push({ row, col });
+          if (piece.type === 'king') {
+            this.kingLocations[piece.color] = { row, col };
+          }
         }
       }
     }
@@ -269,7 +276,7 @@ class ChessGame {
     if (!isCastlingAttempt) {
       const captureValidation = this.validateCapture(from, to, piece);
       if (captureValidation.success === false || captureValidation.isValid === false) {
-        console.log('DEBUG: Returning captureValidation error:', captureValidation);
+        if (this.debugMode) console.log('DEBUG: Returning captureValidation error:', captureValidation);
         return captureValidation;
       }
     }
@@ -277,29 +284,29 @@ class ChessGame {
     // Step 9: Special move validation
     const specialMoveValidation = this.validateSpecialMoves(from, to, piece, promotion);
     if (specialMoveValidation.success === false || specialMoveValidation.isValid === false) {
-      console.log('DEBUG: Returning specialMoveValidation error:', specialMoveValidation);
+      if (this.debugMode) console.log('DEBUG: Returning specialMoveValidation error:', specialMoveValidation);
       return specialMoveValidation;
     }
 
     // Step 10: Check validation - either resolution (if in check) or constraint (if not in check)
     const currentlyInCheck = this.isInCheck(piece.color);
-    console.log('DEBUG: Step 10 - currentlyInCheck =', currentlyInCheck);
+    if (this.debugMode) console.log('DEBUG: Step 10 - currentlyInCheck =', currentlyInCheck);
     if (currentlyInCheck) {
       // When in check, validate that the move resolves the check
-      console.log('DEBUG: Calling validateCheckResolution');
+      if (this.debugMode) console.log('DEBUG: Calling validateCheckResolution');
       const checkResolutionValidation = this.validateCheckResolution(from, to, piece);
-      console.log('DEBUG: checkResolutionValidation =', checkResolutionValidation);
+      if (this.debugMode) console.log('DEBUG: checkResolutionValidation =', checkResolutionValidation);
       if (checkResolutionValidation.success === false || checkResolutionValidation.isValid === false) {
-        console.log('DEBUG: Returning checkResolutionValidation error');
+        if (this.debugMode) console.log('DEBUG: Returning checkResolutionValidation error');
         return checkResolutionValidation;
       }
     } else {
       // When not in check, validate that the move doesn't put king in check
-      console.log('DEBUG: Calling validateCheckConstraints');
+      if (this.debugMode) console.log('DEBUG: Calling validateCheckConstraints');
       const checkValidation = this.validateCheckConstraints(from, to, piece);
-      console.log('DEBUG: checkValidation =', checkValidation);
+      if (this.debugMode) console.log('DEBUG: checkValidation =', checkValidation);
       if (checkValidation.success === false || checkValidation.isValid === false) {
-        console.log('DEBUG: Returning checkValidation error');
+        if (this.debugMode) console.log('DEBUG: Returning checkValidation error');
         return checkValidation;
       }
     }
@@ -694,12 +701,12 @@ class ChessGame {
 
     // Check if the piece is pinned
     const pinInfo = this.isPiecePinned(from, piece.color);
-    console.log('DEBUG: Checking pinned piece, isPinned =', pinInfo.isPinned);
+    if (this.debugMode) console.log('DEBUG: Checking pinned piece, isPinned =', pinInfo.isPinned);
 
     if (pinInfo.isPinned) {
       // Check if the pinned piece move is valid
       if (!this.isPinnedPieceMoveValid(from, to, pinInfo)) {
-        console.log('DEBUG: Returning PINNED_PIECE_INVALID_MOVE');
+        if (this.debugMode) console.log('DEBUG: Returning PINNED_PIECE_INVALID_MOVE');
         return this.errorHandler.createError(
           'PINNED_PIECE_INVALID_MOVE',
           'Pinned piece cannot move without exposing king'
@@ -1344,10 +1351,17 @@ class ChessGame {
 
     // Update piece locations cache for the moving piece
     this._updatePieceLocation(piece.color, from, to);
+    if (piece.type === 'king') {
+      this.kingLocations[piece.color] = { row: to.row, col: to.col };
+    }
 
     // Update cache for standard capture
     if (capturedPiece && !isEnPassant) {
        this._removePieceLocation(capturedPiece.color, to);
+       // Update king cache if king was captured (should not happen in standard chess)
+       if (capturedPiece.type === 'king') {
+         this.kingLocations[capturedPiece.color] = null;
+       }
     }
 
     // Execute the basic move
@@ -2343,10 +2357,28 @@ class ChessGame {
   }
 
   findKing(color) {
+    // Optimized lookup using cache
+    if (this.kingLocations && this.kingLocations[color]) {
+      const loc = this.kingLocations[color];
+      // Verify cache validity (in case board was modified externally/manually)
+      if (this.isValidSquare(loc)) {
+        const piece = this.board[loc.row][loc.col];
+        if (piece && piece.type === 'king' && piece.color === color) {
+          return loc;
+        }
+      }
+    }
+
+    // Fallback for safety (e.g. if cache not initialized or stale)
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         const piece = this.board[row][col];
         if (piece && piece.type === 'king' && piece.color === color) {
+          // Auto-heal cache
+          if (!this.kingLocations) {
+            this.kingLocations = { white: null, black: null };
+          }
+          this.kingLocations[color] = { row, col };
           return { row, col };
         }
       }
