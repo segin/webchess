@@ -647,17 +647,13 @@ class WebChessClient {
       if (this.isPracticeMode) {
         // Practice mode: use the practice-specific logic
         canSelect = this.canPlayerMovePiece(piece);
-        // Debug: console.log(`Square click: mode=${this.practiceMode}, piece=${piece.color}, canSelect=${canSelect}, currentTurn=${this.gameState.currentTurn}`);
       } else {
         // Multiplayer mode: can select if it's the player's piece color
         canSelect = (piece.color === this.playerColor);
       }
       
       if (canSelect) {
-        // Debug: console.log(`Selecting square ${row},${col} with piece:`, piece);
         this.selectSquare(row, col);
-      } else {
-        // Debug: console.log(`Cannot select square ${row},${col} with piece:`, piece);
       }
     }
   }
