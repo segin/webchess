@@ -692,10 +692,89 @@ class GameStateManager {
     return {
       timestamp: Date.now(),
       stateVersion: this.stateVersion,
-      gameState: JSON.parse(JSON.stringify(gameState)), // Deep copy
+      gameState: this._cloneGameState(gameState), // Deep copy
       metadata: { ...this.gameMetadata },
       positionHistory: [...this.positionHistory]
     };
+  }
+
+  /**
+   * Optimized deep copy for game state
+   * @param {Object} gameState - Game state to clone
+   * @returns {Object} Deep copy of game state
+   */
+  _cloneGameState(gameState) {
+    if (!gameState) return gameState;
+
+    const clone = { ...gameState };
+
+    if (Array.isArray(gameState.board)) {
+      clone.board = new Array(gameState.board.length);
+      for (let i = 0; i < gameState.board.length; i++) {
+        const row = gameState.board[i];
+        if (Array.isArray(row)) {
+          clone.board[i] = new Array(row.length);
+          for (let j = 0; j < row.length; j++) {
+            const piece = row[j];
+            clone.board[i][j] = piece ? { ...piece } : null;
+          }
+        } else {
+          clone.board[i] = row;
+        }
+      }
+    }
+
+    if (Array.isArray(gameState.moveHistory)) {
+      clone.moveHistory = gameState.moveHistory.map(m => {
+        const newMove = { ...m };
+        if (newMove.from) newMove.from = { ...newMove.from };
+        if (newMove.to) newMove.to = { ...newMove.to };
+        if (newMove.gameStateSnapshot) {
+          // Use JSON clone for the nested snapshot as it's a complex object
+          // but occurs less frequently than board elements.
+          newMove.gameStateSnapshot = JSON.parse(JSON.stringify(newMove.gameStateSnapshot));
+        }
+        return newMove;
+      });
+    }
+
+    if (gameState.castlingRights) {
+      clone.castlingRights = {
+        white: { ...gameState.castlingRights.white },
+        black: { ...gameState.castlingRights.black }
+      };
+    }
+
+    if (gameState.enPassantTarget) {
+      clone.enPassantTarget = { ...gameState.enPassantTarget };
+    }
+
+    if (gameState.checkDetails) {
+      // Fallback for potentially complex object
+      clone.checkDetails = JSON.parse(JSON.stringify(gameState.checkDetails));
+    }
+
+    if (gameState.gameMetadata) {
+      clone.gameMetadata = { ...gameState.gameMetadata };
+    }
+
+    if (Array.isArray(gameState.positionHistory)) {
+      clone.positionHistory = [...gameState.positionHistory];
+    }
+
+    // Clone stateConsistency if present
+    if (gameState.stateConsistency) {
+        clone.stateConsistency = { ...gameState.stateConsistency };
+        // Shallow copy of arrays inside it?
+        if (Array.isArray(gameState.stateConsistency.errors)) {
+            clone.stateConsistency.errors = [...gameState.stateConsistency.errors];
+        }
+         if (Array.isArray(gameState.stateConsistency.warnings)) {
+            clone.stateConsistency.warnings = [...gameState.stateConsistency.warnings];
+        }
+    }
+
+    return clone;
   }
 
   /**

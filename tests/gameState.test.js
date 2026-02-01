@@ -1875,6 +1875,28 @@ describe('GameState Transition Validation Coverage', () => {
       const result = stateManager.deserializeGameState('invalid json');
       expect(result).toBe(null);
     });
+
+    test('should return a deep copy of the game state', () => {
+      const gameState = {
+        board: createStartingBoard(),
+        currentTurn: 'white',
+        moveHistory: [],
+        castlingRights: { white: { kingside: true } }
+      };
+
+      const snapshot = stateManager.getStateSnapshot(gameState);
+
+      // Modify original state
+      gameState.currentTurn = 'black';
+      gameState.castlingRights.white.kingside = false;
+      gameState.board[0][0] = null;
+
+      // Verify snapshot remains unchanged
+      expect(snapshot.gameState.currentTurn).toBe('white');
+      expect(snapshot.gameState.castlingRights.white.kingside).toBe(true);
+      expect(snapshot.gameState.board[0][0]).not.toBeNull();
+      expect(snapshot.gameState.board[0][0].type).toBe('rook');
+    });
   });
 
   describe('Checkpoints and Recovery', () => {
