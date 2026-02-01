@@ -1713,7 +1713,8 @@ class ChessGame {
     this.stateVersion = this.stateManager.stateVersion;
 
     // Validate state consistency after update (skip in silent mode for AI operations)
-    if (!silent) {
+    // Optimization: Skip expensive validation in production unless debug mode is enabled
+    if (!silent && (this.debugMode || process.env.NODE_ENV !== 'production')) {
       const consistencyCheck = this.stateManager.validateGameStateConsistency(this.getGameStateForSnapshot());
       if (!consistencyCheck.success) {
         // Log warnings but don't throw errors for warnings
