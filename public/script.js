@@ -1386,6 +1386,8 @@ class WebChessClient {
   isInsufficientMaterial() {
     const whitePieces = [];
     const blackPieces = [];
+    const whiteBishops = [];
+    const blackBishops = [];
     
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
@@ -1393,8 +1395,14 @@ class WebChessClient {
         if (piece) {
           if (piece.color === 'white') {
             whitePieces.push(piece.type);
+            if (piece.type === 'bishop') {
+              whiteBishops.push((row + col) % 2);
+            }
           } else {
             blackPieces.push(piece.type);
+            if (piece.type === 'bishop') {
+              blackBishops.push((row + col) % 2);
+            }
           }
         }
       }
@@ -1433,8 +1441,11 @@ class WebChessClient {
     if (whitePieces.length === 2 && blackPieces.length === 2) {
       if (whitePieces.includes('king') && whitePieces.includes('bishop') &&
           blackPieces.includes('king') && blackPieces.includes('bishop')) {
-        // This is a simplification - in reality we'd need to check if bishops are on same color squares
-        return true;
+        // Check if bishops are on same color squares
+        const whiteBishopColor = whiteBishops[0];
+        const blackBishopColor = blackBishops[0];
+
+        return whiteBishopColor === blackBishopColor;
       }
     }
     
