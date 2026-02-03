@@ -6,9 +6,60 @@ const ChessGame = require('../shared/chessGame');
 class GameManager {
   constructor() {
     this.games = new Map();
+    this.gamesByStatus = new Map(); // O(1) lookup optimization
     this.playerToGame = new Map();
     this.disconnectedPlayers = new Map();
     this.disconnectTimeouts = new Map(); // Track timeouts for cleanup
+  }
+
+  /**
+   * Add game to status index
+   * @param {string} gameId - Game ID
+   * @param {string} status - Game status
+   * @private
+   */
+  _addToStatusIndex(gameId, status) {
+    if (!this.gamesByStatus.has(status)) {
+      this.gamesByStatus.set(status, new Set());
+    }
+    this.gamesByStatus.get(status).add(gameId);
+  }
+
+  /**
+   * Remove game from status index
+   * @param {string} gameId - Game ID
+   * @param {string} status - Game status
+   * @private
+   */
+  _removeFromStatusIndex(gameId, status) {
+    if (this.gamesByStatus.has(status)) {
+      const set = this.gamesByStatus.get(status);
+      set.delete(gameId);
+      if (set.size === 0) {
+        this.gamesByStatus.delete(status);
+      }
+    }
+  }
+
+  /**
+   * Update game status and maintain index
+   * @param {string} gameId - Game ID
+   * @param {string} newStatus - New status
+   * @returns {boolean} True if status was updated
+   * @private
+   */
+  _updateGameStatus(gameId, newStatus) {
+    const game = this.games.get(gameId);
+    if (!game) return false;
+
+    const oldStatus = game.status;
+    if (oldStatus === newStatus) return true;
+
+    this._removeFromStatusIndex(gameId, oldStatus);
+    game.status = newStatus;
+    this._addToStatusIndex(gameId, newStatus);
+
+    return true;
   }
 
   generateGameId() {
@@ -38,6 +89,7 @@ class GameManager {
     };
 
     this.games.set(gameId, game);
+    this._addToStatusIndex(gameId, game.status);
     this.playerToGame.set(playerId, gameId);
     
     return gameId;
@@ -59,7 +111,7 @@ class GameManager {
     }
 
     game.guest = playerId;
-    game.status = 'active';
+    this._updateGameStatus(gameId, 'active');
     game.lastActivity = Date.now();
     
     this.playerToGame.set(playerId, gameId);
@@ -124,7 +176,7 @@ class GameManager {
       return { success: false, message: 'You are not in this game' };
     }
 
-    game.status = 'resigned';
+    this._updateGameStatus(gameId, 'resigned');
     const winner = isHost ? 'black' : 'white';
     
     return {
@@ -167,12 +219,10 @@ class GameManager {
       
       const game = this.games.get(disconnectedInfo.gameId);
       if (game && game.status === 'active') {
-        game.status = 'abandoned';
+        this._updateGameStatus(disconnectedInfo.gameId, 'abandoned');
         // Clean up chat messages
         game.chatMessages = [];
-        this.games.delete(disconnectedInfo.gameId);
-        this.playerToGame.delete(game.host);
-        this.playerToGame.delete(game.guest);
+        this.removeGame(disconnectedInfo.gameId);
       }
     }
   }
@@ -272,6 +322,9 @@ class GameManager {
   removeGame(gameId) {
     const game = this.games.get(gameId);
     if (game) {
+      // Remove from status index
+      this._removeFromStatusIndex(gameId, game.status);
+
       // Clean up player mappings
       this.playerToGame.delete(game.host);
       if (game.guest) {
@@ -401,7 +454,7 @@ class GameManager {
       return { success: false, message: 'Game needs two players to start' };
     }
 
-    game.status = 'active';
+    this._updateGameStatus(gameId, 'active');
     game.lastActivity = Date.now();
 
     return { success: true };
@@ -420,7 +473,7 @@ class GameManager {
       return { success: false, message: 'Game not found' };
     }
 
-    game.status = 'finished';
+    this._updateGameStatus(gameId, 'finished');
     game.endReason = reason;
     game.winner = winner;
     game.endTime = Date.now();
@@ -443,7 +496,7 @@ class GameManager {
       return { success: false, message: 'Game is not active' };
     }
 
-    game.status = 'paused';
+    this._updateGameStatus(gameId, 'paused');
     game.pausedAt = Date.now();
 
     return { success: true };
@@ -464,7 +517,7 @@ class GameManager {
       return { success: false, message: 'Game is not paused' };
     }
 
-    game.status = 'active';
+    this._updateGameStatus(gameId, 'active');
     game.resumedAt = Date.now();
 
     return { success: true };
@@ -534,13 +587,7 @@ class GameManager {
    * @returns {Array} Array of game IDs
    */
   getGamesByStatus(status) {
-    const games = [];
-    for (const [gameId, game] of this.games) {
-      if (game.status === status) {
-        games.push(gameId);
-      }
-    }
-    return games;
+    return Array.from(this.gamesByStatus.get(status) || []);
   }
 
   /**
@@ -791,6 +838,7 @@ class GameManager {
     
     // Clear all game data
     this.games.clear();
+    this.gamesByStatus.clear();
     this.playerToGame.clear();
     this.disconnectedPlayers.clear();
   }
