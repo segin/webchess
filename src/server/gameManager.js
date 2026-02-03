@@ -7,8 +7,26 @@ class GameManager {
   constructor() {
     this.games = new Map();
     this.playerToGame = new Map();
+    this.playerGames = new Map(); // Map<PlayerId, Set<GameId>>
     this.disconnectedPlayers = new Map();
     this.disconnectTimeouts = new Map(); // Track timeouts for cleanup
+  }
+
+  _addPlayerGame(playerId, gameId) {
+    if (!this.playerGames.has(playerId)) {
+      this.playerGames.set(playerId, new Set());
+    }
+    this.playerGames.get(playerId).add(gameId);
+  }
+
+  _removePlayerGame(playerId, gameId) {
+    if (this.playerGames.has(playerId)) {
+      const games = this.playerGames.get(playerId);
+      games.delete(gameId);
+      if (games.size === 0) {
+        this.playerGames.delete(playerId);
+      }
+    }
   }
 
   generateGameId() {
@@ -39,6 +57,7 @@ class GameManager {
 
     this.games.set(gameId, game);
     this.playerToGame.set(playerId, gameId);
+    this._addPlayerGame(playerId, gameId);
     
     return gameId;
   }
@@ -63,6 +82,7 @@ class GameManager {
     game.lastActivity = Date.now();
     
     this.playerToGame.set(playerId, gameId);
+    this._addPlayerGame(playerId, gameId);
 
     return {
       success: true,
@@ -170,9 +190,7 @@ class GameManager {
         game.status = 'abandoned';
         // Clean up chat messages
         game.chatMessages = [];
-        this.games.delete(disconnectedInfo.gameId);
-        this.playerToGame.delete(game.host);
-        this.playerToGame.delete(game.guest);
+        this.removeGame(disconnectedInfo.gameId);
       }
     }
   }
@@ -274,8 +292,11 @@ class GameManager {
     if (game) {
       // Clean up player mappings
       this.playerToGame.delete(game.host);
+      this._removePlayerGame(game.host, gameId);
+
       if (game.guest) {
         this.playerToGame.delete(game.guest);
+        this._removePlayerGame(game.guest, gameId);
       }
       
       // Remove the game
@@ -325,6 +346,7 @@ class GameManager {
     if (game.host === playerId) {
       game.host = null;
       this.playerToGame.delete(playerId);
+      this._removePlayerGame(playerId, gameId);
       
       // If guest exists, promote to host
       if (game.guest) {
@@ -334,6 +356,7 @@ class GameManager {
     } else if (game.guest === playerId) {
       game.guest = null;
       this.playerToGame.delete(playerId);
+      this._removePlayerGame(playerId, gameId);
     } else {
       return { success: false, message: 'Player not in game' };
     }
@@ -519,13 +542,7 @@ class GameManager {
    * @returns {Array} Array of game IDs
    */
   findGamesByPlayer(playerId) {
-    const games = [];
-    for (const [gameId, game] of this.games) {
-      if (game.host === playerId || game.guest === playerId) {
-        games.push(gameId);
-      }
-    }
-    return games;
+    return Array.from(this.playerGames.get(playerId) || []);
   }
 
   /**
@@ -597,18 +614,21 @@ class GameManager {
     let losses = 0;
     let draws = 0;
 
-    for (const game of this.games.values()) {
-      if (game.host === playerId || game.guest === playerId) {
-        gamesPlayed++;
-        
-        if (game.status === 'finished') {
-          if (game.winner === playerId) {
-            wins++;
-          } else if (game.winner && game.winner !== playerId) {
-            losses++;
-          } else {
-            draws++;
-          }
+    const playerGameIds = this.playerGames.get(playerId) || [];
+
+    for (const gameId of playerGameIds) {
+      const game = this.games.get(gameId);
+      if (!game) continue; // Should not happen if index is sync
+
+      gamesPlayed++;
+
+      if (game.status === 'finished') {
+        if (game.winner === playerId) {
+          wins++;
+        } else if (game.winner && game.winner !== playerId) {
+          losses++;
+        } else {
+          draws++;
         }
       }
     }
@@ -792,6 +812,7 @@ class GameManager {
     // Clear all game data
     this.games.clear();
     this.playerToGame.clear();
+    this.playerGames.clear();
     this.disconnectedPlayers.clear();
   }
 }
