@@ -270,14 +270,17 @@ class ChessGame {
       return turnValidation;
     }
 
+    const isCastlingAttempt = piece.type === 'king' && Math.abs(to.col - from.col) === 2;
+
     // Step 6: Movement pattern validation
-    const movementValidation = this.validateMovementPattern(from, to, piece);
-    if (movementValidation.success === false || movementValidation.isValid === false) {
-      return movementValidation;
+    if (!isCastlingAttempt) {
+      const movementValidation = this.validateMovementPattern(from, to, piece);
+      if (movementValidation.success === false || movementValidation.isValid === false) {
+        return movementValidation;
+      }
     }
 
     // Step 7: Path validation (except for knights and castling)
-    const isCastlingAttempt = piece.type === 'king' && Math.abs(to.col - from.col) === 2;
     if (piece.type !== 'knight' && !isCastlingAttempt) {
       const pathValidation = this.validatePath(from, to);
       if (pathValidation.success === false || pathValidation.isValid === false) {

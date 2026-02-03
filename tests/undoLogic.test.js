@@ -61,6 +61,11 @@ describe('Undo Functionality Comprehensive Tests', () => {
             // Clear path for white kingside castling
             game.board[7][5] = null; // Remove Bishop
             game.board[7][6] = null; // Remove Knight
+            
+            // Rebuild cache because we modified board directly
+            if (game._rebuildPieceLocations) {
+                game._rebuildPieceLocations();
+            }
 
             // 1. e4 (just to burn a move and set turn to black, wait... need white to move)
             // Just move castling right away if valid (assuming valid board setup for tests)

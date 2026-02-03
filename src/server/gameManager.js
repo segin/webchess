@@ -67,6 +67,39 @@ class GameManager {
     return gameId;
   }
 
+  /**
+   * Add game to player's list of games
+   * @param {string} playerId - Player ID
+   * @param {string} gameId - Game ID
+   * @private
+   */
+  _addGameToPlayer(playerId, gameId) {
+    if (!this.playerGames.has(playerId)) {
+      this.playerGames.set(playerId, new Set());
+    }
+    this.playerGames.get(playerId).add(gameId);
+  }
+
+  /**
+   * Remove game from player's list of games
+   * @param {string} playerId - Player ID
+   * @param {string} gameId - Game ID
+   * @private
+   */
+  _removeGameFromPlayer(playerId, gameId) {
+    if (this.playerGames.has(playerId)) {
+      const games = this.playerGames.get(playerId);
+      games.delete(gameId);
+      if (games.size === 0) {
+        this.playerGames.delete(playerId);
+      }
+    }
+  }
+
+  _removePlayerGame(playerId, gameId) {
+    this._removeGameFromPlayer(playerId, gameId);
+  }
+
   joinGame(gameId, playerId) {
     const game = this.games.get(gameId.toUpperCase());
     
