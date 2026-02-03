@@ -132,18 +132,14 @@ class ChessAI {
     }
     
     const moves = this.getAllValidMoves(tempGame, tempGame.currentTurn);
-    
-    // Safety check: limit number of moves to prevent infinite loops
     if (moves.length === 0) {
       return this.evaluatePosition(tempGame);
     }
-    
-    // Limit moves to first 20 to prevent performance issues in tests
-    const limitedMoves = moves.slice(0, 20);
+    const orderedMoves = this.orderMoves(tempGame, moves);
     
     if (isMaximizing) {
       let maxScore = -Infinity;
-      for (const nextMove of limitedMoves) {
+      for (const nextMove of orderedMoves) {
         const score = this.minimax(tempGame, nextMove, depth - 1, false, alpha, beta);
         maxScore = Math.max(maxScore, score);
         alpha = Math.max(alpha, score);
@@ -152,7 +148,7 @@ class ChessAI {
       return maxScore;
     } else {
       let minScore = Infinity;
-      for (const nextMove of limitedMoves) {
+      for (const nextMove of orderedMoves) {
         const score = this.minimax(tempGame, nextMove, depth - 1, true, alpha, beta);
         minScore = Math.min(minScore, score);
         beta = Math.min(beta, score);
@@ -319,6 +315,37 @@ class ChessAI {
     }
     
     return moves;
+  }
+
+  orderMoves(chessGame, moves) {
+    return moves
+      .map(move => ({
+        move,
+        score: this.scoreMove(chessGame, move)
+      }))
+      .sort((a, b) => b.score - a.score)
+      .map(item => item.move);
+  }
+
+  scoreMove(chessGame, move) {
+    let score = 0;
+    const fromPiece = chessGame.board[move.from.row][move.from.col];
+    const toPiece = chessGame.board[move.to.row][move.to.col];
+
+    // Priority 1: Captures (MVV-LVA)
+    if (toPiece) {
+      score = 10 * this.pieceValues[toPiece.type] - this.pieceValues[fromPiece.type];
+    }
+
+    // Priority 2: Promotion
+    if (move.promotion) {
+      score += this.pieceValues[move.promotion];
+    }
+
+    // Priority 3: Check
+    // (Optional: this is expensive to check here, but captures are the most important)
+
+    return score;
   }
   
   cloneGame(chessGame) {

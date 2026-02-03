@@ -1,7 +1,20 @@
-// Use crypto.randomUUID() for Node.js 14.17+ instead of uuid package
-const { randomUUID } = require('crypto');
+const { randomUUID, randomBytes } = require('crypto');
 const uuidv4 = randomUUID;
 const ChessGame = require('../shared/chessGame');
+
+function escapeHTML(str) {
+  if (!str) return '';
+  return str.replace(/[&<>"']/g, function(m) {
+    switch (m) {
+      case '&': return '&amp;';
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '"': return '&quot;';
+      case "'": return '&#039;';
+      default: return m;
+    }
+  });
+}
 
 class GameManager {
   constructor() {
@@ -9,18 +22,22 @@ class GameManager {
     this.playerToGame = new Map();
     this.disconnectedPlayers = new Map();
     this.disconnectTimeouts = new Map(); // Track timeouts for cleanup
+    this.playerGameCounts = new Map(); // Track game counts for rate limiting
+    this.MAX_GAMES_PER_PLAYER = 5;
   }
 
   generateGameId() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
-    for (let i = 0; i < 6; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
+    // Use cryptographically secure random bytes instead of Math.random()
+    return randomBytes(3).toString('hex').toUpperCase();
   }
 
   createGame(playerId) {
+    // Rate limit: Check if player has reached game limit
+    const currentCount = this.playerGameCounts.get(playerId) || 0;
+    if (currentCount >= this.MAX_GAMES_PER_PLAYER) {
+      return null;
+    }
+
     let gameId;
     do {
       gameId = this.generateGameId();
@@ -39,6 +56,7 @@ class GameManager {
 
     this.games.set(gameId, game);
     this.playerToGame.set(playerId, gameId);
+    this.playerGameCounts.set(playerId, currentCount + 1);
     
     return gameId;
   }
@@ -170,9 +188,16 @@ class GameManager {
         game.status = 'abandoned';
         // Clean up chat messages
         game.chatMessages = [];
+        
+        // Decrement game count for host
+        const currentCount = this.playerGameCounts.get(game.host) || 0;
+        if (currentCount > 0) {
+          this.playerGameCounts.set(game.host, currentCount - 1);
+        }
+        
         this.games.delete(disconnectedInfo.gameId);
         this.playerToGame.delete(game.host);
-        this.playerToGame.delete(game.guest);
+        if (game.guest) this.playerToGame.delete(game.guest);
       }
     }
   }
@@ -184,9 +209,9 @@ class GameManager {
     }
 
     // Sanitize and validate message
-    const sanitizedMessage = message.trim().substring(0, 200);
+    const sanitizedMessage = escapeHTML(message.trim().substring(0, 200));
     if (!sanitizedMessage) {
-      return { success: false, message: 'Empty message' };
+      return { success: false, message: 'Empty or invalid message' };
     }
 
     const isHost = game.host === playerId;
@@ -276,6 +301,12 @@ class GameManager {
       this.playerToGame.delete(game.host);
       if (game.guest) {
         this.playerToGame.delete(game.guest);
+      }
+      
+      // Decrement game count for host
+      const currentCount = this.playerGameCounts.get(game.host) || 0;
+      if (currentCount > 0) {
+        this.playerGameCounts.set(game.host, currentCount - 1);
       }
       
       // Remove the game
@@ -668,12 +699,25 @@ class GameManager {
   }
 
   /**
-   * Clean up all games and data
+   * Clean up all games, mappings, and pending timeouts
    */
   cleanup() {
+    // Clear all disconnect timeouts
+    if (this.disconnectTimeouts) {
+      for (const [playerId, timeoutId] of this.disconnectTimeouts) {
+        clearTimeout(timeoutId);
+      }
+      this.disconnectTimeouts.clear();
+    }
+    
+    // Clear all game and player data
     this.games.clear();
     this.playerToGame.clear();
     this.disconnectedPlayers.clear();
+    
+    if (this.playerGameCounts) {
+      this.playerGameCounts.clear();
+    }
   }
 
   /**
@@ -779,21 +823,6 @@ class GameManager {
     };
   }
 
-  /**
-   * Clean up all pending timeouts - essential for test cleanup
-   */
-  cleanup() {
-    // Clear all disconnect timeouts
-    for (const [playerId, timeoutId] of this.disconnectTimeouts) {
-      clearTimeout(timeoutId);
-    }
-    this.disconnectTimeouts.clear();
-    
-    // Clear all game data
-    this.games.clear();
-    this.playerToGame.clear();
-    this.disconnectedPlayers.clear();
-  }
 }
 
 module.exports = GameManager;

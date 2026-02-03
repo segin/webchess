@@ -64,6 +64,10 @@ io.on('connection', (socket) => {
 
   socket.on('host-game', () => {
     const gameId = gameManager.createGame(socket.id);
+    if (!gameId) {
+      socket.emit('host-error', { message: 'Game limit reached. Please finish existing games.' });
+      return;
+    }
     socket.join(gameId);
     socket.emit('game-created', { gameId });
   });
@@ -108,7 +112,10 @@ io.on('connection', (socket) => {
         }, 30000); // Clean up after 30 seconds
       }
     } else {
-      socket.emit('move-error', { message: result.message });
+      socket.emit('move-error', { 
+        message: result.message,
+        errorCode: result.errorCode
+      });
     }
   });
 
@@ -197,6 +204,10 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || 'localhost';
 
-server.listen(PORT, HOST, () => {
-  console.log(`WebChess server running on ${HOST}:${PORT}`);
-});
+if (require.main === module) {
+  server.listen(PORT, HOST, () => {
+    console.log(`WebChess server running on ${HOST}:${PORT}`);
+  });
+}
+
+module.exports = { app, server, io, gameManager };
