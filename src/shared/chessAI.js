@@ -284,12 +284,18 @@ class ChessAI {
 
             if (toRow < 0 || toRow > 7 || toCol < 0 || toCol > 7) break;
 
-            tryAddMove(toRow, toCol);
+            const target = chessGame.board[toRow][toCol];
 
-            // If we hit a piece, stop (blocked)
-            // Note: tryAddMove validates if it's a valid capture or blocked.
-            // But to optimize we should stop generating if we see a piece.
-            if (chessGame.board[toRow][toCol]) {
+            if (!target) {
+              // Empty square
+              tryAddMove(toRow, toCol);
+            } else {
+              // Occupied
+              if (target.color !== piece.color) {
+                // Capture enemy
+                tryAddMove(toRow, toCol);
+              }
+              // Blocked (whether friend or foe), stop ray
               break;
             }
           }
