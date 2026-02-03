@@ -197,6 +197,13 @@ class GameManager {
         this._removeFromStatusIndex(oldStatus, game.id);
         // Clean up chat messages
         game.chatMessages = [];
+
+        // Update index
+        this._removePlayerGame(game.host, disconnectedInfo.gameId);
+        if (game.guest) {
+          this._removePlayerGame(game.guest, disconnectedInfo.gameId);
+        }
+
         this.games.delete(disconnectedInfo.gameId);
         this.playerToGame.delete(game.host);
         this.playerToGame.delete(game.guest);
@@ -306,6 +313,12 @@ class GameManager {
       if (game.guest) {
         this.playerToGame.delete(game.guest);
         this._removeGameFromPlayer(game.guest, gameId);
+      }
+
+      // Update index
+      this._removePlayerGame(game.host, gameId);
+      if (game.guest) {
+        this._removePlayerGame(game.guest, gameId);
       }
       
       // Remove from status index
@@ -737,14 +750,6 @@ class GameManager {
     return cleaned;
   }
 
-  /**
-   * Clean up all games and data
-   */
-  cleanup() {
-    this.games.clear();
-    this.playerToGame.clear();
-    this.disconnectedPlayers.clear();
-  }
 
   /**
    * Get memory usage information
@@ -754,14 +759,16 @@ class GameManager {
     const gameCount = this.games.size;
     const playerMappings = this.playerToGame.size;
     const disconnectedCount = this.disconnectedPlayers.size;
+    const playerIndexSize = this.playerGames.size;
     
     // Rough estimation of memory usage
-    const estimatedMemory = (gameCount * 1000) + (playerMappings * 100) + (disconnectedCount * 50);
+    const estimatedMemory = (gameCount * 1000) + (playerMappings * 100) + (disconnectedCount * 50) + (playerIndexSize * 50);
 
     return {
       gameCount,
       playerMappings,
       disconnectedCount,
+      playerIndexSize,
       estimatedMemory
     };
   }
