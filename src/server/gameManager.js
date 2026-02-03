@@ -46,6 +46,23 @@ class GameManager {
     }
   }
 
+  _addPlayerGame(playerId, gameId) {
+    if (!this.playerGames.has(playerId)) {
+      this.playerGames.set(playerId, new Set());
+    }
+    this.playerGames.get(playerId).add(gameId);
+  }
+
+  _removePlayerGame(playerId, gameId) {
+    if (this.playerGames.has(playerId)) {
+      const games = this.playerGames.get(playerId);
+      games.delete(gameId);
+      if (games.size === 0) {
+        this.playerGames.delete(playerId);
+      }
+    }
+  }
+
   generateGameId() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
