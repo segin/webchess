@@ -6,9 +6,35 @@ const ChessGame = require('../shared/chessGame');
 class GameManager {
   constructor() {
     this.games = new Map();
+    this.gamesByStatus = new Map();
     this.playerToGame = new Map();
     this.disconnectedPlayers = new Map();
     this.disconnectTimeouts = new Map(); // Track timeouts for cleanup
+  }
+
+  _addToStatusIndex(gameId, status) {
+    if (!this.gamesByStatus.has(status)) {
+      this.gamesByStatus.set(status, new Set());
+    }
+    this.gamesByStatus.get(status).add(gameId);
+  }
+
+  _removeFromStatusIndex(gameId, status) {
+    if (this.gamesByStatus.has(status)) {
+      this.gamesByStatus.get(status).delete(gameId);
+    }
+  }
+
+  _updateGameStatus(gameId, newStatus) {
+    const game = this.games.get(gameId);
+    if (!game) return;
+
+    const oldStatus = game.status;
+    if (oldStatus === newStatus) return;
+
+    this._removeFromStatusIndex(gameId, oldStatus);
+    game.status = newStatus;
+    this._addToStatusIndex(gameId, newStatus);
   }
 
   generateGameId() {
@@ -38,6 +64,7 @@ class GameManager {
     };
 
     this.games.set(gameId, game);
+    this._addToStatusIndex(gameId, 'waiting');
     this.playerToGame.set(playerId, gameId);
     
     return gameId;
@@ -59,7 +86,7 @@ class GameManager {
     }
 
     game.guest = playerId;
-    game.status = 'active';
+    this._updateGameStatus(game.id, 'active');
     game.lastActivity = Date.now();
     
     this.playerToGame.set(playerId, gameId);
@@ -124,7 +151,7 @@ class GameManager {
       return { success: false, message: 'You are not in this game' };
     }
 
-    game.status = 'resigned';
+    this._updateGameStatus(gameId, 'resigned');
     const winner = isHost ? 'black' : 'white';
     
     return {
@@ -167,9 +194,11 @@ class GameManager {
       
       const game = this.games.get(disconnectedInfo.gameId);
       if (game && game.status === 'active') {
+        this._removeFromStatusIndex(game.id, 'active');
         game.status = 'abandoned';
         // Clean up chat messages
         game.chatMessages = [];
+
         this.games.delete(disconnectedInfo.gameId);
         this.playerToGame.delete(game.host);
         this.playerToGame.delete(game.guest);
@@ -278,6 +307,8 @@ class GameManager {
         this.playerToGame.delete(game.guest);
       }
       
+      this._removeFromStatusIndex(gameId, game.status);
+
       // Remove the game
       this.games.delete(gameId);
       return true;
@@ -401,7 +432,7 @@ class GameManager {
       return { success: false, message: 'Game needs two players to start' };
     }
 
-    game.status = 'active';
+    this._updateGameStatus(gameId, 'active');
     game.lastActivity = Date.now();
 
     return { success: true };
@@ -420,7 +451,7 @@ class GameManager {
       return { success: false, message: 'Game not found' };
     }
 
-    game.status = 'finished';
+    this._updateGameStatus(gameId, 'finished');
     game.endReason = reason;
     game.winner = winner;
     game.endTime = Date.now();
@@ -443,7 +474,7 @@ class GameManager {
       return { success: false, message: 'Game is not active' };
     }
 
-    game.status = 'paused';
+    this._updateGameStatus(gameId, 'paused');
     game.pausedAt = Date.now();
 
     return { success: true };
@@ -464,7 +495,7 @@ class GameManager {
       return { success: false, message: 'Game is not paused' };
     }
 
-    game.status = 'active';
+    this._updateGameStatus(gameId, 'active');
     game.resumedAt = Date.now();
 
     return { success: true };
@@ -534,13 +565,7 @@ class GameManager {
    * @returns {Array} Array of game IDs
    */
   getGamesByStatus(status) {
-    const games = [];
-    for (const [gameId, game] of this.games) {
-      if (game.status === status) {
-        games.push(gameId);
-      }
-    }
-    return games;
+    return Array.from(this.gamesByStatus.get(status) || []);
   }
 
   /**
@@ -549,8 +574,11 @@ class GameManager {
    */
   getAvailableGames() {
     const availableGames = [];
-    for (const [gameId, game] of this.games) {
-      if (game.status === 'waiting' && !game.guest) {
+    const waitingGames = this.getGamesByStatus('waiting');
+
+    for (const gameId of waitingGames) {
+      const game = this.games.get(gameId);
+      if (game && !game.guest) {
         availableGames.push({
           gameId,
           host: game.host,
@@ -668,15 +696,6 @@ class GameManager {
   }
 
   /**
-   * Clean up all games and data
-   */
-  cleanup() {
-    this.games.clear();
-    this.playerToGame.clear();
-    this.disconnectedPlayers.clear();
-  }
-
-  /**
    * Get memory usage information
    * @returns {Object} Memory usage statistics
    */
@@ -791,6 +810,7 @@ class GameManager {
     
     // Clear all game data
     this.games.clear();
+    this.gamesByStatus.clear();
     this.playerToGame.clear();
     this.disconnectedPlayers.clear();
   }
