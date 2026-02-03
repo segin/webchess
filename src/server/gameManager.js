@@ -1,6 +1,21 @@
 // Use crypto.randomUUID() for Node.js 14.17+ instead of uuid package
-const { randomUUID } = require('crypto');
+const { randomUUID, randomBytes } = require('crypto');
+const uuidv4 = randomUUID;
 const ChessGame = require('../shared/chessGame');
+
+function escapeHTML(str) {
+  if (!str) return '';
+  return str.replace(/[&<>"']/g, function(m) {
+    switch (m) {
+      case '&': return '&amp;';
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '"': return '&quot;';
+      case "'": return '&#039;';
+      default: return m;
+    }
+  });
+}
 
 class GameManager {
   constructor() {
@@ -11,143 +26,22 @@ class GameManager {
     this.disconnectedPlayers = new Map();
     this.disconnectTimeouts = new Map(); // Track timeouts for cleanup
     this.playerGames = new Map(); // Optimization: Track all games for each player
-  }
-
-  _addPlayerGame(playerId, gameId) {
-    if (!this.playerGames.has(playerId)) {
-      this.playerGames.set(playerId, new Set());
-    }
-    this.playerGames.get(playerId).add(gameId);
-  }
-
-  _removePlayerGame(playerId, gameId) {
-    if (this.playerGames.has(playerId)) {
-      this.playerGames.get(playerId).delete(gameId);
-      if (this.playerGames.get(playerId).size === 0) {
-        this.playerGames.delete(playerId);
-      }
-    }
-  }
-
-  _addGameToPlayer(playerId, gameId) {
-    if (!this.playerGames.has(playerId)) {
-      this.playerGames.set(playerId, new Set());
-    }
-    this.playerGames.get(playerId).add(gameId);
-  }
-
-  _removeGameFromPlayer(playerId, gameId) {
-    if (this.playerGames.has(playerId)) {
-      const games = this.playerGames.get(playerId);
-      games.delete(gameId);
-      if (games.size === 0) {
-        this.playerGames.delete(playerId);
-      }
-    }
-  }
-
-  _addPlayerGame(playerId, gameId) {
-    if (!this.playerGames.has(playerId)) {
-      this.playerGames.set(playerId, new Set());
-    }
-    this.playerGames.get(playerId).add(gameId);
-  }
-
-  _removePlayerGame(playerId, gameId) {
-    if (this.playerGames.has(playerId)) {
-      const games = this.playerGames.get(playerId);
-      games.delete(gameId);
-      if (games.size === 0) {
-        this.playerGames.delete(playerId);
-      }
-    }
-  }
-
-  _addToStatusIndex(gameId, status) {
-    if (!this.gamesByStatus.has(status)) {
-      this.gamesByStatus.set(status, new Set());
-    }
-    this.gamesByStatus.get(status).add(gameId);
-  }
-
-  _removeFromStatusIndex(gameId, status) {
-    if (this.gamesByStatus.has(status)) {
-      this.gamesByStatus.get(status).delete(gameId);
-    }
-  }
-
-  _updateGameStatus(gameId, newStatus) {
-    const game = this.games.get(gameId);
-    if (!game) return;
-
-    const oldStatus = game.status;
-    if (oldStatus === newStatus) return;
-
-    this._removeFromStatusIndex(gameId, oldStatus);
-    game.status = newStatus;
-    this._addToStatusIndex(gameId, newStatus);
-  }
-
-  /**
-   * Add game to status index
-   * @param {string} gameId - Game ID
-   * @param {string} status - Game status
-   * @private
-   */
-  _addToStatusIndex(gameId, status) {
-    if (!this.gamesByStatus.has(status)) {
-      this.gamesByStatus.set(status, new Set());
-    }
-    this.gamesByStatus.get(status).add(gameId);
-  }
-
-  /**
-   * Remove game from status index
-   * @param {string} gameId - Game ID
-   * @param {string} status - Game status
-   * @private
-   */
-  _removeFromStatusIndex(gameId, status) {
-    if (this.gamesByStatus.has(status)) {
-      const set = this.gamesByStatus.get(status);
-      set.delete(gameId);
-      if (set.size === 0) {
-        this.gamesByStatus.delete(status);
-      }
-    }
-  }
-
-  /**
-   * Update game status and maintain index
-   * @param {string} gameId - Game ID
-   * @param {string} newStatus - New status
-   * @returns {boolean} True if status was updated
-   * @private
-   */
-  _updateGameStatus(gameId, newStatus) {
-    const game = this.games.get(gameId);
-    if (!game) return false;
-
-    const oldStatus = game.status;
-    if (oldStatus === newStatus) return true;
-
-    this._removeFromStatusIndex(gameId, oldStatus);
-    game.status = newStatus;
-    this._addToStatusIndex(gameId, newStatus);
-
-    return true;
+    this.playerGameCounts = new Map(); // Track game counts for rate limiting
+    this.MAX_GAMES_PER_PLAYER = 5;
   }
 
   generateGameId() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
-    for (let i = 0; i < 6; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
+    // Use cryptographically secure random bytes instead of Math.random()
+    return randomBytes(3).toString('hex').toUpperCase();
   }
 
   createGame(playerId) {
+    // Rate limit: Check if player has reached game limit
+    const currentCount = this.playerGameCounts.get(playerId) || 0;
+    if (currentCount >= this.MAX_GAMES_PER_PLAYER) {
+      return null;
+    }
+
     let gameId;
     do {
       gameId = this.generateGameId();
@@ -168,6 +62,7 @@ class GameManager {
     this._addToStatusIndex('waiting', gameId);
     this.playerToGame.set(playerId, gameId);
     this._addGameToPlayer(playerId, gameId);
+    this.playerGameCounts.set(playerId, currentCount + 1);
     
     return gameId;
   }
@@ -306,20 +201,23 @@ class GameManager {
         this._removeFromStatusIndex(oldStatus, game.id);
         // Clean up chat messages
         game.chatMessages = [];
-
         // Update index
         this._removePlayerGame(game.host, disconnectedInfo.gameId);
         if (game.guest) {
           this._removePlayerGame(game.guest, disconnectedInfo.gameId);
         }
 
+        // Decrement game count for host
+        const currentCount = this.playerGameCounts.get(game.host) || 0;
+        if (currentCount > 0) {
+          this.playerGameCounts.set(game.host, currentCount - 1);
+        }
+
         this.games.delete(disconnectedInfo.gameId);
         this.playerToGame.delete(game.host);
-        this.playerToGame.delete(game.guest);
+        if (game.guest) this.playerToGame.delete(game.guest);
 
-        // Update index
-        this._removePlayerGame(game.host, disconnectedInfo.gameId);
-        this._removePlayerGame(game.guest, disconnectedInfo.gameId);
+        // Update index (redundant call removed from HEAD merge block as it's cleaner)
       }
     }
   }
@@ -331,9 +229,9 @@ class GameManager {
     }
 
     // Sanitize and validate message
-    const sanitizedMessage = message.trim().substring(0, 200);
+    const sanitizedMessage = escapeHTML(message.trim().substring(0, 200));
     if (!sanitizedMessage) {
-      return { success: false, message: 'Empty message' };
+      return { success: false, message: 'Empty or invalid message' };
     }
 
     const isHost = game.host === playerId;
@@ -440,6 +338,11 @@ class GameManager {
       // Remove from status index
       this._removeFromStatusIndex(game.status, gameId);
 
+       // Decrement game count for host
+      const currentCount = this.playerGameCounts.get(game.host) || 0;
+      if (currentCount > 0) {
+        this.playerGameCounts.set(game.host, currentCount - 1);
+      }
       // Remove the game
       this.games.delete(gameId);
       return true;
@@ -871,6 +774,7 @@ class GameManager {
   }
 
 
+
   /**
    * Get memory usage information
    * @returns {Object} Memory usage statistics
@@ -993,6 +897,9 @@ class GameManager {
     this.playerGames.clear();
     this.disconnectedPlayers.clear();
     this.playerGames.clear();
+    if (this.playerGameCounts) {
+      this.playerGameCounts.clear();
+    }
   }
 
   /**

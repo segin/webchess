@@ -1,5 +1,6 @@
 const GameStateManager = require('./gameState');
 const ChessErrorHandler = require('./errorHandler');
+const MoveGenerator = require('./moveGenerator');
 
 class ChessGame {
   constructor(options = {}) {
@@ -23,6 +24,9 @@ class ChessGame {
 
     // Initialize error handler
     this.errorHandler = new ChessErrorHandler();
+
+    // Initialize move generator
+    this.moveGenerator = new MoveGenerator(this);
 
     // Enhanced game state tracking with metadata
     this.gameMetadata = this.stateManager.gameMetadata;
@@ -292,11 +296,13 @@ class ChessGame {
     // Step 9: Special move validation
     const specialMoveValidation = this.validateSpecialMoves(from, to, piece, promotion);
     if (specialMoveValidation.success === false || specialMoveValidation.isValid === false) {
+
       return specialMoveValidation;
     }
 
     // Step 10: Check validation - either resolution (if in check) or constraint (if not in check)
     const currentlyInCheck = this.isInCheck(piece.color);
+
     if (currentlyInCheck) {
       // When in check, validate that the move resolves the check
       const checkResolutionValidation = this.validateCheckResolution(from, to, piece);
@@ -819,326 +825,45 @@ class ChessGame {
     return 'invalid';
   }
 
-  /**
-   * Check if a square blocks an attack between attacker and king
-   * @param {Object} blockSquare - Square to check for blocking
-   * @param {Object} attackerPos - Position of attacking piece
-   * @param {Object} kingPos - Position of king
-   * @returns {boolean} True if square blocks the attack
-   */
-  isBlockingSquare(blockSquare, attackerPos, kingPos) {
-    // Get the direction vector from attacker to king
-    const rowDir = kingPos.row - attackerPos.row;
-    const colDir = kingPos.col - attackerPos.col;
-
-    // Normalize direction (get unit vector)
-    const distance = Math.max(Math.abs(rowDir), Math.abs(colDir));
-    if (distance === 0) return false;
-
-    const rowStep = rowDir / distance;
-    const colStep = colDir / distance;
-
-    // Check if block square is on the attack path
-    let currentRow = attackerPos.row + rowStep;
-    let currentCol = attackerPos.col + colStep;
-
-    // Add safety counter to prevent infinite loops
-    let stepCount = 0;
-    const maxSteps = 8;
-
-    while ((currentRow !== kingPos.row || currentCol !== kingPos.col) && stepCount < maxSteps) {
-      if (Math.round(currentRow) === blockSquare.row && Math.round(currentCol) === blockSquare.col) {
-        return true;
-      }
-      currentRow += rowStep;
-      currentCol += colStep;
-      stepCount++;
-    }
-
-    return false;
-  }
-
-  isValidSquare(pos) {
-    return pos &&
-      typeof pos.row === 'number' &&
-      typeof pos.col === 'number' &&
-      Number.isInteger(pos.row) &&
-      Number.isInteger(pos.col) &&
-      pos.row >= 0 && pos.row < 8 &&
-      pos.col >= 0 && pos.col < 8;
-  }
-
   isValidMove(from, to, piece) {
-    const target = this.board[to.row][to.col];
-
-    // Cannot capture own piece
-    if (target && target.color === piece.color) {
-      return false;
-    }
-
-    switch (piece.type) {
-      case 'pawn':
-        return this.isValidPawnMove(from, to, piece);
-      case 'rook':
-        return this.isValidRookMove(from, to);
-      case 'knight':
-        return this.isValidKnightMove(from, to);
-      case 'bishop':
-        return this.isValidBishopMove(from, to);
-      case 'queen':
-        return this.isValidQueenMove(from, to);
-      case 'king':
-        return this.isValidKingMove(from, to, piece);
-      default:
-        return false;
-    }
-  }
-
-  /**
-   * Enhanced FIDE-compliant pawn movement validation
-   * @param {Object} from - Source square
-   * @param {Object} to - Destination square
-   * @param {Object} piece - The pawn piece
-   * @returns {boolean} True if the move is valid
-   */
-  isValidPawnMove(from, to, piece) {
-    const direction = piece.color === 'white' ? -1 : 1;
-    const startRow = piece.color === 'white' ? 6 : 1;
-    const rowDiff = to.row - from.row;
-    const colDiff = to.col - from.col;
-    const absColDiff = Math.abs(colDiff);
-
-    // Validate direction - pawns cannot move backward
-    // White pawns move from higher row numbers to lower (6->5->4->3->2->1->0)
-    // Black pawns move from lower row numbers to higher (1->2->3->4->5->6->7)
-    if ((piece.color === 'white' && rowDiff > 0) || (piece.color === 'black' && rowDiff < 0)) {
-      return false;
-    }
-
-    // Validate row movement is in correct direction
-    if (rowDiff !== direction && rowDiff !== 2 * direction) {
-      return false;
-    }
-
-    // Forward moves (no column change)
-    if (colDiff === 0) {
-      // Single square forward move
-      if (rowDiff === direction) {
-        return !this.board[to.row][to.col]; // Square must be empty
-      }
-
-      // Initial two-square move
-      if (rowDiff === 2 * direction && from.row === startRow) {
-        // Both squares must be empty
-        return !this.board[from.row + direction][from.col] && !this.board[to.row][to.col];
-      }
-
-      return false;
-    }
-
-    // Diagonal moves (captures)
-    if (absColDiff === 1 && rowDiff === direction) {
-      const target = this.board[to.row][to.col];
-
-      // Regular diagonal capture
-      if (target && target.color !== piece.color) {
-        return true;
-      }
-
-      // En passant capture
-      if (this.enPassantTarget &&
-        to.row === this.enPassantTarget.row &&
-        to.col === this.enPassantTarget.col) {
-        return true;
-      }
-
-      return false;
-    }
-
-    // Invalid move patterns
-    return false;
-  }
-
-  /**
-   * Enhanced FIDE-compliant rook movement validation
-   * Rooks move horizontally and vertically only (path validation handled separately)
-   * @param {Object} from - Source square
-   * @param {Object} to - Destination square
-   * @returns {boolean} True if the move pattern is valid
-   */
-  isValidRookMove(from, to) {
-    // Validate coordinates are within bounds (should already be validated, but double-check)
-    if (!this.isValidSquare(from) || !this.isValidSquare(to)) {
-      return false;
-    }
-
-    // Rook moves only horizontally (same row) or vertically (same column)
-    const isHorizontal = from.row === to.row && from.col !== to.col;
-    const isVertical = from.col === to.col && from.row !== to.row;
-
-    return isHorizontal || isVertical;
-  }
-
-  /**
-   * Enhanced FIDE-compliant knight movement validation
-   * Knights move in an L-shape: 2 squares in one direction and 1 square perpendicular
-   * Knights can jump over other pieces
-   * @param {Object} from - Source square
-   * @param {Object} to - Destination square
-   * @returns {boolean} True if the move is valid
-   */
-  isValidKnightMove(from, to) {
-    // Validate coordinates are within bounds (should already be validated, but double-check)
-    if (!this.isValidSquare(from) || !this.isValidSquare(to)) {
-      return false;
-    }
-
-    const rowDiff = Math.abs(to.row - from.row);
-    const colDiff = Math.abs(to.col - from.col);
-
-    // Knight moves in L-shape: (2,1) or (1,2) pattern
-    // Valid combinations: 2+1, 1+2 in any direction
-    const isValidLShape = (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
-
-    if (!isValidLShape) {
-      return false;
-    }
-
-    // Knights can jump over pieces, so no path validation needed
-    // Only need to check that destination is not occupied by own piece
-    // (this is handled by validateCapture in the main validation pipeline)
-
-    return true;
-  }
-
-  /**
-   * Enhanced FIDE-compliant bishop movement validation
-   * Bishops move diagonally only with proper slope calculation and path clearing
-   * @param {Object} from - Source square
-   * @param {Object} to - Destination square
-   * @returns {boolean} True if the move pattern is valid
-   */
-  isValidBishopMove(from, to) {
-    // Validate coordinates are within bounds (should already be validated, but double-check)
-    if (!this.isValidSquare(from) || !this.isValidSquare(to)) {
-      return false;
-    }
-
-    const rowDiff = Math.abs(to.row - from.row);
-    const colDiff = Math.abs(to.col - from.col);
-
-    // Bishop moves only diagonally - row and column differences must be equal
-    // This ensures the move is along a diagonal line with slope of ±1
-    if (rowDiff !== colDiff) {
-      return false;
-    }
-
-    // Prevent zero movement (should already be caught by coordinate validation)
-    if (rowDiff === 0) {
-      return false;
-    }
-
-    // Path clearing validation is handled separately in the main validation pipeline
-    // This method only validates the movement pattern
-    return true;
-  }
-
-  /**
-   * Enhanced FIDE-compliant queen movement validation
-   * Queens combine both rook (horizontal/vertical) and bishop (diagonal) movement patterns
-   * @param {Object} from - Source square
-   * @param {Object} to - Destination square
-   * @returns {boolean} True if the move pattern is valid
-   */
-  isValidQueenMove(from, to) {
-    // Validate coordinates are within bounds (should already be validated, but double-check)
-    if (!this.isValidSquare(from) || !this.isValidSquare(to)) {
-      return false;
-    }
-
-    // Queen combines rook and bishop movement patterns
-    // Valid if it's either a valid rook move OR a valid bishop move
-    const isValidRookPattern = this.isValidRookMove(from, to);
-    const isValidBishopPattern = this.isValidBishopMove(from, to);
-
-    // Queen can move like a rook (horizontal/vertical) or like a bishop (diagonal)
-    return isValidRookPattern || isValidBishopPattern;
-  }
-
-  /**
-   * Enhanced FIDE-compliant king movement validation
-   * Kings move one square in any of the eight directions (horizontal, vertical, diagonal)
-   * Kings cannot move into check or out of bounds
-   * @param {Object} from - Source square
-   * @param {Object} to - Destination square
-   * @param {Object} piece - The king piece
-   * @returns {boolean} True if the move pattern is valid
-   */
-  isValidKingMove(from, to, piece) {
-    // Validate coordinates are within bounds (should already be validated, but double-check)
-    if (!this.isValidSquare(from) || !this.isValidSquare(to)) {
-      return false;
-    }
-
-    const rowDiff = Math.abs(to.row - from.row);
-    const colDiff = Math.abs(to.col - from.col);
-
-    // Castling move (king moves 2 squares horizontally)
-    // Always allow castling attempts to proceed to special moves validation
-    // where detailed castling validation and error reporting occurs
-    if (rowDiff === 0 && colDiff === 2) {
-      return true; // Let special moves validation handle the detailed castling checks
-    }
-
-    // Normal king move - single square in any of the 8 directions
-    // King can move one square horizontally, vertically, or diagonally
-    if (rowDiff <= 1 && colDiff <= 1) {
-      // Prevent zero movement (should already be caught by coordinate validation)
-      if (rowDiff === 0 && colDiff === 0) {
-        return false;
-      }
-
-      // King safety validation is handled separately in validateCheckConstraints
-      // This method only validates the movement pattern
-      return true;
-    }
-
-    // Invalid king move - more than one square in any direction
-    return false;
+    return this.moveGenerator.isValidMove(from, to, piece);
   }
 
   isPathClear(from, to) {
-    // If source and destination are the same, path is clear (no movement)
-    if (from.row === to.row && from.col === to.col) {
-      return true;
-    }
-
-    const rowStep = to.row === from.row ? 0 : (to.row - from.row) / Math.abs(to.row - from.row);
-    const colStep = to.col === from.col ? 0 : (to.col - from.col) / Math.abs(to.col - from.col);
-
-    // Prevent infinite loop - if both steps are 0, something is wrong
-    if (rowStep === 0 && colStep === 0) {
-      return true; // Same square, path is clear
-    }
-
-    let row = from.row + rowStep;
-    let col = from.col + colStep;
-
-    // Add safety counter to prevent infinite loops
-    let stepCount = 0;
-    const maxSteps = 8; // Maximum possible steps on a chess board
-
-    while ((row !== to.row || col !== to.col) && stepCount < maxSteps) {
-      if (this.board[row][col]) {
-        return false;
-      }
-      row += rowStep;
-      col += colStep;
-      stepCount++;
-    }
-
-    return true;
+    return this.moveGenerator.isPathClear(from, to);
   }
+
+  isBlockingSquare(blockSquare, attackerPos, kingPos) {
+    return this.moveGenerator.isBlockingSquare(blockSquare, attackerPos, kingPos);
+  }
+  isValidSquare(pos) {
+    return this.moveGenerator.isValidSquare(pos);
+  }
+
+  isValidBishopMove(from, to) {
+    return this.moveGenerator.isValidBishopMove(from, to, this.board[from.row][from.col]);
+  }
+
+  isValidQueenMove(from, to) {
+    return this.moveGenerator.isValidQueenMove(from, to, this.board[from.row][from.col]);
+  }
+
+  isValidKingMove(from, to, piece) {
+    return this.moveGenerator.isValidKingMove(from, to, piece);
+  }
+
+  isValidRookMove(from, to) {
+    return this.moveGenerator.isValidRookMove(from, to);
+  }
+
+  isValidKnightMove(from, to) {
+    return this.moveGenerator.isValidKnightMove(from, to);
+  }
+
+  isValidPawnMove(from, to, piece) {
+    return this.moveGenerator.isValidPawnMove(from, to, piece);
+  }
+
 
   /**
    * Comprehensive FIDE-compliant castling validation
@@ -1517,20 +1242,7 @@ class ChessGame {
    * @param {Object} moveInfo - Information about the move
    */
   trackCastlingRightsChanges(originalRights, newRights, moveInfo) {
-    if (!this.debugMode) {
-      return;
-    }
-
-    // Only log if there were actual changes
-    const hasChanges = JSON.stringify(originalRights) !== JSON.stringify(newRights);
-
-    if (hasChanges) {
-      console.log('Castling rights updated:', {
-        move: moveInfo,
-        before: originalRights,
-        after: newRights
-      });
-    }
+    // Castling rights logging removed in production
   }
 
   /**
