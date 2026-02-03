@@ -63,6 +63,31 @@ class GameManager {
     }
   }
 
+  _addToStatusIndex(gameId, status) {
+    if (!this.gamesByStatus.has(status)) {
+      this.gamesByStatus.set(status, new Set());
+    }
+    this.gamesByStatus.get(status).add(gameId);
+  }
+
+  _removeFromStatusIndex(gameId, status) {
+    if (this.gamesByStatus.has(status)) {
+      this.gamesByStatus.get(status).delete(gameId);
+    }
+  }
+
+  _updateGameStatus(gameId, newStatus) {
+    const game = this.games.get(gameId);
+    if (!game) return;
+
+    const oldStatus = game.status;
+    if (oldStatus === newStatus) return;
+
+    this._removeFromStatusIndex(gameId, oldStatus);
+    game.status = newStatus;
+    this._addToStatusIndex(gameId, newStatus);
+  }
+
   generateGameId() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
@@ -661,8 +686,11 @@ class GameManager {
    */
   getAvailableGames() {
     const availableGames = [];
-    for (const [gameId, game] of this.games) {
-      if (game.status === 'waiting' && !game.guest) {
+    const waitingGames = this.getGamesByStatus('waiting');
+
+    for (const gameId of waitingGames) {
+      const game = this.games.get(gameId);
+      if (game && !game.guest) {
         availableGames.push({
           gameId,
           host: game.host,
