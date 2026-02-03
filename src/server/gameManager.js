@@ -88,6 +88,56 @@ class GameManager {
     this._addToStatusIndex(gameId, newStatus);
   }
 
+  /**
+   * Add game to status index
+   * @param {string} gameId - Game ID
+   * @param {string} status - Game status
+   * @private
+   */
+  _addToStatusIndex(gameId, status) {
+    if (!this.gamesByStatus.has(status)) {
+      this.gamesByStatus.set(status, new Set());
+    }
+    this.gamesByStatus.get(status).add(gameId);
+  }
+
+  /**
+   * Remove game from status index
+   * @param {string} gameId - Game ID
+   * @param {string} status - Game status
+   * @private
+   */
+  _removeFromStatusIndex(gameId, status) {
+    if (this.gamesByStatus.has(status)) {
+      const set = this.gamesByStatus.get(status);
+      set.delete(gameId);
+      if (set.size === 0) {
+        this.gamesByStatus.delete(status);
+      }
+    }
+  }
+
+  /**
+   * Update game status and maintain index
+   * @param {string} gameId - Game ID
+   * @param {string} newStatus - New status
+   * @returns {boolean} True if status was updated
+   * @private
+   */
+  _updateGameStatus(gameId, newStatus) {
+    const game = this.games.get(gameId);
+    if (!game) return false;
+
+    const oldStatus = game.status;
+    if (oldStatus === newStatus) return true;
+
+    this._removeFromStatusIndex(gameId, oldStatus);
+    game.status = newStatus;
+    this._addToStatusIndex(gameId, newStatus);
+
+    return true;
+  }
+
   generateGameId() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
@@ -369,6 +419,9 @@ class GameManager {
   removeGame(gameId) {
     const game = this.games.get(gameId);
     if (game) {
+      // Remove from status index
+      this._removeFromStatusIndex(gameId, game.status);
+
       // Clean up player mappings
       this.playerToGame.delete(game.host);
       this._removeGameFromPlayer(game.host, gameId);
