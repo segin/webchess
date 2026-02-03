@@ -1886,35 +1886,32 @@ class ChessGame {
   _getAllLegalMovesFallback(color) {
     const legalMoves = [];
 
-    // Iterate through all squares to find pieces of the given color
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const piece = this.board[row][col];
+    // Iterate through cached piece locations instead of scanning the board
+    for (const from of locations) {
+      const piece = this.board[from.row][from.col];
 
-        // Skip empty squares and opponent pieces
-        if (!piece || piece.color !== color) {
-          continue;
-        }
+      // Safety check: verify piece exists and matches color (in case of cache desync)
+      if (!piece || piece.color !== color) {
+        continue;
+      }
 
-        const from = { row, col };
-        // Efficiently generate potential moves instead of checking all board squares
-        const potentialMoves = this.generatePossibleMoves(from, piece);
+      // Efficiently generate potential moves instead of checking all board squares
+      const potentialMoves = this.generatePossibleMoves(from, piece);
 
-        for (const to of potentialMoves) {
-          // Check if this move is valid using the comprehensive validation
-          const move = { from, to };
-          const validation = this.validateMove(move);
+      for (const to of potentialMoves) {
+        // Check if this move is valid using the comprehensive validation
+        const move = { from, to };
+        const validation = this.validateMove(move);
 
-          if (validation.isValid) {
-            legalMoves.push({
-              from: from,
-              to: to,
-              piece: piece.type,
-              color: piece.color,
-              isCapture: this.board[to.row][to.col] !== null,
-              notation: this.getMoveNotation(from, to, piece)
-            });
-          }
+        if (validation.isValid) {
+          legalMoves.push({
+            from: from,
+            to: to,
+            piece: piece.type,
+            color: piece.color,
+            isCapture: this.board[to.row][to.col] !== null,
+            notation: this.getMoveNotation(from, to, piece)
+          });
         }
       }
     }
@@ -2001,33 +1998,32 @@ class ChessGame {
    */
   getPieceLegalMoves(color) {
     const legalMoves = [];
+    const locations = this.pieceLocations[color] || [];
 
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const piece = this.board[row][col];
+    for (const from of locations) {
+      const piece = this.board[from.row][from.col];
 
-        // Skip empty squares, opponent pieces, and kings
-        if (!piece || piece.color !== color || piece.type === 'king') {
-          continue;
-        }
+      // Skip empty squares, opponent pieces, and kings
+      // Safety check for empty/wrong color, plus logic requirement to skip kings
+      if (!piece || piece.color !== color || piece.type === 'king') {
+        continue;
+      }
 
-        const from = { row, col };
-        // Efficiently generate potential moves instead of checking all board squares
-        const potentialMoves = this.generatePossibleMoves(from, piece);
+      // Efficiently generate potential moves instead of checking all board squares
+      const potentialMoves = this.generatePossibleMoves(from, piece);
 
-        for (const to of potentialMoves) {
-          const move = { from, to };
-          const validation = this.validateMove(move);
+      for (const to of potentialMoves) {
+        const move = { from, to };
+        const validation = this.validateMove(move);
 
-          if (validation.isValid) {
-            legalMoves.push({
-              from: from,
-              to: to,
-              piece: piece.type,
-              color: piece.color,
-              isCapture: this.board[to.row][to.col] !== null
-            });
-          }
+        if (validation.isValid) {
+          legalMoves.push({
+            from: from,
+            to: to,
+            piece: piece.type,
+            color: piece.color,
+            isCapture: this.board[to.row][to.col] !== null
+          });
         }
       }
     }
