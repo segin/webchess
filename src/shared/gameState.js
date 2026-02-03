@@ -692,10 +692,94 @@ class GameStateManager {
     return {
       timestamp: Date.now(),
       stateVersion: this.stateVersion,
-      gameState: JSON.parse(JSON.stringify(gameState)), // Deep copy
+      gameState: this._cloneGameState(gameState), // Optimized deep copy
       metadata: { ...this.gameMetadata },
       positionHistory: [...this.positionHistory]
     };
+  }
+
+  /**
+   * Optimized deep clone for game state to avoid JSON serialization overhead
+   * @param {Object} gameState - Game state to clone
+   * @returns {Object} Deep cloned game state
+   */
+  _cloneGameState(gameState) {
+    if (!gameState) return null;
+
+    // Shallow copy top-level primitives
+    const clone = { ...gameState };
+
+    // 1. Deep copy board (Hot path, 8x8)
+    if (Array.isArray(gameState.board)) {
+      const newBoard = new Array(gameState.board.length);
+      for (let i = 0; i < gameState.board.length; i++) {
+        const row = gameState.board[i];
+        if (Array.isArray(row)) {
+          const newRow = new Array(row.length);
+          for (let j = 0; j < row.length; j++) {
+            const piece = row[j];
+            // Piece is { type, color } or null
+            newRow[j] = piece ? { type: piece.type, color: piece.color } : null;
+          }
+          newBoard[i] = newRow;
+        } else {
+          newBoard[i] = row;
+        }
+      }
+      clone.board = newBoard;
+    }
+
+    // 2. Deep copy Move History (Can be large)
+    if (Array.isArray(gameState.moveHistory)) {
+      clone.moveHistory = gameState.moveHistory.map(m => {
+        const newMove = { ...m };
+        if (newMove.from) newMove.from = { ...newMove.from };
+        if (newMove.to) newMove.to = { ...newMove.to };
+        return newMove;
+      });
+    }
+
+    // 3. Deep copy Castling Rights
+    if (gameState.castlingRights) {
+      clone.castlingRights = {
+        white: { ...gameState.castlingRights.white },
+        black: { ...gameState.castlingRights.black }
+      };
+    }
+
+    // 4. Deep copy En Passant Target
+    if (gameState.enPassantTarget) {
+      clone.enPassantTarget = { ...gameState.enPassantTarget };
+    }
+
+    // 5. Deep copy Check Details (Complex structure, use JSON fallback if present)
+    if (gameState.checkDetails) {
+      try {
+        clone.checkDetails = JSON.parse(JSON.stringify(gameState.checkDetails));
+      } catch (e) {
+        clone.checkDetails = null;
+      }
+    }
+
+    // 6. Metadata & Position History & Consistency (if present in gameState)
+    if (gameState.gameMetadata) {
+      clone.gameMetadata = { ...gameState.gameMetadata };
+    }
+
+    if (Array.isArray(gameState.positionHistory)) {
+      clone.positionHistory = [...gameState.positionHistory];
+    }
+
+    if (gameState.stateConsistency) {
+      // Use JSON fallback for this potentially complex object
+      try {
+        clone.stateConsistency = JSON.parse(JSON.stringify(gameState.stateConsistency));
+      } catch (e) {
+        clone.stateConsistency = null;
+      }
+    }
+
+    return clone;
   }
 
   /**
