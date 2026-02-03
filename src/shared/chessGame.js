@@ -270,7 +270,7 @@ class ChessGame {
       return turnValidation;
     }
 
-    const isCastlingAttempt = piece.type === 'king' && Math.abs(to.col - from.col) === 2;
+    const isCastlingAttempt = piece.type === 'king' && Math.abs(to.col - from.col) === 2 && from.row === to.row;
 
     // Step 6: Movement pattern validation
     if (!isCastlingAttempt) {
