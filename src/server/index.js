@@ -184,9 +184,9 @@ io.on('connection', (socket) => {
     }
     
     const game = gameManager.games.get(gameId);
-    const isValid = game && 
-                   game.status === 'active' && 
-                   (game.host === socket.id || game.guest === socket.id);
+    const isValid = !!(game && 
+                   (game.status === 'active' || game.status === 'waiting') && 
+                   (game.host === socket.id || game.guest === socket.id));
     
     socket.emit('session-validation', { 
       valid: isValid,

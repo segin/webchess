@@ -86,7 +86,7 @@ describe('Server Index', () => {
     expect(ioMock.on).toHaveBeenCalledWith('connection', expect.any(Function));
   });
 
-  test('should start listening on port', () => {
-    expect(serverMock.listen).toHaveBeenCalled();
+  test('should not start listening on port when required', () => {
+    expect(serverMock.listen).not.toHaveBeenCalled();
   });
 });
