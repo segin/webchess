@@ -1,3 +1,5 @@
+const ChessGame = require('./chessGame');
+
 class ChessAI {
   constructor(difficulty = 'medium') {
     this.difficulty = difficulty;
@@ -200,12 +202,26 @@ class ChessAI {
   getAllValidMoves(chessGame, color) {
     const moves = [];
     
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const piece = chessGame.board[row][col];
+    // Optimization: Use pieceLocations cache if available to avoid scanning empty squares
+    if (chessGame.pieceLocations && chessGame.pieceLocations[color]) {
+      const locations = chessGame.pieceLocations[color];
+      for (const loc of locations) {
+        // Double check piece is still there and matches color (safety check)
+        const piece = chessGame.board[loc.row][loc.col];
         if (piece && piece.color === color) {
-          const pieceMoves = this.getValidMovesForPiece(chessGame, row, col);
+          const pieceMoves = this.getValidMovesForPiece(chessGame, loc.row, loc.col);
           moves.push(...pieceMoves);
+        }
+      }
+    } else {
+      // Fallback to full board scan if cache is missing
+      for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+          const piece = chessGame.board[row][col];
+          if (piece && piece.color === color) {
+            const pieceMoves = this.getValidMovesForPiece(chessGame, row, col);
+            moves.push(...pieceMoves);
+          }
         }
       }
     }
@@ -328,7 +344,6 @@ class ChessAI {
   }
   
   cloneGame(chessGame) {
-    const ChessGame = require('./chessGame');
     const newGame = new ChessGame({ isClone: true });
     
     // Copy board state
