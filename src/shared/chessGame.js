@@ -97,12 +97,19 @@ class ChessGame {
       white: [],
       black: []
     };
+    this.kingLocations = {
+      white: null,
+      black: null
+    };
 
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         const piece = board[row][col];
         if (piece) {
           this.pieceLocations[piece.color].push({ row, col });
+          if (piece.type === 'king') {
+            this.kingLocations[piece.color] = { row, col };
+          }
         }
       }
     }
@@ -1342,10 +1349,17 @@ class ChessGame {
 
     // Update piece locations cache for the moving piece
     this._updatePieceLocation(piece.color, from, to);
+    if (piece.type === 'king') {
+      this.kingLocations[piece.color] = { row: to.row, col: to.col };
+    }
 
     // Update cache for standard capture
     if (capturedPiece && !isEnPassant) {
        this._removePieceLocation(capturedPiece.color, to);
+       // Update king cache if king was captured (should not happen in standard chess)
+       if (capturedPiece.type === 'king') {
+         this.kingLocations[capturedPiece.color] = null;
+       }
     }
 
     // Execute the basic move
@@ -2379,10 +2393,28 @@ class ChessGame {
   }
 
   findKing(color) {
+    // Optimized lookup using cache
+    if (this.kingLocations && this.kingLocations[color]) {
+      const loc = this.kingLocations[color];
+      // Verify cache validity (in case board was modified externally/manually)
+      if (this.isValidSquare(loc)) {
+        const piece = this.board[loc.row][loc.col];
+        if (piece && piece.type === 'king' && piece.color === color) {
+          return loc;
+        }
+      }
+    }
+
+    // Fallback for safety (e.g. if cache not initialized or stale)
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         const piece = this.board[row][col];
         if (piece && piece.type === 'king' && piece.color === color) {
+          // Auto-heal cache
+          if (!this.kingLocations) {
+            this.kingLocations = { white: null, black: null };
+          }
+          this.kingLocations[color] = { row, col };
           return { row, col };
         }
       }
