@@ -93,6 +93,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       game.board[0][0] = { type: 'king', color: 'white' };
       game.board[6][6] = { type: 'pawn', color: 'white' };
 
+      game._rebuildPieceLocations();
       const moves = ai.getAllValidMoves(game, 'white');
       expect(moves.length).toBeGreaterThan(0);
       
@@ -116,6 +117,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       game.board[4][4] = { type: 'pawn', color: 'white' };
       game.board[5][3] = { type: 'pawn', color: 'black' };
       game.currentTurn = 'black';
+      game._rebuildPieceLocations();
 
       const bestMove = ai.getBestMove(game);
       
@@ -132,6 +134,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
       game.board[0][0] = { type: 'king', color: 'white' };
       game.board[7][7] = { type: 'king', color: 'black' };
+      game._rebuildPieceLocations();
       
       const moves = ai.getAllValidMoves(game, 'white');
       expect(moves.length).toBeGreaterThan(0);
@@ -172,6 +175,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       game.board[2][0] = { type: 'rook', color: 'white' };
       game.gameStatus = 'checkmate';
       game.winner = 'white';
+      game._rebuildPieceLocations();
 
       const score = ai.evaluatePosition(game);
       expect(score).toBe(10000); // White wins
@@ -196,6 +200,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       game.board[0][0] = { type: 'king', color: 'black' };
       game.board[7][7] = { type: 'king', color: 'white' };
       game.board[4][4] = { type: 'queen', color: 'white' };
+      game._rebuildPieceLocations();
 
       const score = ai.evaluatePosition(game);
       expect(score).toBeGreaterThan(800); // Should favor white significantly
@@ -210,6 +215,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       // Knight in center vs knight on edge
       game.board[4][4] = { type: 'knight', color: 'white' }; // Center
       game.board[0][1] = { type: 'knight', color: 'black' }; // Edge
+      game._rebuildPieceLocations();
 
       const score = ai.evaluatePosition(game);
       expect(score).toBeGreaterThan(0); // White should have positional advantage
@@ -217,6 +223,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
 
     test('should handle empty board evaluation', () => {
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      game._rebuildPieceLocations();
       const score = ai.evaluatePosition(game);
       expect(score).toBe(0); // No pieces = no score
     });
@@ -277,6 +284,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       game.board[4][4] = { type: 'queen', color: 'black' };
       game.board[5][3] = { type: 'pawn', color: 'white' };
       game.currentTurn = 'white';
+      game._rebuildPieceLocations();
 
       const easyMove = easyAI.getBestMove(game);
       const hardMove = hardAI.getBestMove(game);
@@ -309,6 +317,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       game.board[2][4] = { type: 'queen', color: 'black' };
       game.board[3][3] = { type: 'knight', color: 'white' };
       game.currentTurn = 'white';
+      game._rebuildPieceLocations();
 
       const easyAI = new ChessAI('easy');
       const hardAI = new ChessAI('hard');
@@ -336,6 +345,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       game.board[0][4] = { type: 'rook', color: 'black' };
       game.board[7][7] = { type: 'king', color: 'black' };
       game.currentTurn = 'white';
+      game._rebuildPieceLocations();
 
       const difficulties = ['easy', 'medium', 'hard'];
       
@@ -428,6 +438,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       game.board[2][0] = { type: 'rook', color: 'white' };
       game.gameStatus = 'checkmate';
       game.winner = 'white';
+      game._rebuildPieceLocations();
 
       const score = testAI.evaluatePosition(game);
       expect(Math.abs(score)).toBe(10000);
@@ -470,6 +481,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       testGame.board[4][4] = { type: 'queen', color: 'white' };
       testGame.board[3][3] = { type: 'rook', color: 'black' };
       testGame.currentTurn = 'black';
+      testGame._rebuildPieceLocations();
 
       const move = testAI.getBestMove(testGame);
       expect(move).toBeTruthy();
@@ -488,6 +500,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       testGame.board[7][7] = { type: 'king', color: 'white' };
       testGame.board[6][6] = { type: 'queen', color: 'white' };
       testGame.currentTurn = 'white';
+      testGame._rebuildPieceLocations();
 
       const move = testAI.getBestMove(testGame);
       expect(move).toBeTruthy();
@@ -506,6 +519,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       game.board[7][7] = { type: 'king', color: 'white' };
       game.board[1][4] = { type: 'pawn', color: 'white' };
       game.currentTurn = 'white';
+      game._rebuildPieceLocations();
 
       const moves = testAI.getAllValidMoves(game, 'white');
       const promotionMoves = moves.filter(move => 
@@ -519,6 +533,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
   describe('Edge Cases and Error Handling', () => {
     test('should handle empty board gracefully', () => {
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      game._rebuildPieceLocations();
       const moves = ai.getAllValidMoves(game, 'white');
       expect(moves).toEqual([]);
     });
@@ -527,6 +542,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
       game.board[0][0] = { type: 'king', color: 'black' };
       game.board[7][7] = { type: 'king', color: 'white' };
+      game._rebuildPieceLocations();
 
       const moves = ai.getAllValidMoves(game, 'white');
       expect(moves.length).toBeGreaterThan(0);
@@ -548,6 +564,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       
       game.currentTurn = 'white';
       game.gameStatus = 'stalemate'; // Set game status to stalemate
+      game._rebuildPieceLocations();
       
       const bestMove = ai.getBestMove(game);
       expect(bestMove).toBeNull();
@@ -556,6 +573,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
     test('should handle corrupted game states gracefully', () => {
       // Test with invalid board state
       game.board[0][0] = null; // Remove black king
+      game._rebuildPieceLocations();
       
       const moves = ai.getAllValidMoves(game, 'white');
       expect(Array.isArray(moves)).toBe(true);
@@ -564,6 +582,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
     test('should handle invalid piece types gracefully', () => {
       // Add an invalid piece type
       game.board[4][4] = { type: 'invalid', color: 'white' };
+      game._rebuildPieceLocations();
       
       const moves = ai.getAllValidMoves(game, 'white');
       expect(Array.isArray(moves)).toBe(true);
@@ -795,6 +814,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       game.board[2][2] = { type: 'queen', color: 'white' };
       game.currentTurn = 'white';
       game.gameStatus = 'active';
+      game._rebuildPieceLocations();
       
       // Make a move and evaluate - this should eventually hit the no-moves case
       const move = { from: { row: 2, col: 2 }, to: { row: 1, col: 1 } };
@@ -810,6 +830,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
       game.board[7][4] = { type: 'king', color: 'white' };
       game.board[0][4] = { type: 'king', color: 'black' };
+      game._rebuildPieceLocations();
       
       const score = ai.evaluatePosition(game);
       expect(typeof score).toBe('number');
