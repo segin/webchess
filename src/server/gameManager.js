@@ -10,6 +10,23 @@ class GameManager {
     this.playerGames = new Map(); // Index: playerId -> Set<gameId>
     this.disconnectedPlayers = new Map();
     this.disconnectTimeouts = new Map(); // Track timeouts for cleanup
+    this.playerGames = new Map(); // Optimization: Track all games for each player
+  }
+
+  _addPlayerGame(playerId, gameId) {
+    if (!this.playerGames.has(playerId)) {
+      this.playerGames.set(playerId, new Set());
+    }
+    this.playerGames.get(playerId).add(gameId);
+  }
+
+  _removePlayerGame(playerId, gameId) {
+    if (this.playerGames.has(playerId)) {
+      this.playerGames.get(playerId).delete(gameId);
+      if (this.playerGames.get(playerId).size === 0) {
+        this.playerGames.delete(playerId);
+      }
+    }
   }
 
   _addGameToPlayer(playerId, gameId) {
@@ -207,6 +224,10 @@ class GameManager {
         this.games.delete(disconnectedInfo.gameId);
         this.playerToGame.delete(game.host);
         this.playerToGame.delete(game.guest);
+
+        // Update index
+        this._removePlayerGame(game.host, disconnectedInfo.gameId);
+        this._removePlayerGame(game.guest, disconnectedInfo.gameId);
       }
     }
   }
@@ -872,6 +893,7 @@ class GameManager {
     this.playerToGame.clear();
     this.playerGames.clear();
     this.disconnectedPlayers.clear();
+    this.playerGames.clear();
   }
 
   /**
