@@ -694,12 +694,16 @@ class GameManager {
    */
   getServerStatistics() {
     const totalGames = this.games.size;
-    const activeGames = this.getGamesByStatus('active').length;
-    const waitingGames = this.getGamesByStatus('waiting').length;
-    const finishedGames = this.getGamesByStatus('finished').length;
+    let activeGames = 0;
+    let waitingGames = 0;
+    let finishedGames = 0;
     
     const uniquePlayers = new Set();
     for (const game of this.games.values()) {
+      if (game.status === 'active') activeGames++;
+      else if (game.status === 'waiting') waitingGames++;
+      else if (game.status === 'finished') finishedGames++;
+
       if (game.host) uniquePlayers.add(game.host);
       if (game.guest) uniquePlayers.add(game.guest);
     }
