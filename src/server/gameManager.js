@@ -750,6 +750,7 @@ class GameManager {
     let finishedGames = 0;
     
     const uniquePlayers = new Set();
+
     for (const game of this.games.values()) {
       if (game.status === 'active') activeGames++;
       else if (game.status === 'waiting') waitingGames++;
