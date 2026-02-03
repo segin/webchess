@@ -1,3 +1,4 @@
+// vim: sw=4 ts=4 et fenc=utf-8 ft=javascript
 class WebChessClient {
   constructor() {
     this.socket = null;
@@ -2144,34 +2145,8 @@ class ChessAI {
   
   getBestMove(gameState) {
     const moves = this.getAllValidMoves(gameState);
-    console.log('AI found', moves.length, 'valid moves for', gameState.currentTurn);
     
-    // Debug: show details about current position
     if (moves.length === 0) {
-      console.log('No valid moves found! Current position details:');
-      console.log('Current turn:', gameState.currentTurn);
-      console.log('King in check:', this.isKingInCheck ? 'checking...' : 'unknown');
-      
-      // Check if king is in check
-      const kingInCheck = this.isKingInCheckAI(gameState.currentTurn, gameState);
-      console.log('King in check (AI check):', kingInCheck);
-      
-      // Show all pieces for current player
-      const currentPlayerPieces = [];
-      for (let row = 0; row < 8; row++) {
-        for (let col = 0; col < 8; col++) {
-          const piece = gameState.board[row][col];
-          if (piece && piece.color === gameState.currentTurn) {
-            currentPlayerPieces.push({
-              type: piece.type,
-              position: String.fromCharCode(97 + col) + (8 - row),
-              row, col
-            });
-          }
-        }
-      }
-      console.log('Current player pieces:', currentPlayerPieces);
-      
       return null;
     }
     
@@ -2238,12 +2213,6 @@ class ChessAI {
           rejectedMoves++;
         }
       }
-    }
-    
-    // Debug output for pieces with no valid moves
-    if (moves.length === 0 && gameState.currentTurn === 'black') {
-      console.log(`No valid moves for ${piece.color} ${piece.type} at ${String.fromCharCode(97 + col)}${8 - row}`);
-      console.log(`Checked ${checkedMoves} moves, rejected ${rejectedMoves}`);
     }
     
     return moves;
@@ -2457,7 +2426,7 @@ class ChessAI {
     let row = fromRow + rowStep;
     let col = fromCol + colStep;
     
-    while (row !== toRow || col !== toCol) {
+    while (row !== toRow || col !== move.to.col) {
       if (gameState.board[row][col]) return false;
       row += rowStep;
       col += colStep;
