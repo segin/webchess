@@ -526,16 +526,40 @@ class GameManager {
   /**
    * Undo last move
    * @param {string} gameId - Game ID
+   * @param {string} playerId - Player ID requesting the undo
    * @returns {Object} Result object
    */
-  undoMove(gameId) {
+  undoMove(gameId, playerId) {
     const game = this.games.get(gameId);
     if (!game || !game.chess) {
       return { success: false, message: 'Game not found' };
     }
 
-    // Simple implementation - would need more sophisticated undo logic
-    return { success: false, message: 'Undo not implemented' };
+    // Validate player access
+    if (game.host !== playerId && game.guest !== playerId) {
+      return { success: false, message: 'You are not in this game' };
+    }
+
+    // Only allow undo for active games (or maybe checkmate/stalemate to revert game end)
+    // Assuming we can undo even if game ended to resume it
+    if (game.status === 'abandoned' || game.status === 'resigned') {
+         return { success: false, message: 'Cannot undo in abandoned or resigned game' };
+    }
+
+    const result = game.chess.undoMove();
+
+    if (result.success) {
+        // Sync game status if it changed from finished back to active
+        if (game.status === 'finished' && result.data && result.data.gameStatus !== 'finished') {
+             game.status = result.data.gameStatus;
+             game.winner = null;
+             game.endReason = null;
+             game.endTime = null;
+        }
+        game.lastActivity = Date.now();
+    }
+
+    return result;
   }
 
   /**

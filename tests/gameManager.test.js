@@ -660,17 +660,25 @@ describe('GameManager - Comprehensive Coverage', () => {
             expect(emptyHistory).toEqual([]);
         });
 
-        test('should handle undo move (not implemented)', () => {
+        test('should handle undo move', () => {
             const hostId = 'host';
             const guestId = 'guest';
             const gameId = gameManager.createGame(hostId);
             gameManager.joinGame(gameId, guestId);
 
-            const result = gameManager.undoMove(gameId);
-            expect(result.success).toBe(false);
-            expect(result.message).toBe('Undo not implemented');
+            // Need to make a move first to undo
+            gameManager.makeMove(gameId, hostId, { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } });
 
-            const invalidResult = gameManager.undoMove('INVALID');
+            // Undo without player ID should fail
+            const resultNoPlayer = gameManager.undoMove(gameId);
+            expect(resultNoPlayer.success).toBe(false);
+            expect(resultNoPlayer.message).toBe('You are not in this game');
+
+            // Undo with valid player ID should success
+            const result = gameManager.undoMove(gameId, hostId);
+            expect(result.success).toBe(true);
+
+            const invalidResult = gameManager.undoMove('INVALID', hostId);
             expect(invalidResult.success).toBe(false);
             expect(invalidResult.message).toBe('Game not found');
         });

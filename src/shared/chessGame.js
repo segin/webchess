@@ -172,11 +172,20 @@ class ChessGame {
       // Store original piece for game state update
       const originalPiece = { ...piece };
 
+      // Capture pre-move state for undo functionality
+      const preMoveState = {
+        castlingRights: JSON.parse(JSON.stringify(this.castlingRights)),
+        enPassantTarget: this.enPassantTarget ? { ...this.enPassantTarget } : null,
+        halfMoveClock: this.halfMoveClock,
+        fullMoveNumber: this.fullMoveNumber,
+        inCheck: this.inCheck
+      };
+
       // Update castling rights BEFORE executing the move (so we can check captured pieces)
       this.updateCastlingRights(from, to, originalPiece);
 
-      // Execute the move
-      this.executeMoveOnBoard(from, to, piece, promotion);
+      // Execute the move (pass preMoveState to be stored in history)
+      this.executeMoveOnBoard(from, to, piece, promotion, preMoveState);
 
       // Update game state (pass original piece since board has changed)
       this.updateGameState(from, to, originalPiece, options.silent);
@@ -1292,7 +1301,7 @@ class ChessGame {
    * @param {Object} piece - The piece being moved
    * @param {string} promotion - Promotion piece type (for pawn promotion)
    */
-  executeMoveOnBoard(from, to, piece, promotion) {
+  executeMoveOnBoard(from, to, piece, promotion, preMoveState = null) {
     const target = this.board[to.row][to.col];
     let capturedPiece = target;
     let isEnPassant = false;
@@ -1375,7 +1384,8 @@ class ChessGame {
       promotion: promotionPiece,
       castling: isCastling ? (to.col > from.col ? 'kingside' : 'queenside') : null,
       enPassant: isEnPassant,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      preMoveState
     };
 
     // Use state manager to add enhanced move to history
@@ -3671,6 +3681,140 @@ class ChessGame {
    * Get comprehensive game state with enhanced tracking and metadata
    * @returns {Object} Complete game state information
    */
+  /**
+   * Undo the last move
+   * @returns {Object} Result of undo operation
+   */
+  undoMove() {
+    const lastMove = this.moveHistory.pop();
+
+    if (!lastMove) {
+      return this.errorHandler.createError(
+        'NO_MOVES_TO_UNDO',
+        'No moves available to undo'
+      );
+    }
+
+    try {
+      // 1. Revert board state
+      const { from, to, piece: pieceType, captured, promotion, preMoveState, castling, enPassant } = lastMove;
+      const color = lastMove.color;
+
+      // Move piece back from 'to' to 'from'
+      // Handle promotion: if promoted, revert to pawn
+      const piece = {
+        type: promotion ? 'pawn' : pieceType,
+        color: color
+      };
+
+      this.board[from.row][from.col] = piece;
+      this.board[to.row][to.col] = null; // Clear destination
+
+      // Update cache for moved piece
+      this._updatePieceLocation(color, to, from);
+
+      // 2. Restore captured piece
+      if (captured) {
+        // Handle En Passant capture restoration
+        if (enPassant) {
+          // In en passant, captured pawn is not at 'to' square, but at [from.row][to.col]
+          const capturedPawnRow = from.row;
+          const capturedPawnCol = to.col;
+          const capturedPawn = { type: 'pawn', color: color === 'white' ? 'black' : 'white' };
+
+          this.board[capturedPawnRow][capturedPawnCol] = capturedPawn;
+          this._updatePieceLocation(capturedPawn.color, { row: -1, col: -1 }, { row: capturedPawnRow, col: capturedPawnCol });
+        } else {
+          // Standard capture: restore at 'to' square
+          const capturedPieceObj = { type: captured, color: color === 'white' ? 'black' : 'white' };
+          this.board[to.row][to.col] = capturedPieceObj;
+          this._updatePieceLocation(capturedPieceObj.color, { row: -1, col: -1 }, to);
+        }
+      }
+
+      // 3. Revert Castling (move rook back)
+      if (castling) {
+        const row = from.row;
+        // Identify rook positions based on castling side
+        const isKingside = castling === 'kingside';
+        const rookFromCol = isKingside ? 7 : 0;
+        const rookToCol = isKingside ? 5 : 3;
+
+        const rook = this.board[row][rookToCol];
+        if (rook) {
+          this.board[row][rookFromCol] = rook;
+          this.board[row][rookToCol] = null;
+          this._updatePieceLocation(rook.color, { row, col: rookToCol }, { row, col: rookFromCol });
+        }
+      }
+
+      // 4. Restore Game State Variables
+      if (preMoveState) {
+        this.castlingRights = preMoveState.castlingRights;
+        this.enPassantTarget = preMoveState.enPassantTarget;
+        this.halfMoveClock = preMoveState.halfMoveClock;
+        this.fullMoveNumber = preMoveState.fullMoveNumber;
+        this.inCheck = preMoveState.inCheck;
+        // We need to re-evaluate checkDetails if inCheck was true, or clear it
+        if (this.inCheck) {
+            // Re-running isInCheck will populate checkDetails
+            this.isInCheck(this.currentTurn);
+        } else {
+            this.checkDetails = null;
+        }
+      } else {
+        // Fallback for moves without preMoveState (legacy/migrated)
+        // This is a best-effort restoration
+        console.warn('Undoing move without preMoveState - state may be inconsistent');
+        this.halfMoveClock = Math.max(0, this.halfMoveClock - 1);
+        if (color === 'black') this.fullMoveNumber--;
+      }
+
+      // 5. Revert Turn
+      this.currentTurn = color; // The turn reverts to the player who made the move
+
+      // 6. Restore Position History
+      this.positionHistory.pop();
+      // Also remove from stateManager internal history if needed, but stateManager.positionHistory IS this.positionHistory reference
+
+      // 7. Update Game Status
+      // Force status to active so transition validation passes (we are undoing a terminal state)
+      // This is necessary because stateManager prohibits transitions out of terminal states like checkmate
+      if (['checkmate', 'stalemate', 'draw'].includes(this.gameStatus)) {
+        this.gameStatus = 'active';
+        this.winner = null;
+      }
+
+      // Re-evaluate game end conditions (e.g., if we were in checkmate, now we might just be in check or active)
+      // Since we reverted the move, the game status should ideally be what it was.
+      // preMoveState doesn't store gameStatus. But typically it would be 'active' or 'check'.
+      // If we are undoing, we probably go back to 'active' or 'check'.
+      // Let's re-calculate check status for the current player (who is now the one to move)
+      this.checkGameEnd();
+
+      // Ensure piece cache is clean (safety)
+      this._rebuildPieceLocations();
+
+      // Sync state version
+      this.stateManager.stateVersion++;
+      this.stateVersion = this.stateManager.stateVersion;
+
+      return this.errorHandler.createSuccess('Move undone successfully', {
+        currentTurn: this.currentTurn,
+        gameStatus: this.gameStatus
+      });
+
+    } catch (error) {
+      // If undo fails, we might leave the board in corrupt state.
+      // In a real system, we'd want a transaction or snapshot restore.
+      return this.errorHandler.createError(
+        'UNDO_FAILED',
+        'Failed to undo move: ' + error.message,
+        [error.stack]
+      );
+    }
+  }
+
   /**
    * Get simplified move history for API compatibility
    * @returns {Array} Simplified move history entries
