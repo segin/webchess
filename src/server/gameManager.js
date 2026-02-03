@@ -9,6 +9,23 @@ class GameManager {
     this.playerToGame = new Map();
     this.disconnectedPlayers = new Map();
     this.disconnectTimeouts = new Map(); // Track timeouts for cleanup
+    this.playerGames = new Map(); // Optimization: Track all games for each player
+  }
+
+  _addPlayerGame(playerId, gameId) {
+    if (!this.playerGames.has(playerId)) {
+      this.playerGames.set(playerId, new Set());
+    }
+    this.playerGames.get(playerId).add(gameId);
+  }
+
+  _removePlayerGame(playerId, gameId) {
+    if (this.playerGames.has(playerId)) {
+      this.playerGames.get(playerId).delete(gameId);
+      if (this.playerGames.get(playerId).size === 0) {
+        this.playerGames.delete(playerId);
+      }
+    }
   }
 
   generateGameId() {
@@ -39,6 +56,7 @@ class GameManager {
 
     this.games.set(gameId, game);
     this.playerToGame.set(playerId, gameId);
+    this._addPlayerGame(playerId, gameId);
     
     return gameId;
   }
@@ -63,6 +81,7 @@ class GameManager {
     game.lastActivity = Date.now();
     
     this.playerToGame.set(playerId, gameId);
+    this._addPlayerGame(playerId, gameId);
 
     return {
       success: true,
@@ -173,6 +192,10 @@ class GameManager {
         this.games.delete(disconnectedInfo.gameId);
         this.playerToGame.delete(game.host);
         this.playerToGame.delete(game.guest);
+
+        // Update index
+        this._removePlayerGame(game.host, disconnectedInfo.gameId);
+        this._removePlayerGame(game.guest, disconnectedInfo.gameId);
       }
     }
   }
@@ -274,8 +297,10 @@ class GameManager {
     if (game) {
       // Clean up player mappings
       this.playerToGame.delete(game.host);
+      this._removePlayerGame(game.host, gameId);
       if (game.guest) {
         this.playerToGame.delete(game.guest);
+        this._removePlayerGame(game.guest, gameId);
       }
       
       // Remove the game
@@ -325,6 +350,7 @@ class GameManager {
     if (game.host === playerId) {
       game.host = null;
       this.playerToGame.delete(playerId);
+      this._removePlayerGame(playerId, gameId);
       
       // If guest exists, promote to host
       if (game.guest) {
@@ -334,6 +360,7 @@ class GameManager {
     } else if (game.guest === playerId) {
       game.guest = null;
       this.playerToGame.delete(playerId);
+      this._removePlayerGame(playerId, gameId);
     } else {
       return { success: false, message: 'Player not in game' };
     }
@@ -519,13 +546,9 @@ class GameManager {
    * @returns {Array} Array of game IDs
    */
   findGamesByPlayer(playerId) {
-    const games = [];
-    for (const [gameId, game] of this.games) {
-      if (game.host === playerId || game.guest === playerId) {
-        games.push(gameId);
-      }
-    }
-    return games;
+    const gameIds = this.playerGames.get(playerId);
+    if (!gameIds) return [];
+    return Array.from(gameIds);
   }
 
   /**
@@ -597,8 +620,13 @@ class GameManager {
     let losses = 0;
     let draws = 0;
 
-    for (const game of this.games.values()) {
-      if (game.host === playerId || game.guest === playerId) {
+    const playerGameIds = this.playerGames.get(playerId);
+
+    if (playerGameIds) {
+      for (const gameId of playerGameIds) {
+        const game = this.games.get(gameId);
+        if (!game) continue;
+
         gamesPlayed++;
         
         if (game.status === 'finished') {
@@ -793,6 +821,7 @@ class GameManager {
     this.games.clear();
     this.playerToGame.clear();
     this.disconnectedPlayers.clear();
+    this.playerGames.clear();
   }
 }
 
