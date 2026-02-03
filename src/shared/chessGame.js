@@ -269,7 +269,6 @@ class ChessGame {
     if (!isCastlingAttempt) {
       const captureValidation = this.validateCapture(from, to, piece);
       if (captureValidation.success === false || captureValidation.isValid === false) {
-        console.log('DEBUG: Returning captureValidation error:', captureValidation);
         return captureValidation;
       }
     }
@@ -277,29 +276,21 @@ class ChessGame {
     // Step 9: Special move validation
     const specialMoveValidation = this.validateSpecialMoves(from, to, piece, promotion);
     if (specialMoveValidation.success === false || specialMoveValidation.isValid === false) {
-      console.log('DEBUG: Returning specialMoveValidation error:', specialMoveValidation);
       return specialMoveValidation;
     }
 
     // Step 10: Check validation - either resolution (if in check) or constraint (if not in check)
     const currentlyInCheck = this.isInCheck(piece.color);
-    console.log('DEBUG: Step 10 - currentlyInCheck =', currentlyInCheck);
     if (currentlyInCheck) {
       // When in check, validate that the move resolves the check
-      console.log('DEBUG: Calling validateCheckResolution');
       const checkResolutionValidation = this.validateCheckResolution(from, to, piece);
-      console.log('DEBUG: checkResolutionValidation =', checkResolutionValidation);
       if (checkResolutionValidation.success === false || checkResolutionValidation.isValid === false) {
-        console.log('DEBUG: Returning checkResolutionValidation error');
         return checkResolutionValidation;
       }
     } else {
       // When not in check, validate that the move doesn't put king in check
-      console.log('DEBUG: Calling validateCheckConstraints');
       const checkValidation = this.validateCheckConstraints(from, to, piece);
-      console.log('DEBUG: checkValidation =', checkValidation);
       if (checkValidation.success === false || checkValidation.isValid === false) {
-        console.log('DEBUG: Returning checkValidation error');
         return checkValidation;
       }
     }
@@ -694,12 +685,10 @@ class ChessGame {
 
     // Check if the piece is pinned
     const pinInfo = this.isPiecePinned(from, piece.color);
-    console.log('DEBUG: Checking pinned piece, isPinned =', pinInfo.isPinned);
 
     if (pinInfo.isPinned) {
       // Check if the pinned piece move is valid
       if (!this.isPinnedPieceMoveValid(from, to, pinInfo)) {
-        console.log('DEBUG: Returning PINNED_PIECE_INVALID_MOVE');
         return this.errorHandler.createError(
           'PINNED_PIECE_INVALID_MOVE',
           'Pinned piece cannot move without exposing king'
@@ -1844,6 +1833,47 @@ class ChessGame {
    * @returns {Array} Array of legal move objects
    */
   getAllLegalMoves(color) {
+    const legalMoves = [];
+    const locations = this.pieceLocations[color];
+
+    // Fallback if cache is missing (should not happen in normal operation)
+    if (!locations) {
+      return this._getAllLegalMovesFallback(color);
+    }
+
+    for (const from of locations) {
+      const piece = this.board[from.row][from.col];
+
+      // Safety check: verify piece exists and matches color (in case of cache desync)
+      if (!piece || piece.color !== color) {
+        continue;
+      }
+
+      // Efficiently generate potential moves
+      const potentialMoves = this.generatePossibleMoves(from, piece);
+
+      for (const to of potentialMoves) {
+        // Check if this move is valid using the comprehensive validation
+        const move = { from, to };
+        const validation = this.validateMove(move);
+
+        if (validation.isValid) {
+          legalMoves.push({
+            from: from,
+            to: to,
+            piece: piece.type,
+            color: piece.color,
+            isCapture: this.board[to.row][to.col] !== null,
+            notation: this.getMoveNotation(from, to, piece)
+          });
+        }
+      }
+    }
+
+    return legalMoves;
+  }
+
+  _getAllLegalMovesFallback(color) {
     const legalMoves = [];
 
     // Iterate through all squares to find pieces of the given color
