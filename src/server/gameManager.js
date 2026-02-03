@@ -1,6 +1,5 @@
 // Use crypto.randomUUID() for Node.js 14.17+ instead of uuid package
 const { randomUUID } = require('crypto');
-const uuidv4 = randomUUID;
 const ChessGame = require('../shared/chessGame');
 
 class GameManager {
@@ -193,7 +192,7 @@ class GameManager {
     const senderColor = isHost ? 'White' : 'Black';
     
     const chatMessage = {
-      id: Date.now() + Math.random(), // Simple unique ID
+      id: randomUUID(),
       message: sanitizedMessage,
       sender: senderColor,
       playerId: playerId,
