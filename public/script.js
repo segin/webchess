@@ -1393,6 +1393,7 @@ class WebChessClient {
       for (let col = 0; col < 8; col++) {
         const piece = this.gameState.board[row][col];
         if (piece) {
+          const pieceInfo = { type: piece.type, squareColor: (row + col) % 2 };
           if (piece.color === 'white') {
             whitePieces.push(piece.type);
             if (piece.type === 'bishop') {
@@ -1408,6 +1409,9 @@ class WebChessClient {
       }
     }
     
+    // Helper to check for specific pieces
+    const hasPiece = (pieces, type) => pieces.some(p => p.type === type);
+
     // King vs King
     if (whitePieces.length === 1 && blackPieces.length === 1) {
       return true;
@@ -1415,24 +1419,24 @@ class WebChessClient {
     
     // King + Bishop vs King
     if (whitePieces.length === 2 && blackPieces.length === 1) {
-      if (whitePieces.includes('king') && whitePieces.includes('bishop')) {
+      if (hasPiece(whitePieces, 'king') && hasPiece(whitePieces, 'bishop')) {
         return true;
       }
     }
     if (blackPieces.length === 2 && whitePieces.length === 1) {
-      if (blackPieces.includes('king') && blackPieces.includes('bishop')) {
+      if (hasPiece(blackPieces, 'king') && hasPiece(blackPieces, 'bishop')) {
         return true;
       }
     }
     
     // King + Knight vs King
     if (whitePieces.length === 2 && blackPieces.length === 1) {
-      if (whitePieces.includes('king') && whitePieces.includes('knight')) {
+      if (hasPiece(whitePieces, 'king') && hasPiece(whitePieces, 'knight')) {
         return true;
       }
     }
     if (blackPieces.length === 2 && whitePieces.length === 1) {
-      if (blackPieces.includes('king') && blackPieces.includes('knight')) {
+      if (hasPiece(blackPieces, 'king') && hasPiece(blackPieces, 'knight')) {
         return true;
       }
     }
