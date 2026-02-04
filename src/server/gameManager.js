@@ -25,7 +25,6 @@ class GameManager {
     this.playerGames = new Map(); // Index: playerId -> Set<gameId>
     this.disconnectedPlayers = new Map();
     this.disconnectTimeouts = new Map(); // Track timeouts for cleanup
-    this.playerGames = new Map(); // Optimization: Track all games for each player
     this.playerGameCounts = new Map(); // Track game counts for rate limiting
     this.MAX_GAMES_PER_PLAYER = 5;
   }
@@ -351,15 +350,13 @@ class GameManager {
     const game = this.games.get(gameId);
     if (game) {
       // Remove from status index
-      this._removeFromStatusIndex(gameId, game.status);
+      this._removeFromStatusIndex(game.status, gameId);
 
       // Clean up player mappings
       this.playerToGame.delete(game.host);
-      this._removeGameFromPlayer(game.host, gameId);
 
       if (game.guest) {
         this.playerToGame.delete(game.guest);
-        this._removeGameFromPlayer(game.guest, gameId);
       }
 
       // Update index
@@ -367,9 +364,6 @@ class GameManager {
       if (game.guest) {
         this._removePlayerGame(game.guest, gameId);
       }
-      
-      // Remove from status index
-      this._removeFromStatusIndex(game.status, gameId);
 
        // Decrement game count for host
       const currentCount = this.playerGameCounts.get(game.host) || 0;
@@ -929,7 +923,6 @@ class GameManager {
     this.playerToGame.clear();
     this.playerGames.clear();
     this.disconnectedPlayers.clear();
-    this.playerGames.clear();
     if (this.playerGameCounts) {
       this.playerGameCounts.clear();
     }
