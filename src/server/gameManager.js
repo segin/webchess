@@ -632,14 +632,19 @@ class GameManager {
     const result = game.chess.undoMove();
 
     if (result.success) {
-        // Sync game status if it changed from finished back to active
-        if (game.status === 'finished' && result.data && result.data.gameStatus !== 'finished') {
-             game.status = result.data.gameStatus;
-             game.winner = null;
-             game.endReason = null;
-             game.endTime = null;
-        }
-        game.lastActivity = Date.now();
+      // Sync game status if it changed from finished back to active
+      if (game.status === 'finished' && result.data && result.data.gameStatus !== 'finished') {
+        const oldStatus = game.status;
+        const newStatus = result.data.gameStatus;
+
+        game.status = newStatus;
+        this._updateStatusIndex(game.id, oldStatus, newStatus);
+
+        game.winner = null;
+        game.endReason = null;
+        game.endTime = null;
+      }
+      game.lastActivity = Date.now();
     }
 
     return result;
