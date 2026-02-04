@@ -409,6 +409,7 @@ describe('Performance Tests - Comprehensive Coverage', () => {
       game.board[0][0] = { type: 'king', color: 'black' };
       game.board[7][7] = { type: 'king', color: 'white' };
       game.board[6][6] = { type: 'queen', color: 'white' };
+      game._rebuildPieceLocations(); // Ensure cache is consistent
       game.currentTurn = 'white';
       game.gameStatus = 'active';
 
@@ -437,6 +438,7 @@ describe('Performance Tests - Comprehensive Coverage', () => {
       game.board[4][4] = { type: 'queen', color: 'white' };
       game.board[3][3] = { type: 'queen', color: 'white' };
       game.board[5][5] = { type: 'queen', color: 'white' };
+      game._rebuildPieceLocations(); // Ensure cache is consistent
       game.currentTurn = 'white';
       game.gameStatus = 'active';
 
@@ -460,6 +462,7 @@ describe('Performance Tests - Comprehensive Coverage', () => {
       game.board[4][4] = { type: 'bishop', color: 'white' };
       game.board[2][4] = { type: 'knight', color: 'white' };
       game.board[0][0] = { type: 'rook', color: 'black' };
+      game._rebuildPieceLocations(); // Ensure cache is consistent
       game.currentTurn = 'white';
       game.gameStatus = 'active';
 
