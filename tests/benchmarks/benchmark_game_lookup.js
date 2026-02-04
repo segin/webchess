@@ -52,7 +52,7 @@ const runBenchmark = () => {
 
     // Verify counts to be sure
     for (const status of statuses) {
-        const count = gameManager.getGamesByStatus(status).length;
+        const count = gameManager.getGamesByStatus(status).size;
         // console.log(`Count for ${status}: ${count}`);
     }
 

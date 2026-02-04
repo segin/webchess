@@ -101,6 +101,9 @@ class GameManager {
   }
 
   joinGame(gameId, playerId) {
+    if (!gameId || typeof gameId !== 'string') {
+      return { success: false, message: 'Game not found' };
+    }
     const game = this.games.get(gameId.toUpperCase());
     
     if (!game) {
@@ -660,13 +663,13 @@ class GameManager {
   /**
    * Get games by status
    * @param {string} status - Game status
-   * @returns {Array} Array of game IDs
+   * @returns {Set<string>} Set of game IDs
    */
   getGamesByStatus(status) {
     if (this.gamesByStatus.has(status)) {
-      return Array.from(this.gamesByStatus.get(status));
+      return this.gamesByStatus.get(status);
     }
-    return [];
+    return new Set();
   }
 
   /**
@@ -762,27 +765,21 @@ class GameManager {
    */
   getServerStatistics() {
     const totalGames = this.games.size;
-    let activeGames = 0;
-    let waitingGames = 0;
-    let finishedGames = 0;
     
-    const uniquePlayers = new Set();
+    // O(1) lookups using status index
+    const activeGames = this.gamesByStatus.get('active')?.size || 0;
+    const waitingGames = this.gamesByStatus.get('waiting')?.size || 0;
+    const finishedGames = this.gamesByStatus.get('finished')?.size || 0;
 
-    for (const game of this.games.values()) {
-      if (game.status === 'active') activeGames++;
-      else if (game.status === 'waiting') waitingGames++;
-      else if (game.status === 'finished') finishedGames++;
-
-      if (game.host) uniquePlayers.add(game.host);
-      if (game.guest) uniquePlayers.add(game.guest);
-    }
+    // O(1) lookup using player index
+    const totalPlayers = this.playerGames.size;
 
     return {
       totalGames,
       activeGames,
       waitingGames,
       finishedGames,
-      totalPlayers: uniquePlayers.size,
+      totalPlayers,
       disconnectedPlayers: this.disconnectedPlayers.size
     };
   }
