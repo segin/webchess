@@ -27,6 +27,7 @@ class GameManager {
     this.disconnectTimeouts = new Map(); // Track timeouts for cleanup
     this.playerGames = new Map(); // Optimization: Track all games for each player
     this.playerGameCounts = new Map(); // Track game counts for rate limiting
+    this.playerStats = new Map(); // Optimization: Pre-calculated player statistics
     this.MAX_GAMES_PER_PLAYER = 5;
   }
 
@@ -350,6 +351,9 @@ class GameManager {
   removeGame(gameId) {
     const game = this.games.get(gameId);
     if (game) {
+      // Update stats if game was finished
+      this._updateStatsForGame(game, -1);
+
       // Remove from status index
       this._removeFromStatusIndex(gameId, game.status);
 
@@ -420,7 +424,20 @@ class GameManager {
       return { success: false, message: 'Game not found' };
     }
 
+    // Helper to decrement stats if needed
+    const decrementStats = () => {
+      if (game.status === 'finished') {
+        let result = null;
+        if (game.winner === playerId) result = 'win';
+        else if (game.winner && game.winner !== playerId) result = 'loss';
+        else if (!game.winner) result = 'draw';
+
+        if (result) this._updatePlayerStats(playerId, result, -1);
+      }
+    };
+
     if (game.host === playerId) {
+      decrementStats();
       game.host = null;
       this.playerToGame.delete(playerId);
       this._removeGameFromPlayer(playerId, gameId);
@@ -431,6 +448,7 @@ class GameManager {
         game.guest = null;
       }
     } else if (game.guest === playerId) {
+      decrementStats();
       game.guest = null;
       this.playerToGame.delete(playerId);
       this._removeGameFromPlayer(playerId, gameId);
@@ -528,6 +546,8 @@ class GameManager {
     game.endReason = reason;
     game.winner = winner;
     game.endTime = Date.now();
+
+    this._updateStatsForGame(game, 1);
 
     return { success: true, reason, winner };
   }
@@ -634,6 +654,7 @@ class GameManager {
     if (result.success) {
         // Sync game status if it changed from finished back to active
         if (game.status === 'finished' && result.data && result.data.gameStatus !== 'finished') {
+             this._updateStatsForGame(game, -1);
              game.status = result.data.gameStatus;
              game.winner = null;
              game.endReason = null;
@@ -726,25 +747,15 @@ class GameManager {
     let losses = 0;
     let draws = 0;
 
-    const playerGameIds = this.playerGames.get(playerId);
+    if (this.playerGames.has(playerId)) {
+      gamesPlayed = this.playerGames.get(playerId).size;
+    }
 
-    if (playerGameIds) {
-      for (const gameId of playerGameIds) {
-        const game = this.games.get(gameId);
-        if (!game) continue;
-
-        gamesPlayed++;
-        
-        if (game.status === 'finished') {
-          if (game.winner === playerId) {
-            wins++;
-          } else if (game.winner && game.winner !== playerId) {
-            losses++;
-          } else {
-            draws++;
-          }
-        }
-      }
+    if (this.playerStats.has(playerId)) {
+      const stats = this.playerStats.get(playerId);
+      wins = stats.wins;
+      losses = stats.losses;
+      draws = stats.draws;
     }
 
     return {
@@ -932,6 +943,71 @@ class GameManager {
     this.playerGames.clear();
     if (this.playerGameCounts) {
       this.playerGameCounts.clear();
+    }
+    this.playerStats.clear();
+  }
+
+  /**
+   * Helper to update player statistics
+   * @param {string} playerId - Player ID
+   * @param {string} result - Result ('win', 'loss', 'draw')
+   * @param {number} delta - Change amount (+1 or -1)
+   * @private
+   */
+  _updatePlayerStats(playerId, result, delta) {
+    if (!playerId) return;
+
+    if (!this.playerStats.has(playerId)) {
+      this.playerStats.set(playerId, { wins: 0, losses: 0, draws: 0 });
+    }
+
+    const stats = this.playerStats.get(playerId);
+    if (result === 'win') stats.wins += delta;
+    else if (result === 'loss') stats.losses += delta;
+    else if (result === 'draw') stats.draws += delta;
+  }
+
+  /**
+   * Helper to update stats when a game ends or is removed
+   * @param {Object} game - Game object
+   * @param {number} delta - Change amount (+1 for end, -1 for undo/remove)
+   * @private
+   */
+  _updateStatsForGame(game, delta) {
+    if (game.status !== 'finished') return;
+
+    // Only update stats for players currently attached to the game
+    // (Players removed via removePlayer have already had their stats adjusted)
+    const hostId = game.host;
+    const guestId = game.guest;
+    const winnerId = game.winner;
+
+    // Update Host Stats
+    if (hostId) {
+      if (winnerId) {
+        if (winnerId === hostId) {
+          this._updatePlayerStats(hostId, 'win', delta);
+        } else {
+          this._updatePlayerStats(hostId, 'loss', delta);
+        }
+      } else {
+        // Draw
+        this._updatePlayerStats(hostId, 'draw', delta);
+      }
+    }
+
+    // Update Guest Stats
+    if (guestId) {
+      if (winnerId) {
+        if (winnerId === guestId) {
+          this._updatePlayerStats(guestId, 'win', delta);
+        } else {
+          this._updatePlayerStats(guestId, 'loss', delta);
+        }
+      } else {
+        // Draw
+        this._updatePlayerStats(guestId, 'draw', delta);
+      }
     }
   }
 

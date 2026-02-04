@@ -3,11 +3,13 @@ const GameManager = require('../../src/server/gameManager');
 
 const runBenchmark = () => {
     const gameManager = new GameManager();
+    // Bypass rate limiting for benchmark
+    gameManager.MAX_GAMES_PER_PLAYER = 100000;
 
     // Setup parameters
     const TOTAL_GAMES = 10000;
     const TARGET_PLAYER = 'target_player';
-    const GAMES_FOR_TARGET = 100;
+    const GAMES_FOR_TARGET = 5000;
 
     console.log(`Setting up benchmark with ${TOTAL_GAMES} games...`);
 
