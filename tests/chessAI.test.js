@@ -17,11 +17,11 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       const hardAI = new ChessAI('hard');
 
       expect(easyAI.difficulty).toBe('easy');
-      expect(easyAI.maxDepth).toBe(1);
+      expect(easyAI.maxDepth).toBe(2);
       expect(mediumAI.difficulty).toBe('medium');
-      expect(mediumAI.maxDepth).toBe(2);
+      expect(mediumAI.maxDepth).toBe(3);
       expect(hardAI.difficulty).toBe('hard');
-      expect(hardAI.maxDepth).toBe(3);
+      expect(hardAI.maxDepth).toBe(4);
     });
 
     test('should have correct piece values for all pieces', () => {
@@ -47,13 +47,13 @@ describe('ChessAI - Comprehensive Test Suite', () => {
     test('should handle invalid difficulty levels gracefully', () => {
       const invalidAI = new ChessAI('invalid');
       expect(invalidAI.difficulty).toBe('invalid');
-      expect(invalidAI.maxDepth).toBe(2); // Should default to medium
+      expect(invalidAI.maxDepth).toBe(3); // Should default to medium
     });
 
     test('should handle undefined difficulty gracefully', () => {
       const defaultAI = new ChessAI();
       expect(defaultAI.difficulty).toBe('medium');
-      expect(defaultAI.maxDepth).toBe(2);
+      expect(defaultAI.maxDepth).toBe(3);
     });
   });
 
@@ -406,8 +406,8 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       expect(hardMove).toBeTruthy();
       
       // Verify depth limits are respected
-      expect(easyAI.maxDepth).toBe(1);
-      expect(hardAI.maxDepth).toBe(3);
+      expect(easyAI.maxDepth).toBe(2);
+      expect(hardAI.maxDepth).toBe(4);
     });
 
     test.skip('should handle recursive minimax calls safely', () => {

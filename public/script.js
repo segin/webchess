@@ -463,6 +463,7 @@ class WebChessClient {
     // Don't clear session data when just showing main menu
     // Only clear when explicitly leaving/ending a game
     this.clearChat();
+    document.getElementById('game-end-screen').classList.add('hidden');
     this.showScreen('main-menu');
     this.updateResumeButton();
   }
@@ -494,7 +495,7 @@ class WebChessClient {
       message.textContent = `${winner === this.playerColor ? 'Your opponent resigned. You win!' : 'You resigned.'}`;
     }
     
-    this.showScreen('game-end-screen');
+    document.getElementById('game-end-screen').classList.remove('hidden');
   }
 
   showJoinError(message) {

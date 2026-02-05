@@ -79,10 +79,11 @@ class ChessAI {
   
   getMaxDepth(difficulty) {
     switch (difficulty) {
-      case 'easy': return 1;
-      case 'medium': return 2;
-      case 'hard': return 3;
-      default: return 2;
+      case 'easy': return 2;
+      case 'medium': return 3;
+      case 'hard': return 4;
+      case 'expert': return 5;
+      default: return 3;
     }
   }
   
@@ -103,15 +104,31 @@ class ChessAI {
     let bestMove = null;
     let bestScore = color === 'white' ? -Infinity : Infinity;
     
-    for (const move of moves) {
-      const score = this.minimax(chessGame, move, this.maxDepth - 1, !this.isMaximizing(color), -Infinity, Infinity);
+    // Sort moves at root for better alpha-beta pruning efficiency
+    // We can use a shallower search depth for ordering if needed, but here we just use static score
+    const orderedMoves = this.orderMoves(chessGame, moves);
+    
+    // Root alpha-beta (we still need to track global best, but we can pass window)
+    // Note: Since we are at root, we know who is maximizing/minimizing based on color
+    let alpha = -Infinity;
+    let beta = Infinity;
+
+    for (const move of orderedMoves) {
+      // Use !isMaximizing because we are making a move, so next turn is opponent
+      const score = this.minimax(chessGame, move, this.maxDepth - 1, !this.isMaximizing(color), alpha, beta);
       
-      if (color === 'white' && score > bestScore) {
-        bestScore = score;
-        bestMove = move;
-      } else if (color === 'black' && score < bestScore) {
-        bestScore = score;
-        bestMove = move;
+      if (color === 'white') {
+        if (score > bestScore) {
+          bestScore = score;
+          bestMove = move;
+        }
+        alpha = Math.max(alpha, score);
+      } else {
+        if (score < bestScore) {
+          bestScore = score;
+          bestMove = move;
+        }
+        beta = Math.min(beta, score);
       }
     }
     
@@ -130,7 +147,11 @@ class ChessAI {
     if (!result.success) return isMaximizing ? -Infinity : Infinity;
     
     if (depth === 0 || tempGame.gameStatus !== 'active') {
-      return this.evaluatePosition(tempGame);
+      if (tempGame.gameStatus !== 'active') {
+        return this.evaluatePosition(tempGame);
+      }
+      // Use Quiescence Search at leaf nodes instead of raw evaluation
+      return this.quiescence(tempGame, alpha, beta, isMaximizing, chessGame.currentTurn);
     }
     
     const moves = this.getAllValidMoves(tempGame, tempGame.currentTurn);
@@ -159,6 +180,56 @@ class ChessAI {
       return minScore;
     }
   }
+
+  // Quiescence Search to avoid horizon effect on captures
+  quiescence(chessGame, alpha, beta, isMaximizing, rootColor) {
+    const standPat = this.evaluatePosition(chessGame);
+    
+    if (isMaximizing) {
+      if (standPat >= beta) return beta;
+      alpha = Math.max(alpha, standPat);
+    } else {
+      if (standPat <= alpha) return alpha;
+      beta = Math.min(beta, standPat);
+    }
+    
+    // Generate only capture moves
+    const allMoves = this.getAllValidMoves(chessGame, chessGame.currentTurn);
+    const captureMoves = allMoves.filter(move => {
+      const target = chessGame.board[move.to.row][move.to.col];
+      return target !== null;
+    });
+
+    const orderedCaptures = this.orderMoves(chessGame, captureMoves);
+
+    if (isMaximizing) {
+      for (const move of orderedCaptures) {
+        const tempGame = this.cloneGame(chessGame);
+        const result = tempGame.makeMove(move, null, null, { silent: true });
+        
+        if (result.success) {
+           const score = this.quiescence(tempGame, alpha, beta, false, rootColor);
+           
+           if (score >= beta) return beta;
+           alpha = Math.max(alpha, score);
+        }
+      }
+      return alpha;
+    } else {
+      for (const move of orderedCaptures) {
+         const tempGame = this.cloneGame(chessGame);
+         const result = tempGame.makeMove(move, null, null, { silent: true });
+         
+         if (result.success) {
+           const score = this.quiescence(tempGame, alpha, beta, true, rootColor);
+           
+           if (score <= alpha) return alpha;
+           beta = Math.min(beta, score);
+         }
+      }
+      return beta;
+    }
+  }
   
   evaluatePosition(chessGame) {
     if (chessGame.gameStatus === 'checkmate') {
@@ -182,6 +253,30 @@ class ChessAI {
           score += piece.color === 'white' ? totalValue : -totalValue;
         }
       }
+    }
+    
+    // Mobility (skip for easy mode to save performance)
+    if (this.difficulty !== 'easy') {
+       // Estimate mobility by checking valid moves for each side
+       // This is expensive, so we might want to do it only for higher depths or simpler estimation
+       // For now, let's just do a simplified center control bonus for valid moves in center
+       
+       // Note: true mobility requiring getValidMoves for every piece is O(N^2) relative to board size
+       // Instead, let's rely on Quiescence Search + deeper search to find tactics.
+       // But we can add a small bonus for Pieces in center 4x4
+       
+       // Center Control Bonus already covered slightly by position tables, 
+       // but let's reinforce it for Knights and Pawns specifically? 
+       // Actually, position tables are sufficient for static control.
+       
+       // Let's implement actual mobility count if we are in 'expert' mode?
+       if (this.difficulty === 'expert' || this.difficulty === 'hard') {
+           const whiteMoves = this.getAllValidMoves(chessGame, 'white').length;
+           const blackMoves = this.getAllValidMoves(chessGame, 'black').length;
+           
+           // mobility weight: 5 points per available move (1/20th of a pawn)
+           score += (whiteMoves - blackMoves) * 5;
+       }
     }
     
     return score;

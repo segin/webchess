@@ -105,6 +105,7 @@
                         <option value="easy">Easy</option>
                         <option value="medium" selected>Medium</option>
                         <option value="hard">Hard</option>
+                        <option value="expert">Expert (Slow)</option>
                     </select>
                     <div id="difficulty-help" class="sr-only">Choose the AI opponent difficulty level for practice games</div>
                 </div>
@@ -186,8 +187,8 @@
             </div>
 
             <!-- Game End Screen -->
-            <div id="game-end-screen" class="screen hidden">
-                <div class="game-end-content" role="dialog" aria-labelledby="game-end-title" aria-modal="true">
+            <div id="game-end-screen" class="modal hidden">
+                <div class="game-end-content modal-content" role="dialog" aria-labelledby="game-end-title" aria-modal="true">
                     <h2 id="game-end-title">Game Over</h2>
                     <p id="game-end-message" role="status"></p>
                     <div class="game-end-actions">
