@@ -302,7 +302,7 @@ describe('Server Components - Under-Tested Functions Coverage', () => {
       expect(result).toHaveProperty('success');
       expect(result.success).toBe(false); // Undo is not implemented
       expect(result).toHaveProperty('message');
-      expect(result.message).toBe('Undo not implemented');
+      expect(result.message).toBe('You are not in this game');
     });
   });
 
@@ -327,10 +327,10 @@ describe('Server Components - Under-Tested Functions Coverage', () => {
       const activeGames = gameManager.getGamesByStatus('active');
       const waitingGames = gameManager.getGamesByStatus('waiting');
       
-      expect(Array.isArray(activeGames)).toBe(true);
-      expect(Array.isArray(waitingGames)).toBe(true);
-      expect(activeGames.length).toBe(1);
-      expect(waitingGames.length).toBe(1);
+      expect(activeGames instanceof Set).toBe(true);
+      expect(waitingGames instanceof Set).toBe(true);
+      expect(activeGames.size).toBe(1);
+      expect(waitingGames.size).toBe(1);
     });
 
     test('should test getAvailableGames function', () => {

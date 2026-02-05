@@ -619,12 +619,12 @@ describe('GameManager - Comprehensive Coverage', () => {
             gameManager.joinGame(gameId1, 'guest1');
 
             const activeGames = gameManager.getGamesByStatus('active');
-            expect(activeGames).toHaveLength(1);
-            expect(activeGames).toContain(gameId1);
+            expect(activeGames.size).toBe(1);
+            expect(activeGames.has(gameId1)).toBe(true);
 
             const waitingGames = gameManager.getGamesByStatus('waiting');
-            expect(waitingGames).toHaveLength(1);
-            expect(waitingGames).toContain(gameId2);
+            expect(waitingGames.size).toBe(1);
+            expect(waitingGames.has(gameId2)).toBe(true);
         });
 
         test('should get available games', () => {

@@ -517,7 +517,7 @@ describe('Server Integration Tests - Comprehensive Coverage', () => {
       
       const invalidResult = gameManager.addChatMessage(gameId, 'player1', '');
       expect(invalidResult.success).toBe(false);
-      expect(invalidResult.message).toBe('Empty message');
+      expect(invalidResult.message).toBe('Empty or invalid message');
     });
 
     test('should validate chat message length with current patterns', () => {

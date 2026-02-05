@@ -100,6 +100,9 @@ class GameManager {
   }
 
   joinGame(gameId, playerId) {
+    if (!gameId || typeof gameId !== 'string') {
+      return { success: false, message: 'Game not found' };
+    }
     const game = this.games.get(gameId.toUpperCase());
     
     if (!game) {
@@ -664,13 +667,13 @@ class GameManager {
   /**
    * Get games by status
    * @param {string} status - Game status
-   * @returns {Array} Array of game IDs
+   * @returns {Set<string>} Set of game IDs
    */
   getGamesByStatus(status) {
     if (this.gamesByStatus.has(status)) {
-      return Array.from(this.gamesByStatus.get(status));
+      return this.gamesByStatus.get(status);
     }
-    return [];
+    return new Set();
   }
 
   /**

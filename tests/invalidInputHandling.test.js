@@ -286,15 +286,10 @@ describe('Comprehensive Invalid Input Handling Tests', () => {
       ];
 
       invalidJoinParams.forEach(({ gameId: gId, playerId }) => {
-        // Handle cases where gameId might be null/undefined
-        if (gId === null || gId === undefined) {
-          expect(() => gameManager.joinGame(gId, playerId)).toThrow();
-        } else {
-          const result = gameManager.joinGame(gId, playerId);
-          expect(result.success).toBe(false);
-          expect(result.message).toBeDefined();
-          expect(typeof result.message).toBe('string');
-        }
+        const result = gameManager.joinGame(gId, playerId);
+        expect(result.success).toBe(false);
+        expect(result.message).toBeDefined();
+        expect(typeof result.message).toBe('string');
       });
 
       // Test invalid playerId types separately - GameManager may be lenient with these
