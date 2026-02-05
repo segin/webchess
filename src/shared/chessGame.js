@@ -2865,15 +2865,17 @@ class ChessGame {
   getAllValidMoves(color) {
     const validMoves = [];
 
-    // Iterate through all squares on the board
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const piece = this.board[row][col];
+    // Optimization: Use pieceLocations cache if available
+    if (this.pieceLocations && this.pieceLocations[color]) {
+      const locations = this.pieceLocations[color];
 
-        // Skip if no piece or wrong color
-        if (!piece || piece.color !== color) continue;
+      for (const from of locations) {
+        const piece = this.board[from.row][from.col];
 
-        const from = { row, col };
+        // Safety check: verify piece exists and matches color (in case of cache desync)
+        if (!piece || piece.color !== color) {
+          continue;
+        }
 
         // Generate all possible moves for this piece
         const possibleMoves = this.generatePossibleMoves(from, piece);
@@ -2885,6 +2887,32 @@ class ChessGame {
 
           if (validation.isValid) {
             validMoves.push(move);
+          }
+        }
+      }
+    } else {
+      // Fallback to full board scan if cache is missing
+      // Iterate through all squares on the board
+      for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+          const piece = this.board[row][col];
+
+          // Skip if no piece or wrong color
+          if (!piece || piece.color !== color) continue;
+
+          const from = { row, col };
+
+          // Generate all possible moves for this piece
+          const possibleMoves = this.generatePossibleMoves(from, piece);
+
+          // Validate each possible move
+          for (const to of possibleMoves) {
+            const move = { from, to };
+            const validation = this.validateMove(move);
+
+            if (validation.isValid) {
+              validMoves.push(move);
+            }
           }
         }
       }

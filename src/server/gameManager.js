@@ -25,7 +25,6 @@ class GameManager {
     this.playerGames = new Map(); // Index: playerId -> Set<gameId>
     this.disconnectedPlayers = new Map();
     this.disconnectTimeouts = new Map(); // Track timeouts for cleanup
-    this.playerGames = new Map(); // Optimization: Track all games for each player
     this.playerGameCounts = new Map(); // Track game counts for rate limiting
     this.playerStats = new Map(); // Optimization: Pre-calculated player statistics
     this.MAX_GAMES_PER_PLAYER = 5;
@@ -102,6 +101,9 @@ class GameManager {
   }
 
   joinGame(gameId, playerId) {
+    if (!gameId || typeof gameId !== 'string') {
+      return { success: false, message: 'Game not found' };
+    }
     const game = this.games.get(gameId.toUpperCase());
     
     if (!game) {
@@ -652,15 +654,21 @@ class GameManager {
     const result = game.chess.undoMove();
 
     if (result.success) {
-        // Sync game status if it changed from finished back to active
-        if (game.status === 'finished' && result.data && result.data.gameStatus !== 'finished') {
-             this._updateStatsForGame(game, -1);
-             game.status = result.data.gameStatus;
-             game.winner = null;
-             game.endReason = null;
-             game.endTime = null;
-        }
-        game.lastActivity = Date.now();
+      // Sync game status if it changed from finished back to active
+      if (game.status === 'finished' && result.data && result.data.gameStatus !== 'finished') {
+        const oldStatus = game.status;
+        const newStatus = result.data.gameStatus;
+
+        this._updateStatsForGame(game, -1);
+
+        game.status = newStatus;
+        this._updateStatusIndex(game.id, oldStatus, newStatus);
+
+        game.winner = null;
+        game.endReason = null;
+        game.endTime = null;
+      }
+      game.lastActivity = Date.now();
     }
 
     return result;
@@ -681,13 +689,13 @@ class GameManager {
   /**
    * Get games by status
    * @param {string} status - Game status
-   * @returns {Array} Array of game IDs
+   * @returns {Set<string>} Set of game IDs
    */
   getGamesByStatus(status) {
     if (this.gamesByStatus.has(status)) {
-      return Array.from(this.gamesByStatus.get(status));
+      return this.gamesByStatus.get(status);
     }
-    return [];
+    return new Set();
   }
 
   /**
@@ -772,28 +780,12 @@ class GameManager {
    * @returns {Object} Server statistics
    */
   getServerStatistics() {
-    const totalGames = this.games.size;
-    let activeGames = 0;
-    let waitingGames = 0;
-    let finishedGames = 0;
-    
-    const uniquePlayers = new Set();
-
-    for (const game of this.games.values()) {
-      if (game.status === 'active') activeGames++;
-      else if (game.status === 'waiting') waitingGames++;
-      else if (game.status === 'finished') finishedGames++;
-
-      if (game.host) uniquePlayers.add(game.host);
-      if (game.guest) uniquePlayers.add(game.guest);
-    }
-
     return {
-      totalGames,
-      activeGames,
-      waitingGames,
-      finishedGames,
-      totalPlayers: uniquePlayers.size,
+      totalGames: this.games.size,
+      activeGames: this.gamesByStatus.get('active')?.size || 0,
+      waitingGames: this.gamesByStatus.get('waiting')?.size || 0,
+      finishedGames: this.gamesByStatus.get('finished')?.size || 0,
+      totalPlayers: this.playerGames.size,
       disconnectedPlayers: this.disconnectedPlayers.size
     };
   }
