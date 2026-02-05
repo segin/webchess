@@ -25,7 +25,6 @@ class GameManager {
     this.playerGames = new Map(); // Index: playerId -> Set<gameId>
     this.disconnectedPlayers = new Map();
     this.disconnectTimeouts = new Map(); // Track timeouts for cleanup
-    this.playerGames = new Map(); // Optimization: Track all games for each player
     this.playerGameCounts = new Map(); // Track game counts for rate limiting
     this.MAX_GAMES_PER_PLAYER = 5;
   }
@@ -635,14 +634,19 @@ class GameManager {
     const result = game.chess.undoMove();
 
     if (result.success) {
-        // Sync game status if it changed from finished back to active
-        if (game.status === 'finished' && result.data && result.data.gameStatus !== 'finished') {
-             game.status = result.data.gameStatus;
-             game.winner = null;
-             game.endReason = null;
-             game.endTime = null;
-        }
-        game.lastActivity = Date.now();
+      // Sync game status if it changed from finished back to active
+      if (game.status === 'finished' && result.data && result.data.gameStatus !== 'finished') {
+        const oldStatus = game.status;
+        const newStatus = result.data.gameStatus;
+
+        game.status = newStatus;
+        this._updateStatusIndex(game.id, oldStatus, newStatus);
+
+        game.winner = null;
+        game.endReason = null;
+        game.endTime = null;
+      }
+      game.lastActivity = Date.now();
     }
 
     return result;
@@ -764,22 +768,12 @@ class GameManager {
    * @returns {Object} Server statistics
    */
   getServerStatistics() {
-    const totalGames = this.games.size;
-    
-    // O(1) lookups using status index
-    const activeGames = this.gamesByStatus.get('active')?.size || 0;
-    const waitingGames = this.gamesByStatus.get('waiting')?.size || 0;
-    const finishedGames = this.gamesByStatus.get('finished')?.size || 0;
-
-    // O(1) lookup using player index
-    const totalPlayers = this.playerGames.size;
-
     return {
-      totalGames,
-      activeGames,
-      waitingGames,
-      finishedGames,
-      totalPlayers,
+      totalGames: this.games.size,
+      activeGames: this.gamesByStatus.get('active')?.size || 0,
+      waitingGames: this.gamesByStatus.get('waiting')?.size || 0,
+      finishedGames: this.gamesByStatus.get('finished')?.size || 0,
+      totalPlayers: this.playerGames.size,
       disconnectedPlayers: this.disconnectedPlayers.size
     };
   }

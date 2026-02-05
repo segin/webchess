@@ -240,6 +240,13 @@ describe('Undo Functionality Comprehensive Tests', () => {
 
             expect(game.status).toBe('active');
             expect(game.winner).toBeNull();
+
+            // Verify Index Consistency
+            const activeGames = gameManager.getGamesByStatus('active');
+            const finishedGames = gameManager.getGamesByStatus('finished');
+
+            expect(activeGames).toContain(gameId);
+            expect(finishedGames).not.toContain(gameId);
         });
     });
 });
