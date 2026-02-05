@@ -752,13 +752,20 @@ class GameStateManager {
       clone.enPassantTarget = { ...gameState.enPassantTarget };
     }
 
-    // 5. Deep copy Check Details (Complex structure, use JSON fallback if present)
+    // 5. Deep copy Check Details (Manual Optimized)
     if (gameState.checkDetails) {
-      try {
-        clone.checkDetails = JSON.parse(JSON.stringify(gameState.checkDetails));
-      } catch (e) {
-        clone.checkDetails = null;
-      }
+      const cd = gameState.checkDetails;
+      clone.checkDetails = {
+        kingPosition: cd.kingPosition ? { ...cd.kingPosition } : null,
+        attackingPieces: Array.isArray(cd.attackingPieces) ? cd.attackingPieces.map(ap => ({
+          piece: ap.piece ? { ...ap.piece } : null,
+          position: ap.position ? { ...ap.position } : null,
+          attackType: ap.attackType
+        })) : [],
+        attackingSquares: Array.isArray(cd.attackingSquares) ? cd.attackingSquares.map(sq => ({ ...sq })) : [],
+        isDoubleCheck: cd.isDoubleCheck,
+        checkType: cd.checkType
+      };
     }
 
     // 6. Metadata & Position History & Consistency (if present in gameState)
@@ -770,13 +777,22 @@ class GameStateManager {
       clone.positionHistory = [...gameState.positionHistory];
     }
 
+    // 7. State Consistency (Manual Optimized)
     if (gameState.stateConsistency) {
-      // Use JSON fallback for this potentially complex object
-      try {
-        clone.stateConsistency = JSON.parse(JSON.stringify(gameState.stateConsistency));
-      } catch (e) {
-        clone.stateConsistency = null;
-      }
+      const sc = gameState.stateConsistency;
+      clone.stateConsistency = {
+        success: sc.success,
+        errors: Array.isArray(sc.errors) ? [...sc.errors] : [],
+        warnings: Array.isArray(sc.warnings) ? [...sc.warnings] : [],
+        stateVersion: sc.stateVersion,
+        validationTimestamp: sc.validationTimestamp,
+        details: sc.details ? {
+          turnConsistency: sc.details.turnConsistency,
+          kingCount: sc.details.kingCount ? { ...sc.details.kingCount } : null,
+          moveHistoryLength: sc.details.moveHistoryLength,
+          positionHistoryLength: sc.details.positionHistoryLength
+        } : null
+      };
     }
 
     return clone;
