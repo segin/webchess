@@ -25,7 +25,6 @@ class GameManager {
     this.playerGames = new Map(); // Index: playerId -> Set<gameId>
     this.disconnectedPlayers = new Map();
     this.disconnectTimeouts = new Map(); // Track timeouts for cleanup
-    this.playerGames = new Map(); // Optimization: Track all games for each player
     this.playerGameCounts = new Map(); // Track game counts for rate limiting
     this.MAX_GAMES_PER_PLAYER = 5;
   }
@@ -766,28 +765,12 @@ class GameManager {
    * @returns {Object} Server statistics
    */
   getServerStatistics() {
-    const totalGames = this.games.size;
-    let activeGames = 0;
-    let waitingGames = 0;
-    let finishedGames = 0;
-    
-    const uniquePlayers = new Set();
-
-    for (const game of this.games.values()) {
-      if (game.status === 'active') activeGames++;
-      else if (game.status === 'waiting') waitingGames++;
-      else if (game.status === 'finished') finishedGames++;
-
-      if (game.host) uniquePlayers.add(game.host);
-      if (game.guest) uniquePlayers.add(game.guest);
-    }
-
     return {
-      totalGames,
-      activeGames,
-      waitingGames,
-      finishedGames,
-      totalPlayers: uniquePlayers.size,
+      totalGames: this.games.size,
+      activeGames: this.gamesByStatus.get('active')?.size || 0,
+      waitingGames: this.gamesByStatus.get('waiting')?.size || 0,
+      finishedGames: this.gamesByStatus.get('finished')?.size || 0,
+      totalPlayers: this.playerGames.size,
       disconnectedPlayers: this.disconnectedPlayers.size
     };
   }
