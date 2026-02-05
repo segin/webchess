@@ -226,7 +226,7 @@ describe('GameManager - Comprehensive Coverage', () => {
             // Empty message
             const emptyResult = gameManager.addChatMessage(gameId, hostId, '   ');
             expect(emptyResult.success).toBe(false);
-            expect(emptyResult.message).toBe('Empty message');
+            expect(emptyResult.message).toBe('Empty or invalid message');
 
             // Long message truncation
             const longMessage = 'a'.repeat(250);
