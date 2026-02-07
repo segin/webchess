@@ -185,7 +185,10 @@ class ChessGame {
 
       // Capture pre-move state for undo functionality
       const preMoveState = {
-        castlingRights: JSON.parse(JSON.stringify(this.castlingRights)),
+        castlingRights: {
+          white: { ...this.castlingRights.white },
+          black: { ...this.castlingRights.black }
+        },
         enPassantTarget: this.enPassantTarget ? { ...this.enPassantTarget } : null,
         halfMoveClock: this.halfMoveClock,
         fullMoveNumber: this.fullMoveNumber,
