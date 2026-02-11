@@ -12,69 +12,79 @@ class ChessAI {
       queen: 900,
       king: 10000
     };
-    
-    this.positionValues = {
-      pawn: [
-        [0,  0,  0,  0,  0,  0,  0,  0],
-        [50, 50, 50, 50, 50, 50, 50, 50],
-        [10, 10, 20, 30, 30, 20, 10, 10],
-        [5,  5, 10, 25, 25, 10,  5,  5],
-        [0,  0,  0, 20, 20,  0,  0,  0],
-        [5, -5,-10,  0,  0,-10, -5,  5],
-        [5, 10, 10,-20,-20, 10, 10,  5],
-        [0,  0,  0,  0,  0,  0,  0,  0]
-      ],
-      knight: [
-        [-50,-40,-30,-30,-30,-30,-40,-50],
-        [-40,-20,  0,  0,  0,  0,-20,-40],
-        [-30,  0, 10, 15, 15, 10,  0,-30],
-        [-30,  5, 15, 20, 20, 15,  5,-30],
-        [-30,  0, 15, 20, 20, 15,  0,-30],
-        [-30,  5, 10, 15, 15, 10,  5,-30],
-        [-40,-20,  0,  5,  5,  0,-20,-40],
-        [-50,-40,-30,-30,-30,-30,-40,-50]
-      ],
-      bishop: [
-        [-20,-10,-10,-10,-10,-10,-10,-20],
-        [-10,  0,  0,  0,  0,  0,  0,-10],
-        [-10,  0,  5, 10, 10,  5,  0,-10],
-        [-10,  5,  5, 10, 10,  5,  5,-10],
-        [-10,  0, 10, 10, 10, 10,  0,-10],
-        [-10, 10, 10, 10, 10, 10, 10,-10],
-        [-10,  5,  0,  0,  0,  0,  5,-10],
-        [-20,-10,-10,-10,-10,-10,-10,-20]
-      ],
-      rook: [
-        [0,  0,  0,  0,  0,  0,  0,  0],
-        [5, 10, 10, 10, 10, 10, 10,  5],
-        [-5,  0,  0,  0,  0,  0,  0, -5],
-        [-5,  0,  0,  0,  0,  0,  0, -5],
-        [-5,  0,  0,  0,  0,  0,  0, -5],
-        [-5,  0,  0,  0,  0,  0,  0, -5],
-        [-5,  0,  0,  0,  0,  0,  0, -5],
-        [0,  0,  0,  5,  5,  0,  0,  0]
-      ],
-      queen: [
-        [-20,-10,-10, -5, -5,-10,-10,-20],
-        [-10,  0,  0,  0,  0,  0,  0,-10],
-        [-10,  0,  5,  5,  5,  5,  0,-10],
-        [-5,  0,  5,  5,  5,  5,  0, -5],
-        [0,  0,  5,  5,  5,  5,  0, -5],
-        [-10,  5,  5,  5,  5,  5,  0,-10],
-        [-10,  0,  5,  0,  0,  0,  0,-10],
-        [-20,-10,-10, -5, -5,-10,-10,-20]
-      ],
-      king: [
-        [-30,-40,-40,-50,-50,-40,-40,-30],
-        [-30,-40,-40,-50,-50,-40,-40,-30],
-        [-30,-40,-40,-50,-50,-40,-40,-30],
-        [-30,-40,-40,-50,-50,-40,-40,-30],
-        [-20,-30,-30,-40,-40,-30,-30,-20],
-        [-10,-20,-20,-20,-20,-20,-20,-10],
-        [20, 20,  0,  0,  0,  0, 20, 20],
-        [20, 30, 10,  0,  0, 10, 30, 20]
-      ]
+  }
+  
+  initZobrist() {
+    const zobrist = {
+      pieces: {}, // [pieceType][color][square]
+      castling: {}, // [rights]
+      enPassant: {}, // [file]
+      turn: 0 // Random number for black turn
     };
+    
+    const pieces = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
+    const colors = ['white', 'black'];
+    
+    // Initialize piece keys
+    pieces.forEach(piece => {
+      zobrist.pieces[piece] = { white: [], black: [] };
+      for (let i = 0; i < 64; i++) {
+        zobrist.pieces[piece].white[i] = this.random32();
+        zobrist.pieces[piece].black[i] = this.random32();
+      }
+    });
+
+    // Castling keys (16 possibilities for 4 bits)
+    for (let i = 0; i < 16; i++) {
+        zobrist.castling[i] = this.random32();
+    }
+    
+    // En Passant keys (8 files)
+    for (let i = 0; i < 8; i++) {
+        zobrist.enPassant[i] = this.random32();
+    }
+    
+    zobrist.turn = this.random32();
+    return zobrist;
+  }
+  
+  random32() {
+    return Math.floor(Math.random() * 0xFFFFFFFF);
+  }
+  
+  computeHash(chessGame) {
+    let hash = 0;
+    
+    // Pieces
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = chessGame.board[row][col];
+        if (piece) {
+          const squareIndex = row * 8 + col;
+          hash ^= this.zobristTable.pieces[piece.type][piece.color][squareIndex];
+        }
+      }
+    }
+    
+    // Turn
+    if (chessGame.currentTurn === 'black') {
+      hash ^= this.zobristTable.turn;
+    }
+    
+    // Castling
+    let castlingRights = 0;
+    if (chessGame.castlingRights.white.kingSide) castlingRights |= 1;
+    if (chessGame.castlingRights.white.queenSide) castlingRights |= 2;
+    if (chessGame.castlingRights.black.kingSide) castlingRights |= 4;
+    if (chessGame.castlingRights.black.queenSide) castlingRights |= 8;
+    hash ^= this.zobristTable.castling[castlingRights];
+    
+    // En Passant
+    if (chessGame.enPassantTarget) {
+      hash ^= this.zobristTable.enPassant[chessGame.enPassantTarget.col];
+    }
+    
+    return hash;
   }
   
   getMaxDepth(difficulty) {
@@ -101,84 +111,176 @@ class ChessAI {
       return moves[Math.floor(Math.random() * moves.length)];
     }
     
+    // Initialize Killer Moves table
+    this.killerMoves = [];
+    for(let i=0; i < this.maxDepth + 1; i++) this.killerMoves.push([null, null]);
+
     let bestMove = null;
-    let bestScore = color === 'white' ? -Infinity : Infinity;
-    
-    // Sort moves at root for better alpha-beta pruning efficiency
-    // We can use a shallower search depth for ordering if needed, but here we just use static score
-    const orderedMoves = this.orderMoves(chessGame, moves);
-    
-    // Root alpha-beta (we still need to track global best, but we can pass window)
-    // Note: Since we are at root, we know who is maximizing/minimizing based on color
     let alpha = -Infinity;
     let beta = Infinity;
+    
+    // Iterative Deepening
+    // Start at depth 1 and increase up to maxDepth
+    // This allows better move ordering at each new depth using results from previous
+    const startTime = Date.now();
+    const timeLimit = 5000; // 5 seconds soft limit for "Expert" (adjust as needed)
+    
+    // For 'expert', use iterative deepening. For others, just go straight to depth
+    // Or we can use ID for all, but simple AI doesn't need it.
+    // Let's use ID for Hard and Expert.
+    const useID = (this.difficulty === 'expert' || this.difficulty === 'hard');
+    const startDepth = useID ? 1 : this.maxDepth;
+    
+    for (let currentDepth = startDepth; currentDepth <= this.maxDepth; currentDepth++) {
+        
+        // Reset Alpha/Beta for new iteration? 
+        // Aspiration windows could be used here, but let's keep it simple: -Inf to +Inf
+        // But we want to preserve the best move order.
+        
+        let iterationBestMove = null;
+        let iterationBestScore = color === 'white' ? -Infinity : Infinity;
+        alpha = -Infinity;
+        beta = Infinity;
+        
+        // Root move ordering using TT (which persists across iterations)
+        const rootMoves = this.orderMoves(chessGame, moves, bestMove, currentDepth);
 
-    for (const move of orderedMoves) {
-      // Use !isMaximizing because we are making a move, so next turn is opponent
-      const score = this.minimax(chessGame, move, this.maxDepth - 1, !this.isMaximizing(color), alpha, beta);
-      
-      if (color === 'white') {
-        if (score > bestScore) {
-          bestScore = score;
-          bestMove = move;
+        for (const move of rootMoves) {
+            // Check time (only for Expert/Hard)
+            if (useID && currentDepth > 1 && (Date.now() - startTime > timeLimit)) {
+                break; 
+            }
+
+            const score = this.minimax(chessGame, move, currentDepth - 1, !this.isMaximizing(color), alpha, beta);
+            
+            if (color === 'white') {
+                if (score > iterationBestScore) {
+                    iterationBestScore = score;
+                    iterationBestMove = move;
+                }
+                alpha = Math.max(alpha, score);
+            } else {
+                if (score < iterationBestScore) {
+                    iterationBestScore = score;
+                    iterationBestMove = move;
+                }
+                beta = Math.min(beta, score);
+            }
         }
-        alpha = Math.max(alpha, score);
-      } else {
-        if (score < bestScore) {
-          bestScore = score;
-          bestMove = move;
+        
+        // If we completed the iteration (didn't timeout loop break handled inside minimax/loops?),
+        // update the global best move.
+        // Simple timeout check above only breaks the root loop.
+        if (iterationBestMove) {
+            bestMove = iterationBestMove;
         }
-        beta = Math.min(beta, score);
-      }
+        
+        if (useID && (Date.now() - startTime > timeLimit)) {
+             break; // Stop deepening
+        }
     }
     
     return bestMove;
   }
   
   minimax(chessGame, move, depth, isMaximizing, alpha, beta) {
-    // Safety check: prevent infinite recursion
-    if (depth < 0) {
-      return this.evaluatePosition(chessGame);
-    }
+    if (depth < 0) return this.evaluatePosition(chessGame);
     
     const tempGame = this.cloneGame(chessGame);
     const result = tempGame.makeMove(move, null, null, { silent: true });
     
     if (!result.success) return isMaximizing ? -Infinity : Infinity;
+
+    const hash = this.computeHash(tempGame);
+    const ttEntry = this.transpositionTable.get(hash);
+    
+    if (ttEntry && ttEntry.depth >= depth) {
+      if (ttEntry.flag === 'exact') return ttEntry.score;
+      if (ttEntry.flag === 'lowerbound') alpha = Math.max(alpha, ttEntry.score);
+      if (ttEntry.flag === 'upperbound') beta = Math.min(beta, ttEntry.score);
+      if (alpha >= beta) return ttEntry.score;
+    }
     
     if (depth === 0 || tempGame.gameStatus !== 'active') {
-      if (tempGame.gameStatus !== 'active') {
-        return this.evaluatePosition(tempGame);
-      }
+      if (tempGame.gameStatus !== 'active') return this.evaluatePosition(tempGame);
       // Use Quiescence Search at leaf nodes instead of raw evaluation
       return this.quiescence(tempGame, alpha, beta, isMaximizing, chessGame.currentTurn);
     }
     
     const moves = this.getAllValidMoves(tempGame, tempGame.currentTurn);
-    if (moves.length === 0) {
-      return this.evaluatePosition(tempGame);
-    }
-    const orderedMoves = this.orderMoves(tempGame, moves);
+    if (moves.length === 0) return this.evaluatePosition(tempGame);
+    
+    // Order moves: TT move first, then captures/killers
+    const bestTTMove = (ttEntry && ttEntry.bestMove) ? ttEntry.bestMove : null;
+    const orderedMoves = this.orderMoves(tempGame, moves, bestTTMove, depth);
+    
+    let bestMove = null;
+    let score;
+    let originalAlpha = alpha;
     
     if (isMaximizing) {
       let maxScore = -Infinity;
       for (const nextMove of orderedMoves) {
-        const score = this.minimax(tempGame, nextMove, depth - 1, false, alpha, beta);
-        maxScore = Math.max(maxScore, score);
+        score = this.minimax(tempGame, nextMove, depth - 1, false, alpha, beta);
+        
+        if (score > maxScore) {
+            maxScore = score;
+            bestMove = nextMove;
+        }
+        
         alpha = Math.max(alpha, score);
-        if (beta <= alpha) break;
+        if (beta <= alpha) {
+            this.storeKillerMove(nextMove, depth);
+            break;
+        }
       }
+      
+      // Store in Transposition Table
+      const flag = maxScore <= originalAlpha ? 'upperbound' : (maxScore >= beta ? 'lowerbound' : 'exact');
+      this.transpositionTable.set(hash, {
+          depth: depth,
+          score: maxScore,
+          flag: flag,
+          bestMove: bestMove
+      });
+      
       return maxScore;
     } else {
       let minScore = Infinity;
       for (const nextMove of orderedMoves) {
-        const score = this.minimax(tempGame, nextMove, depth - 1, true, alpha, beta);
-        minScore = Math.min(minScore, score);
+        score = this.minimax(tempGame, nextMove, depth - 1, true, alpha, beta);
+        
+        if (score < minScore) {
+            minScore = score;
+            bestMove = nextMove;
+        }
+
         beta = Math.min(beta, score);
-        if (beta <= alpha) break;
+        if (beta <= alpha) {
+            this.storeKillerMove(nextMove, depth);
+            break;
+        }
       }
+      
+      // Store in Transposition Table
+      const flag = minScore <= originalAlpha ? 'upperbound' : (minScore >= beta ? 'lowerbound' : 'exact');
+      this.transpositionTable.set(hash, {
+          depth: depth,
+          score: minScore,
+          flag: flag,
+          bestMove: bestMove
+      });
+
       return minScore;
     }
+  }
+
+  storeKillerMove(move, depth) {
+      if (!this.killerMoves[depth]) this.killerMoves[depth] = [null, null];
+      if (!this.isSameMove(move, this.killerMoves[depth][0])) {
+          this.killerMoves[depth][1] = this.killerMoves[depth][0];
+          this.killerMoves[depth][0] = move;
+      }
   }
 
   // Quiescence Search to avoid horizon effect on captures
@@ -434,35 +536,57 @@ class ChessAI {
     return moves;
   }
 
-  orderMoves(chessGame, moves) {
+  orderMoves(chessGame, moves, ttMove, depth) {
     return moves
       .map(move => ({
         move,
-        score: this.scoreMove(chessGame, move)
+        score: this.scoreMove(chessGame, move, ttMove, depth)
       }))
       .sort((a, b) => b.score - a.score)
       .map(item => item.move);
   }
 
-  scoreMove(chessGame, move) {
+  scoreMove(chessGame, move, ttMove, depth) {
+    // 1. PV Move (Best move from previous search/TT)
+    if (ttMove && 
+        move.from.row === ttMove.from.row && 
+        move.from.col === ttMove.from.col &&
+        move.to.row === ttMove.to.row &&
+        move.to.col === ttMove.to.col) {
+        return 20000;
+    }
+
     let score = 0;
     const fromPiece = chessGame.board[move.from.row][move.from.col];
     const toPiece = chessGame.board[move.to.row][move.to.col];
 
-    // Priority 1: Captures (MVV-LVA)
+    // 2. Captures (MVV-LVA)
     if (toPiece) {
-      score = 10 * this.pieceValues[toPiece.type] - this.pieceValues[fromPiece.type];
+      score = 10 * this.pieceValues[toPiece.type] - this.pieceValues[fromPiece.type] + 1000;
     }
 
-    // Priority 2: Promotion
+    // 3. Killer Moves
+    if (this.killerMoves && this.killerMoves[depth]) {
+        if (this.isSameMove(move, this.killerMoves[depth][0])) score += 900;
+        else if (this.isSameMove(move, this.killerMoves[depth][1])) score += 800;
+    }
+
+    // 4. Promotion
     if (move.promotion) {
-      score += this.pieceValues[move.promotion];
+      score += this.pieceValues[move.promotion] + 500;
     }
 
-    // Priority 3: Check
-    // (Optional: this is expensive to check here, but captures are the most important)
+    // 5. History Heuristic (not implemented yet, but would go here)
 
     return score;
+  }
+  
+  isSameMove(move1, move2) {
+      if (!move1 || !move2) return false;
+      return move1.from.row === move2.from.row && 
+             move1.from.col === move2.from.col &&
+             move1.to.row === move2.to.row && 
+             move1.to.col === move2.to.col;
   }
   
   cloneGame(chessGame) {
