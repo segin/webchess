@@ -1,5 +1,16 @@
 # CLAUDE.md
 
+
+## Global Directives
+
+> [!IMPORTANT]
+> **Git Hygiene Is Critical.**
+> 1.  **Commit Often**: Do not accumulate massive changes. Commit logically related chunks.
+> 2.  **Descriptive Messages**: Use conventional commits (e.g., `feat:`, `fix:`, `docs:`, `refactor:`).
+> 3.  **Push Immediately**: After a successful set of commits, `git push` to the remote.
+> 4.  **One Test Per Commit** (when TDD): Implement test -> Verify -> Commit -> Push.
+> 5.  **Verify Before Commit**: Do not commit broken code. Build and test first.
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
