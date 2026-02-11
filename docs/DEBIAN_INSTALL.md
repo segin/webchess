@@ -26,13 +26,18 @@ fi
 ### One-Command Installation
 
 ```bash
-# Clone, install, and start WebChess as a system service
+# Clone the repository
 git clone https://github.com/segin/webchess.git
 cd webchess
+
+# Option 1: Native Installation (Systemd Service)
 sudo ./deployment/install.sh
+
+# Option 2: Docker Installation (Containerized)
+sudo ./deployment/install.sh --docker
 ```
 
-That's it! WebChess is now running as a systemd service.
+That's it! WebChess is now running.
 
 ### What the installer does:
 
@@ -247,24 +252,11 @@ sudo systemctl status webchess
 ### Uninstalling
 
 ```bash
-# Stop and disable service
-sudo systemctl stop webchess
-sudo systemctl disable webchess
+# Option 1: Native Uninstallation
+sudo ./deployment/uninstall.sh
 
-# Remove service file
-sudo rm /etc/systemd/system/webchess.service
-sudo systemctl daemon-reload
-
-# Remove application directory
-sudo rm -rf /opt/webchess
-
-# Remove user (optional)
-sudo userdel webchess
-
-# Remove nginx configuration (if installed)
-sudo rm -f /etc/nginx/sites-enabled/webchess
-sudo rm -f /etc/nginx/sites-available/webchess
-sudo systemctl restart nginx
+# Option 2: Docker Uninstallation
+sudo ./deployment/uninstall.sh --docker
 ```
 
 ## System Requirements

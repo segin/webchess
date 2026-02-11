@@ -22,6 +22,37 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
+# Parse arguments
+USE_DOCKER=false
+for arg in "$@"; do
+    if [[ "$arg" == "--docker" ]]; then
+        USE_DOCKER=true
+    fi
+done
+
+if [[ "$USE_DOCKER" == true ]]; then
+    print_step "Installing WebChess using Docker..."
+    
+    # Check if docker and docker-compose/docker compose are available
+    if command -v docker-compose &>/dev/null; then
+        DOCKER_COMPOSE_CMD="docker-compose"
+    elif docker compose version &>/dev/null; then
+        DOCKER_COMPOSE_CMD="docker compose"
+    else
+        print_error "docker-compose or 'docker compose' plugin not found."
+        print_info "Please install Docker and Docker-Compose before running with --docker."
+        exit 1
+    fi
+
+    print_step "Building and starting Docker containers..."
+    $DOCKER_COMPOSE_CMD up -d --build
+    
+    print_success "WebChess is now running in Docker!"
+    print_info "Access it at: http://localhost:3000"
+    print_info "Use '$DOCKER_COMPOSE_CMD logs -f' to view logs."
+    exit 0
+fi
+
 # Function to backup configuration files
 backup_config() {
     if [[ -d "$WEBCHESS_HOME" ]]; then

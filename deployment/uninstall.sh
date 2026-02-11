@@ -21,6 +21,34 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
+# Parse arguments
+USE_DOCKER=false
+for arg in "$@"; do
+    if [[ "$arg" == "--docker" ]]; then
+        USE_DOCKER=true
+    fi
+done
+
+if [[ "$USE_DOCKER" == true ]]; then
+    print_step "Uninstalling WebChess from Docker..."
+    
+    # Check for docker-compose
+    if command -v docker-compose &>/dev/null; then
+        DOCKER_COMPOSE_CMD="docker-compose"
+    elif docker compose version &>/dev/null; then
+        DOCKER_COMPOSE_CMD="docker compose"
+    else
+        print_error "docker-compose or 'docker compose' plugin not found."
+        exit 1
+    fi
+
+    print_step "Stopping and removing Docker containers..."
+    $DOCKER_COMPOSE_CMD down
+    
+    print_success "WebChess Docker containers removed successfully."
+    exit 0
+fi
+
 # Confirmation prompt
 echo "${BOLD}${RED}⚠ Warning: This will completely remove WebChess and all its files!${RESET}"
 echo ""
