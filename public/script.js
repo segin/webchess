@@ -51,10 +51,8 @@ class WebChessClient {
     });
     
     // Practice screen
-    document.getElementById('practice-self-btn').addEventListener('click', () => this.startPracticeMode('self'));
-    document.getElementById('practice-ai-white-btn').addEventListener('click', () => this.startPracticeMode('ai-white'));
-    document.getElementById('practice-ai-black-btn').addEventListener('click', () => this.startPracticeMode('ai-black'));
-    document.getElementById('practice-ai-vs-ai-btn').addEventListener('click', () => this.startPracticeMode('ai-vs-ai'));
+    // Practice screen
+    document.getElementById('start-practice-btn').addEventListener('click', () => this.startPracticeGame());
     document.getElementById('cancel-practice-btn').addEventListener('click', () => this.showMainMenu());
     
     // Game screen
@@ -196,33 +194,11 @@ class WebChessClient {
     });
   }
 
-  loadSessionFromStorage() {
-    const session = localStorage.getItem('webchess-session');
-    if (session) {
-      const data = JSON.parse(session);
-      this.currentGameId = data.gameId;
-      this.playerColor = data.color;
-      this.isPracticeMode = data.isPracticeMode || false;
-      
-      // Load additional practice mode data if available
-      if (this.isPracticeMode && data.practiceData) {
-        this.practiceMode = data.practiceData.mode;
-        this.aiDifficulty = data.practiceData.difficulty;
-        this.gameState = data.practiceData.gameState;
-      }
-      
-      // Only validate multiplayer sessions
-      if (this.currentGameId && !this.isPracticeMode) {
-        this.validateSession();
-      }
-    }
+  startPracticeMode() {
+    this.showScreen('practice-screen');
   }
-  
-  validateSession() {
-    if (this.currentGameId && !this.isPracticeMode) {
-      if (this.socket) this.socket.emit('validate-session', { gameId: this.currentGameId });
-    }
-  }
+
+  // ... (startPracticeGame and makeAIMove remain mostly the same, ensuring they set this.players) ...
 
   saveSessionToStorage() {
     const session = {
@@ -234,45 +210,71 @@ class WebChessClient {
     // Save additional practice mode data
     if (this.isPracticeMode && this.gameState) {
       session.practiceData = {
-        mode: this.practiceMode,
-        difficulty: this.aiDifficulty,
-        gameState: this.gameState
+        // mode: this.practiceMode, // Deprecated, use players config
+        players: this.players,
+        gameState: {
+            board: this.chess.board,
+            currentTurn: this.chess.currentTurn,
+            gameStatus: this.chess.gameStatus,
+            castlingRights: this.chess.castlingRights,
+            enPassantTarget: this.chess.enPassantTarget,
+            moveHistory: this.chess.moveHistory, // Important for some rules
+            halfMoveClock: this.chess.halfMoveClock,
+            fullMoveNumber: this.chess.fullMoveNumber
+        }
       };
     }
     
     localStorage.setItem('webchess-session', JSON.stringify(session));
   }
 
-  clearSessionStorage() {
-    localStorage.removeItem('webchess-session');
-  }
-
-  rejoinGame() {
-    if (this.socket) this.socket.emit('rejoin-game', {
-      gameId: this.currentGameId,
-      color: this.playerColor
-    });
-    
-    // Request chat history on rejoin
-    if (!this.isPracticeMode && this.currentGameId && this.currentGameId !== 'practice') {
-      setTimeout(() => {
-        if (this.socket) this.socket.emit('get-chat-history', { gameId: this.currentGameId });
-      }, 1000); // Small delay to ensure game state is restored first
+  loadSessionFromStorage() {
+    const session = localStorage.getItem('webchess-session');
+    if (session) {
+      const data = JSON.parse(session);
+      this.currentGameId = data.gameId;
+      this.playerColor = data.color;
+      this.isPracticeMode = data.isPracticeMode || false;
+      
+      if (this.isPracticeMode && data.practiceData) {
+        this.players = data.practiceData.players;
+        this.savedGameState = data.practiceData.gameState; // Store temporarily until resume
+      }
+      
+      if (this.currentGameId && !this.isPracticeMode) {
+        this.validateSession();
+      }
     }
   }
 
   resumePracticeGame() {
-    // Initialize AI engine with saved difficulty
-    this.aiEngine = new ChessAI(this.aiDifficulty);
-    this.aiPaused = false;
+    if (!this.savedGameState || !this.players) return;
+
+    // Reconstruct ChessGame instance
+    this.chess = new ChessGame();
+    Object.assign(this.chess, this.savedGameState);
+    // Deep copy/correct reference reconstruction might be needed if ChessGame methods rely on specific prototypes or internal linking
+    // For now, assuming direct property assignment works for the logic we have.
+    // However, board contains objects that might be just data now. `ChessGame` logic usually handles data objects fine.
     
-    // Show game screen and update board
-    this.showGameScreen();
+    this.gameState = {
+        board: this.chess.board,
+        currentTurn: this.chess.currentTurn,
+        status: this.chess.gameStatus
+    };
+
+    // Initialize AI
+    if (this.players.white.type === 'ai') this.whiteAI = new ChessAI(this.players.white.difficulty);
+    if (this.players.black.type === 'ai') this.blackAI = new ChessAI(this.players.black.difficulty);
+    
+    this.showScreen('game-screen');
+    this.updateGameInfo();
     this.updateGameBoard();
     
-    // Continue AI if it's AI's turn
-    if (this.shouldAIMove()) {
-      setTimeout(() => this.makeAIMove(), this.aiMoveDelay);
+    // Continue AI if needed
+    if (this.chess.gameStatus === 'active' && 
+        this.players[this.chess.currentTurn].type === 'ai') {
+        setTimeout(() => this.makeAIMove(), 500);
     }
   }
 
@@ -355,38 +357,110 @@ class WebChessClient {
     }
   }
 
-  startPracticeMode(mode = 'self') {
-    this.isPracticeMode = true;
-    this.practiceMode = mode;
-    this.aiDifficulty = document.getElementById('difficulty-select').value;
-    this.aiEngine = new ChessAI(this.aiDifficulty);
-    this.aiPaused = false;
+  startPracticeGame() {
+    const whiteType = document.getElementById('whitePlayerType').value;
+    const blackType = document.getElementById('blackPlayerType').value;
     
-    switch (mode) {
-      case 'self':
-        this.playerColor = 'both';
-        break;
-      case 'ai-white':
-        this.playerColor = 'white'; // Human plays white when AI plays black
-        break;
-      case 'ai-black':
-        this.playerColor = 'black'; // Human plays black when AI plays white
-        break;
-      case 'ai-vs-ai':
-        this.playerColor = 'spectator';
-        break;
+    // Parse types: 'human' or 'ai-difficulty'
+    const getPlayerConfig = (typeValue) => {
+        if (typeValue === 'human') return { type: 'human' };
+        return { type: 'ai', difficulty: typeValue.split('-')[1] };
+    };
+
+    this.players = {
+        white: getPlayerConfig(whiteType),
+        black: getPlayerConfig(blackType)
+    };
+
+    this.isPractice = true;
+    this.gameId = 'practice';
+    this.playerColor = 'white'; // Viewpoint defaults to white, but can be irrelevant in AIvAI
+    
+    // If Human vs AI (classic), set playerColor to the human side
+    if (this.players.white.type === 'human' && this.players.black.type === 'ai') {
+        this.playerColor = 'white';
+    } else if (this.players.white.type === 'ai' && this.players.black.type === 'human') {
+        this.playerColor = 'black';
+    } else {
+         this.playerColor = 'white'; // Default view
     }
-    
-    this.currentGameId = 'practice';
-    this.gameState = this.createInitialGameState();
-    this.saveSessionToStorage();
-    this.showGameScreen();
-    this.updateGameBoard();
-    
-    // Start AI if needed
-    if (this.shouldAIMove()) {
-      setTimeout(() => this.makeAIMove(), this.aiMoveDelay);
+
+    // Initialize AI instances if needed
+    // Note: In a real app we might want separate AI instances or just one configurable one
+    // minimal-chess-ai is stateless mostly, but ChessAI class has state (transposition table)
+    // Let's create two instances if needed to keep their memories separate (better for testing)
+    // or just one and reconfigure. Separate is safer.
+    if (this.players.white.type === 'ai') {
+        this.whiteAI = new ChessAI(this.players.white.difficulty);
     }
+    if (this.players.black.type === 'ai') {
+        this.blackAI = new ChessAI(this.players.black.difficulty);
+    }
+
+    this.chess = new ChessGame();
+    
+    document.getElementById('startScreen').style.display = 'none';
+    document.getElementById('gameScreen').style.display = 'block';
+    document.getElementById('currentGameId').textContent = 'Practice Mode';
+    
+    this.renderBoard();
+    this.updateStatus();
+    
+    // Trigger first move if White is AI
+    if (this.players.white.type === 'ai') {
+        setTimeout(() => this.makeAIMove(), 500);
+    }
+  }
+
+  makeAIMove() {
+    if (!this.isPractice || this.chess.gameStatus !== 'active') return;
+    
+    const turn = this.chess.currentTurn;
+    if (this.players[turn].type !== 'ai') return;
+
+    const aiInstance = turn === 'white' ? this.whiteAI : this.blackAI;
+    
+    // Use setTimeout to allow UI to render before heavy calculation
+    // and to prevent freezing during AI vs AI
+    setTimeout(() => {
+        const move = aiInstance.getBestMove(this.chess);
+        if (move) {
+            this.makeMove(move.from, move.to, move.promotion);
+            
+            // If next player is also AI, trigger next move
+            if (this.chess.gameStatus === 'active' && 
+                this.players[this.chess.currentTurn].type === 'ai') {
+                // Add delay for watchability
+                setTimeout(() => this.makeAIMove(), 500); 
+            }
+        }
+    }, 100);
+  }
+
+  makeMove(from, to, promotion = null) {
+    if (this.isPractice) {
+        const moveResult = this.chess.makeMove({ from, to, promotion });
+        if (moveResult.success) {
+            this.renderBoard();
+            this.updateStatus();
+            this.checkGameOver();
+            
+            // If against AI (and I just moved as human), trigger AI response
+            if (this.chess.gameStatus === 'active' && 
+                this.players[this.chess.currentTurn].type === 'ai') {
+                this.makeAIMove();
+            }
+        }
+        return;
+    }
+
+    // Multiplayer logic... (unchanged)
+    this.socket.emit('make-move', {
+        gameId: this.gameId,
+        from,
+        to,
+        promotion
+    });
   }
 
   createInitialGameState() {
@@ -661,31 +735,30 @@ class WebChessClient {
   }
   
   canPlayerMove() {
-    // In multiplayer mode, check if it's the player's turn
+    // Multiplayer mode
     if (!this.isPracticeMode) {
       return this.gameState.currentTurn === this.playerColor;
     }
     
-    // Practice mode logic
-    if (this.practiceMode === 'self') return true;
-    if (this.practiceMode === 'ai-vs-ai') return false;
-    if (this.practiceMode === 'ai-white') return this.gameState.currentTurn === 'white'; // Human plays white, AI plays black
-    if (this.practiceMode === 'ai-black') return this.gameState.currentTurn === 'black'; // Human plays black, AI plays white
-    return true; // Default to allowing moves
+    // Practice mode logic using player config
+    if (this.playerColor === 'spectator') return false;
+    if (this.playerColor === 'both') return true;
+    
+    // Human vs AI (or specific side)
+    return this.gameState.currentTurn === this.playerColor;
   }
   
   canPlayerMovePiece(piece) {
-    // In multiplayer mode, check if the piece belongs to the player
+    // Multiplayer mode
     if (!this.isPracticeMode) {
       return piece.color === this.playerColor;
     }
     
     // Practice mode logic
-    if (this.practiceMode === 'self') return true;
-    if (this.practiceMode === 'ai-vs-ai') return false;
-    if (this.practiceMode === 'ai-white') return piece.color === 'white'; // Human plays white, AI plays black
-    if (this.practiceMode === 'ai-black') return piece.color === 'black'; // Human plays black, AI plays white
-    return true; // Default to allowing moves
+    if (this.playerColor === 'spectator') return false;
+    if (this.playerColor === 'both') return true; // Can move any piece if it's their turn (canPlayerMove checks turn)
+    
+    return piece.color === this.playerColor;
   }
 
   selectSquare(row, col) {

@@ -80,36 +80,36 @@
 
             <!-- Practice Mode Selection Screen -->
             <div id="practice-screen" class="screen hidden">
-                <h2>Practice Mode</h2>
-                <div class="practice-options">
-                    <div class="practice-option" role="group" aria-labelledby="practice-self-btn">
-                        <button id="practice-self-btn" class="btn btn-primary" aria-describedby="practice-self-desc">Play Both Sides</button>
-                        <p id="practice-self-desc">Control both white and black pieces</p>
+                <h2>Practice Mode Setup</h2>
+                
+                <div class="practice-config">
+                    <div class="form-group">
+                        <label for="whitePlayerType">White Player:</label>
+                        <select id="whitePlayerType" class="form-control">
+                            <option value="human">Human</option>
+                            <option value="ai-easy">AI (Easy)</option>
+                            <option value="ai-medium">AI (Medium)</option>
+                            <option value="ai-hard">AI (Hard)</option>
+                            <option value="ai-expert">AI (Expert)</option>
+                        </select>
                     </div>
-                    <div class="practice-option" role="group" aria-labelledby="practice-ai-white-btn">
-                        <button id="practice-ai-white-btn" class="btn btn-primary" aria-describedby="practice-white-desc">Play as White vs AI</button>
-                        <p id="practice-white-desc">You play white, AI plays black</p>
-                    </div>
-                    <div class="practice-option" role="group" aria-labelledby="practice-ai-black-btn">
-                        <button id="practice-ai-black-btn" class="btn btn-primary" aria-describedby="practice-black-desc">Play as Black vs AI</button>
-                        <p id="practice-black-desc">You play black, AI plays white</p>
-                    </div>
-                    <div class="practice-option" role="group" aria-labelledby="practice-ai-vs-ai-btn">
-                        <button id="practice-ai-vs-ai-btn" class="btn btn-secondary" aria-describedby="practice-ai-desc">Watch AI vs AI</button>
-                        <p id="practice-ai-desc">Watch two AI players compete</p>
+                    
+                    <div class="form-group">
+                        <label for="blackPlayerType">Black Player:</label>
+                        <select id="blackPlayerType" class="form-control">
+                            <option value="human">Human</option>
+                            <option value="ai-easy" selected>AI (Easy)</option>
+                            <option value="ai-medium">AI (Medium)</option>
+                            <option value="ai-hard">AI (Hard)</option>
+                            <option value="ai-expert">AI (Expert)</option>
+                        </select>
                     </div>
                 </div>
-                <div class="ai-difficulty" role="group" aria-labelledby="difficulty-label">
-                    <label id="difficulty-label" for="difficulty-select">AI Difficulty:</label>
-                    <select id="difficulty-select" aria-label="Select AI difficulty level" aria-describedby="difficulty-help">
-                        <option value="easy">Easy</option>
-                        <option value="medium" selected>Medium</option>
-                        <option value="hard">Hard</option>
-                        <option value="expert">Expert (Slow)</option>
-                    </select>
-                    <div id="difficulty-help" class="sr-only">Choose the AI opponent difficulty level for practice games</div>
+
+                <div class="practice-actions">
+                    <button id="start-practice-btn" class="btn btn-success btn-large">Start Game</button>
+                    <button id="cancel-practice-btn" class="btn btn-secondary">Back to Menu</button>
                 </div>
-                <button id="cancel-practice-btn" class="btn btn-secondary" aria-label="Return to main menu">Back to Menu</button>
             </div>
 
             <!-- Game Board Screen -->
