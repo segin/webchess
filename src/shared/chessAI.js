@@ -12,6 +12,75 @@ class ChessAI {
       queen: 900,
       king: 10000
     };
+
+    // Initialize required tables
+    this.zobristTable = this.initZobrist();
+    this.transpositionTable = new Map();
+    this.historyTable = Array(64).fill(0).map(() => Array(64).fill(0));
+
+    // Piece-Square Tables (White perspective, flipped for black)
+    this.positionValues = {
+      pawn: [
+        [0,  0,  0,  0,  0,  0,  0,  0],
+        [50, 50, 50, 50, 50, 50, 50, 50],
+        [10, 10, 20, 30, 30, 20, 10, 10],
+        [5,  5, 10, 25, 25, 10,  5,  5],
+        [0,  0,  0, 20, 20,  0,  0,  0],
+        [5, -5,-10,  0,  0,-10, -5,  5],
+        [5, 10, 10,-20,-20, 10, 10,  5],
+        [0,  0,  0,  0,  0,  0,  0,  0]
+      ],
+      knight: [
+        [-50,-40,-30,-30,-30,-30,-40,-50],
+        [-40,-20,  0,  0,  0,  0,-20,-40],
+        [-30,  0, 10, 15, 15, 10,  0,-30],
+        [-30,  5, 15, 20, 20, 15,  5,-30],
+        [-30,  0, 15, 20, 20, 15,  0,-30],
+        [-30,  5, 10, 15, 15, 10,  5,-30],
+        [-40,-20,  0,  5,  5,  0,-20,-40],
+        [-50,-40,-30,-30,-30,-30,-40,-50]
+      ],
+      bishop: [
+        [-20,-10,-10,-10,-10,-10,-10,-20],
+        [-10,  0,  0,  0,  0,  0,  0,-10],
+        [-10,  0,  5, 10, 10,  5,  0,-10],
+        [-10,  5,  5, 10, 10,  5,  5,-10],
+        [-10,  0, 10, 10, 10, 10,  0,-10],
+        [-10, 10, 10, 10, 10, 10, 10,-10],
+        [-10,  5,  0,  0,  0,  0,  5,-10],
+        [-20,-10,-10,-10,-10,-10,-10,-20]
+      ],
+      rook: [
+        [0,  0,  0,  0,  0,  0,  0,  0],
+        [5, 10, 10, 10, 10, 10, 10,  5],
+        [-5,  0,  0,  0,  0,  0,  0, -5],
+        [-5,  0,  0,  0,  0,  0,  0, -5],
+        [-5,  0,  0,  0,  0,  0,  0, -5],
+        [-5,  0,  0,  0,  0,  0,  0, -5],
+        [-5,  0,  0,  0,  0,  0,  0, -5],
+        [0,  0,  0,  5,  5,  0,  0,  0]
+      ],
+      queen: [
+        [-20,-10,-10, -5, -5,-10,-10,-20],
+        [-10,  0,  0,  0,  0,  0,  0,-10],
+        [-10,  0,  5,  5,  5,  5,  0,-10],
+        [-5,  0,  5,  5,  5,  5,  0, -5],
+        [0,  0,  5,  5,  5,  5,  0, -5],
+        [-10,  5,  5,  5,  5,  5,  0,-10],
+        [-10,  0,  5,  0,  0,  0,  0,-10],
+        [-20,-10,-10, -5, -5,-10,-10,-20]
+      ],
+      king: [
+        [-30,-40,-40,-50,-50,-40,-40,-30],
+        [-30,-40,-40,-50,-50,-40,-40,-30],
+        [-30,-40,-40,-50,-50,-40,-40,-30],
+        [-30,-40,-40,-50,-50,-40,-40,-30],
+        [-20,-30,-30,-40,-40,-30,-30,-20],
+        [-10,-20,-20,-20,-20,-20,-20,-10],
+        [20, 20,  0,  0,  0,  0, 20, 20],
+        [20, 30, 10,  0,  0, 10, 30, 20]
+      ]
+    };
   }
   
   initZobrist() {
@@ -231,6 +300,15 @@ class ChessAI {
         alpha = Math.max(alpha, score);
         if (beta <= alpha) {
             this.storeKillerMove(nextMove, depth);
+
+            // History Heuristic: Update score for quiet moves
+            const toPiece = tempGame.board[nextMove.to.row][nextMove.to.col];
+            if (!toPiece) {
+                const fromIdx = nextMove.from.row * 8 + nextMove.from.col;
+                const toIdx = nextMove.to.row * 8 + nextMove.to.col;
+                this.historyTable[fromIdx][toIdx] += depth * depth;
+            }
+
             break;
         }
       }
@@ -258,6 +336,15 @@ class ChessAI {
         beta = Math.min(beta, score);
         if (beta <= alpha) {
             this.storeKillerMove(nextMove, depth);
+
+            // History Heuristic: Update score for quiet moves
+            const toPiece = tempGame.board[nextMove.to.row][nextMove.to.col];
+            if (!toPiece) {
+                const fromIdx = nextMove.from.row * 8 + nextMove.from.col;
+                const toIdx = nextMove.to.row * 8 + nextMove.to.col;
+                this.historyTable[fromIdx][toIdx] += depth * depth;
+            }
+
             break;
         }
       }
@@ -576,7 +663,12 @@ class ChessAI {
       score += this.pieceValues[move.promotion] + 500;
     }
 
-    // 5. History Heuristic (not implemented yet, but would go here)
+    // 5. History Heuristic
+    if (this.historyTable) {
+        const fromIdx = move.from.row * 8 + move.from.col;
+        const toIdx = move.to.row * 8 + move.to.col;
+        score += this.historyTable[fromIdx][toIdx];
+    }
 
     return score;
   }
