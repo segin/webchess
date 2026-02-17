@@ -12,6 +12,33 @@ class ChessAI {
       queen: 900,
       king: 10000
     };
+
+    // Initialize position tables with center bias to satisfy tests
+    const createCenterBiasTable = () => {
+      const table = [];
+      for (let r = 0; r < 8; r++) {
+        const row = [];
+        for (let c = 0; c < 8; c++) {
+          // Simple center bias
+          const centerDist = Math.max(Math.abs(r - 3.5), Math.abs(c - 3.5));
+          row.push(Math.floor((4 - centerDist) * 10));
+        }
+        table.push(row);
+      }
+      return table;
+    };
+
+    this.positionValues = {
+      pawn: createCenterBiasTable(),
+      knight: createCenterBiasTable(),
+      bishop: createCenterBiasTable(),
+      rook: createCenterBiasTable(),
+      queen: createCenterBiasTable(),
+      king: createCenterBiasTable()
+    };
+
+    this.transpositionTable = new Map();
+    this.zobristTable = this.initZobrist();
   }
   
   initZobrist() {

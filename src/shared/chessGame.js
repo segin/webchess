@@ -2518,9 +2518,149 @@ class ChessGame {
   }
 
   /**
+   * Determine if a square is under attack in a hypothetical board state
+   * Used by wouldBeInCheck to avoid board cloning or mutation
+   * @param {number} row - Row of the square to check
+   * @param {number} col - Column of the square to check
+   * @param {string} defendingColor - Color of the defending side
+   * @param {Object} from - Source square of move
+   * @param {Object} to - Destination square of move
+   * @param {Object} piece - Piece moving
+   * @param {string} promotion - Promotion type (optional)
+   * @param {Object} enPassantCaptureSquare - Square of captured pawn (optional)
+   * @param {Object} castlingRookMove - Details of rook move if castling (optional)
+   * @returns {boolean} True if the square is under attack
+   */
+  _isSquareUnderAttackVirtual(row, col, defendingColor, from, to, piece, promotion, enPassantCaptureSquare, castlingRookMove) {
+    const attackingColor = defendingColor === 'white' ? 'black' : 'white';
+
+    // Helper to get piece at a square in the virtual board
+    const getPieceAt = (r, c) => {
+      // 1. If square is the destination 'to', it contains the moving piece (or promoted piece)
+      if (r === to.row && c === to.col) {
+        return promotion ? { type: promotion, color: piece.color } : piece;
+      }
+
+      // 2. If square is the source 'from', it is empty (piece moved away)
+      if (r === from.row && c === from.col) {
+        return null;
+      }
+
+      // 3. If square is the en passant capture square, it is empty (captured pawn removed)
+      if (enPassantCaptureSquare && r === enPassantCaptureSquare.row && c === enPassantCaptureSquare.col) {
+        return null;
+      }
+
+      // 4. If castling, handle rook move
+      if (castlingRookMove) {
+        if (r === castlingRookMove.from.row && c === castlingRookMove.from.col) {
+          return null; // Rook moved away
+        }
+        if (r === castlingRookMove.to.row && c === castlingRookMove.to.col) {
+          return castlingRookMove.piece; // Rook moved here
+        }
+      }
+
+      // 5. Otherwise, return piece from current board
+      return this.board[r][c];
+    };
+
+    // 1. Check Knight attacks
+    const knightMoves = [
+      [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+      [1, -2], [1, 2], [2, -1], [2, 1]
+    ];
+
+    for (const [rowOffset, colOffset] of knightMoves) {
+      const r = row + rowOffset;
+      const c = col + colOffset;
+      if (r >= 0 && r < 8 && c >= 0 && c < 8) {
+        const p = getPieceAt(r, c);
+        if (p && p.color === attackingColor && p.type === 'knight') {
+          return true;
+        }
+      }
+    }
+
+    // 2. Check Pawn attacks
+    const pawnAttackRow = defendingColor === 'white' ? row - 1 : row + 1;
+    if (pawnAttackRow >= 0 && pawnAttackRow < 8) {
+      // Check both diagonals
+      if (col > 0) {
+        const p = getPieceAt(pawnAttackRow, col - 1);
+        if (p && p.color === attackingColor && p.type === 'pawn') {
+          return true;
+        }
+      }
+      if (col < 7) {
+        const p = getPieceAt(pawnAttackRow, col + 1);
+        if (p && p.color === attackingColor && p.type === 'pawn') {
+          return true;
+        }
+      }
+    }
+
+    // 3. Check Sliding Pieces (Orthogonal)
+    const orthogonalDirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    for (const [dr, dc] of orthogonalDirs) {
+      for (let i = 1; i < 8; i++) {
+        const r = row + i * dr;
+        const c = col + i * dc;
+        if (r < 0 || r >= 8 || c < 0 || c >= 8) break;
+
+        const p = getPieceAt(r, c);
+        if (p) {
+          if (p.color === attackingColor && (p.type === 'rook' || p.type === 'queen')) {
+            return true;
+          }
+          break; // Blocked
+        }
+      }
+    }
+
+    // 4. Check Sliding Pieces (Diagonal)
+    const diagonalDirs = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+    for (const [dr, dc] of diagonalDirs) {
+      for (let i = 1; i < 8; i++) {
+        const r = row + i * dr;
+        const c = col + i * dc;
+        if (r < 0 || r >= 8 || c < 0 || c >= 8) break;
+
+        const p = getPieceAt(r, c);
+        if (p) {
+          if (p.color === attackingColor && (p.type === 'bishop' || p.type === 'queen')) {
+            return true;
+          }
+          break; // Blocked
+        }
+      }
+    }
+
+    // 5. Check King attacks (adjacent)
+    const kingMoves = [
+      [-1, -1], [-1, 0], [-1, 1],
+      [0, -1],           [0, 1],
+      [1, -1], [1, 0], [1, 1]
+    ];
+    for (const [dr, dc] of kingMoves) {
+      const r = row + dr;
+      const c = col + dc;
+      if (r >= 0 && r < 8 && c >= 0 && c < 8) {
+        const p = getPieceAt(r, c);
+        if (p && p.color === attackingColor && p.type === 'king') {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
    * Enhanced move legality validation preventing self-check
    * Simulates a move temporarily to test if it would put the player's own king in check
    * Handles special moves like castling and en passant correctly
+   * Optimized to use virtual board lookup instead of expensive board cloning/mutation
    * @param {Object} from - Source square
    * @param {Object} to - Destination square
    * @param {string} color - Color of the player making the move
@@ -2542,100 +2682,47 @@ class ChessGame {
       }
     }
 
-    // Save current game state to restore later
-    const savedCheckDetails = this.checkDetails;
-    const savedEnPassantTarget = this.enPassantTarget;
-
-    // Store original board state
-    const originalPiece = this.board[from.row][from.col];
-    const capturedPiece = this.board[to.row][to.col];
-    let enPassantCapturedPiece = null;
+    // Prepare move details for virtual check
     let enPassantCaptureSquare = null;
     let castlingRookMove = null;
 
-    try {
-      // Handle special moves during simulation
-
-      // Handle en passant capture
-      if (piece.type === 'pawn' && this.enPassantTarget &&
-        to.row === this.enPassantTarget.row && to.col === this.enPassantTarget.col) {
-        // Remove the captured pawn (which is on the same row as the moving pawn)
-        enPassantCaptureSquare = { row: from.row, col: to.col };
-        enPassantCapturedPiece = this.board[enPassantCaptureSquare.row][enPassantCaptureSquare.col];
-        this.board[enPassantCaptureSquare.row][enPassantCaptureSquare.col] = null;
-      }
-
-      // Handle castling
-      if (piece.type === 'king' && Math.abs(to.col - from.col) === 2) {
-        const rookFromCol = to.col > from.col ? 7 : 0;
-        const rookToCol = to.col > from.col ? 5 : 3;
-        const rook = this.board[from.row][rookFromCol];
-
-        if (rook && rook.type === 'rook' && rook.color === color) {
-          // Move rook for castling simulation
-          castlingRookMove = {
-            from: { row: from.row, col: rookFromCol },
-            to: { row: from.row, col: rookToCol },
-            piece: rook
-          };
-          this.board[from.row][rookToCol] = rook;
-          this.board[from.row][rookFromCol] = null;
-        }
-      }
-
-      // Execute the main move
-      let movingPiece = { ...piece };
-
-      // Handle pawn promotion
-      if (piece.type === 'pawn') {
-        const promotionRow = piece.color === 'white' ? 0 : 7;
-        if (to.row === promotionRow) {
-          const promotionPiece = promotion || 'queen';
-          const validPromotions = ['queen', 'rook', 'bishop', 'knight'];
-          if (validPromotions.includes(promotionPiece)) {
-            movingPiece = { type: promotionPiece, color: piece.color };
-          }
-        }
-      }
-
-      this.board[to.row][to.col] = movingPiece;
-      this.board[from.row][from.col] = null;
-
-      // Check if this move puts own king in check
-      // Optimization: use isSquareUnderAttack directly to avoid isInCheck overhead
-      let kingPos;
-      if (movingPiece.type === 'king') {
-        kingPos = to; // King moved to destination
-      } else {
-        kingPos = this.findKing(color); // Scan for king
-      }
-
-      if (!kingPos) return false; // Should not happen
-
-      return this.isSquareUnderAttack(kingPos.row, kingPos.col, color);
-
-    } finally {
-      // Always restore board state, even if an error occurs
-
-      // Restore main move
-      this.board[from.row][from.col] = originalPiece;
-      this.board[to.row][to.col] = capturedPiece;
-
-      // Restore en passant capture
-      if (enPassantCapturedPiece && enPassantCaptureSquare) {
-        this.board[enPassantCaptureSquare.row][enPassantCaptureSquare.col] = enPassantCapturedPiece;
-      }
-
-      // Restore castling rook move
-      if (castlingRookMove) {
-        this.board[castlingRookMove.from.row][castlingRookMove.from.col] = castlingRookMove.piece;
-        this.board[castlingRookMove.to.row][castlingRookMove.to.col] = null;
-      }
-
-      // Restore game state
-      this.checkDetails = savedCheckDetails;
-      this.enPassantTarget = savedEnPassantTarget;
+    // Handle en passant capture logic
+    if (piece.type === 'pawn' && this.enPassantTarget &&
+      to.row === this.enPassantTarget.row && to.col === this.enPassantTarget.col) {
+      enPassantCaptureSquare = { row: from.row, col: to.col };
     }
+
+    // Handle castling logic
+    if (piece.type === 'king' && Math.abs(to.col - from.col) === 2) {
+      const rookFromCol = to.col > from.col ? 7 : 0;
+      const rookToCol = to.col > from.col ? 5 : 3;
+      const rook = this.board[from.row][rookFromCol];
+
+      if (rook && rook.type === 'rook' && rook.color === color) {
+        castlingRookMove = {
+          from: { row: from.row, col: rookFromCol },
+          to: { row: from.row, col: rookToCol },
+          piece: rook
+        };
+      }
+    }
+
+    // Identify King position in virtual board
+    let kingPos;
+    if (piece.type === 'king') {
+      kingPos = to; // King moves to destination
+    } else {
+      kingPos = this.findKing(color); // King stays put
+      // Note: findKing uses cache. Cache is based on current board.
+      // Since King didn't move, cache is valid for virtual board too.
+    }
+
+    if (!kingPos) return false; // King missing (testing scenario), assume safe
+
+    // Perform virtual check
+    return this._isSquareUnderAttackVirtual(kingPos.row, kingPos.col, color,
+      from, to, piece, promotion, enPassantCaptureSquare, castlingRookMove
+    );
   }
 
   /**
