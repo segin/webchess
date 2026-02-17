@@ -12,6 +12,74 @@ class ChessAI {
       queen: 900,
       king: 10000
     };
+
+    this.zobristTable = this.initZobrist();
+    this.transpositionTable = new Map();
+
+    // Piece-Square Tables (PST) - Simplified values
+    // Tables are from white's perspective.
+    this.positionValues = {
+      pawn: [
+        [0,  0,  0,  0,  0,  0,  0,  0],
+        [50, 50, 50, 50, 50, 50, 50, 50],
+        [10, 10, 20, 30, 30, 20, 10, 10],
+        [5,  5, 10, 25, 25, 10,  5,  5],
+        [0,  0,  0, 20, 20,  0,  0,  0],
+        [5, -5,-10,  0,  0,-10, -5,  5],
+        [5, 10, 10,-20,-20, 10, 10,  5],
+        [0,  0,  0,  0,  0,  0,  0,  0]
+      ],
+      knight: [
+        [-50,-40,-30,-30,-30,-30,-40,-50],
+        [-40,-20,  0,  0,  0,  0,-20,-40],
+        [-30,  0, 10, 15, 15, 10,  0,-30],
+        [-30,  5, 15, 20, 20, 15,  5,-30],
+        [-30,  0, 15, 20, 20, 15,  0,-30],
+        [-30,  5, 10, 15, 15, 10,  5,-30],
+        [-40,-20,  0,  5,  5,  0,-20,-40],
+        [-50,-40,-30,-30,-30,-30,-40,-50]
+      ],
+      bishop: [
+        [-20,-10,-10,-10,-10,-10,-10,-20],
+        [-10,  0,  0,  0,  0,  0,  0,-10],
+        [-10,  0,  5, 10, 10,  5,  0,-10],
+        [-10,  5,  5, 10, 10,  5,  5,-10],
+        [-10,  0, 10, 10, 10, 10,  0,-10],
+        [-10, 10, 10, 10, 10, 10, 10,-10],
+        [-10,  5,  0,  0,  0,  0,  5,-10],
+        [-20,-10,-10,-10,-10,-10,-10,-20]
+      ],
+      rook: [
+        [0,  0,  0,  0,  0,  0,  0,  0],
+        [5, 10, 10, 10, 10, 10, 10,  5],
+        [-5,  0,  0,  0,  0,  0,  0, -5],
+        [-5,  0,  0,  0,  0,  0,  0, -5],
+        [-5,  0,  0,  0,  0,  0,  0, -5],
+        [-5,  0,  0,  0,  0,  0,  0, -5],
+        [-5,  0,  0,  0,  0,  0,  0, -5],
+        [0,  0,  0,  5,  5,  0,  0,  0]
+      ],
+      queen: [
+        [-20,-10,-10, -5, -5,-10,-10,-20],
+        [-10,  0,  0,  0,  0,  0,  0,-10],
+        [-10,  0,  5,  5,  5,  5,  0,-10],
+        [-5,  0,  5,  5,  5,  5,  0, -5],
+        [0,  0,  5,  5,  5,  5,  0, -5],
+        [-10,  5,  5,  5,  5,  5,  0,-10],
+        [-10,  0,  5,  0,  0,  0,  0,-10],
+        [-20,-10,-10, -5, -5,-10,-10,-20]
+      ],
+      king: [
+        [-30,-40,-40,-50,-50,-40,-40,-30],
+        [-30,-40,-40,-50,-50,-40,-40,-30],
+        [-30,-40,-40,-50,-50,-40,-40,-30],
+        [-30,-40,-40,-50,-50,-40,-40,-30],
+        [-20,-30,-30,-40,-40,-30,-30,-20],
+        [-10,-20,-20,-20,-20,-20,-20,-10],
+        [20, 20,  0,  0,  0,  0, 20, 20],
+        [20, 30, 10,  0,  0, 10, 30, 20]
+      ]
+    };
   }
   
   initZobrist() {
@@ -186,33 +254,50 @@ class ChessAI {
   minimax(chessGame, move, depth, isMaximizing, alpha, beta) {
     if (depth < 0) return this.evaluatePosition(chessGame);
     
-    const tempGame = this.cloneGame(chessGame);
-    const result = tempGame.makeMove(move, null, null, { silent: true });
+    // Use make/undo pattern instead of cloning
+    const result = chessGame.makeMove(move, null, null, { silent: true, skipValidation: true });
     
     if (!result.success) return isMaximizing ? -Infinity : Infinity;
 
-    const hash = this.computeHash(tempGame);
+    const hash = this.computeHash(chessGame);
     const ttEntry = this.transpositionTable.get(hash);
     
     if (ttEntry && ttEntry.depth >= depth) {
-      if (ttEntry.flag === 'exact') return ttEntry.score;
-      if (ttEntry.flag === 'lowerbound') alpha = Math.max(alpha, ttEntry.score);
-      if (ttEntry.flag === 'upperbound') beta = Math.min(beta, ttEntry.score);
-      if (alpha >= beta) return ttEntry.score;
+      let score = ttEntry.score;
+      if (ttEntry.flag === 'exact') {
+        chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
+        return score;
+      }
+      if (ttEntry.flag === 'lowerbound') alpha = Math.max(alpha, score);
+      if (ttEntry.flag === 'upperbound') beta = Math.min(beta, score);
+      if (alpha >= beta) {
+        chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
+        return score;
+      }
     }
     
-    if (depth === 0 || tempGame.gameStatus !== 'active') {
-      if (tempGame.gameStatus !== 'active') return this.evaluatePosition(tempGame);
+    if (depth === 0 || chessGame.gameStatus !== 'active') {
+      if (chessGame.gameStatus !== 'active') {
+        const score = this.evaluatePosition(chessGame);
+        chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
+        return score;
+      }
       // Use Quiescence Search at leaf nodes instead of raw evaluation
-      return this.quiescence(tempGame, alpha, beta, isMaximizing, chessGame.currentTurn);
+      const score = this.quiescence(chessGame, alpha, beta, isMaximizing, chessGame.currentTurn);
+      chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
+      return score;
     }
     
-    const moves = this.getAllValidMoves(tempGame, tempGame.currentTurn);
-    if (moves.length === 0) return this.evaluatePosition(tempGame);
+    const moves = this.getAllValidMoves(chessGame, chessGame.currentTurn);
+    if (moves.length === 0) {
+      const score = this.evaluatePosition(chessGame);
+      chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
+      return score;
+    }
     
     // Order moves: TT move first, then captures/killers
     const bestTTMove = (ttEntry && ttEntry.bestMove) ? ttEntry.bestMove : null;
-    const orderedMoves = this.orderMoves(tempGame, moves, bestTTMove, depth);
+    const orderedMoves = this.orderMoves(chessGame, moves, bestTTMove, depth);
     
     let bestMove = null;
     let score;
@@ -221,7 +306,7 @@ class ChessAI {
     if (isMaximizing) {
       let maxScore = -Infinity;
       for (const nextMove of orderedMoves) {
-        score = this.minimax(tempGame, nextMove, depth - 1, false, alpha, beta);
+        score = this.minimax(chessGame, nextMove, depth - 1, false, alpha, beta);
         
         if (score > maxScore) {
             maxScore = score;
@@ -244,11 +329,12 @@ class ChessAI {
           bestMove: bestMove
       });
       
+      chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
       return maxScore;
     } else {
       let minScore = Infinity;
       for (const nextMove of orderedMoves) {
-        score = this.minimax(tempGame, nextMove, depth - 1, true, alpha, beta);
+        score = this.minimax(chessGame, nextMove, depth - 1, true, alpha, beta);
         
         if (score < minScore) {
             minScore = score;
@@ -271,6 +357,7 @@ class ChessAI {
           bestMove: bestMove
       });
 
+      chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
       return minScore;
     }
   }
@@ -306,11 +393,11 @@ class ChessAI {
 
     if (isMaximizing) {
       for (const move of orderedCaptures) {
-        const tempGame = this.cloneGame(chessGame);
-        const result = tempGame.makeMove(move, null, null, { silent: true });
+        const result = chessGame.makeMove(move, null, null, { silent: true, skipValidation: true });
         
         if (result.success) {
-           const score = this.quiescence(tempGame, alpha, beta, false, rootColor);
+           const score = this.quiescence(chessGame, alpha, beta, false, rootColor);
+           chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
            
            if (score >= beta) return beta;
            alpha = Math.max(alpha, score);
@@ -319,11 +406,11 @@ class ChessAI {
       return alpha;
     } else {
       for (const move of orderedCaptures) {
-         const tempGame = this.cloneGame(chessGame);
-         const result = tempGame.makeMove(move, null, null, { silent: true });
+         const result = chessGame.makeMove(move, null, null, { silent: true, skipValidation: true });
          
          if (result.success) {
-           const score = this.quiescence(tempGame, alpha, beta, true, rootColor);
+           const score = this.quiescence(chessGame, alpha, beta, true, rootColor);
+           chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
            
            if (score <= alpha) return alpha;
            beta = Math.min(beta, score);

@@ -171,10 +171,12 @@ class ChessGame {
       }
 
       // Enhanced validation with detailed error reporting
-      const validation = this.validateMove(move);
-      if (!validation.success) {
-        // Return the full validation error structure from error handler
-        return validation;
+      if (!options.skipValidation) {
+        const validation = this.validateMove(move);
+        if (!validation.success) {
+          // Return the full validation error structure from error handler
+          return validation;
+        }
       }
 
       const { from, to, promotion } = move;
@@ -192,7 +194,9 @@ class ChessGame {
         enPassantTarget: this.enPassantTarget ? { ...this.enPassantTarget } : null,
         halfMoveClock: this.halfMoveClock,
         fullMoveNumber: this.fullMoveNumber,
-        inCheck: this.inCheck
+        inCheck: this.inCheck,
+        checkDetails: this.checkDetails,
+        gameStatus: this.gameStatus
       };
 
       // Update castling rights BEFORE executing the move (so we can check captured pieces)
@@ -3457,9 +3461,10 @@ class ChessGame {
    */
   /**
    * Undo the last move
+   * @param {Object} options - Options for undo operation
    * @returns {Object} Result of undo operation
    */
-  undoMove() {
+  undoMove(options = {}) {
     const lastMove = this.moveHistory.pop();
 
     if (!lastMove) {
@@ -3529,13 +3534,8 @@ class ChessGame {
         this.halfMoveClock = preMoveState.halfMoveClock;
         this.fullMoveNumber = preMoveState.fullMoveNumber;
         this.inCheck = preMoveState.inCheck;
-        // We need to re-evaluate checkDetails if inCheck was true, or clear it
-        if (this.inCheck) {
-            // Re-running isInCheck will populate checkDetails
-            this.isInCheck(this.currentTurn);
-        } else {
-            this.checkDetails = null;
-        }
+        this.checkDetails = preMoveState.checkDetails;
+        this.gameStatus = preMoveState.gameStatus;
       } else {
         // Fallback for moves without preMoveState (legacy/migrated)
         // This is a best-effort restoration
@@ -3552,19 +3552,24 @@ class ChessGame {
       // Also remove from stateManager internal history if needed, but stateManager.positionHistory IS this.positionHistory reference
 
       // 7. Update Game Status
-      // Force status to active so transition validation passes (we are undoing a terminal state)
-      // This is necessary because stateManager prohibits transitions out of terminal states like checkmate
-      if (['checkmate', 'stalemate', 'draw'].includes(this.gameStatus)) {
-        this.gameStatus = 'active';
-        this.winner = null;
-      }
+      // If we restored gameStatus from preMoveState, we don't need to recalculate
+      // Otherwise, we force active and recalculate if requested
+      if (!preMoveState) {
+        // Force status to active so transition validation passes
+        if (['checkmate', 'stalemate', 'draw'].includes(this.gameStatus)) {
+          this.gameStatus = 'active';
+          this.winner = null;
+        }
 
-      // Re-evaluate game end conditions (e.g., if we were in checkmate, now we might just be in check or active)
-      // Since we reverted the move, the game status should ideally be what it was.
-      // preMoveState doesn't store gameStatus. But typically it would be 'active' or 'check'.
-      // If we are undoing, we probably go back to 'active' or 'check'.
-      // Let's re-calculate check status for the current player (who is now the one to move)
-      this.checkGameEnd();
+        if (!options.skipGameEndCheck) {
+          this.checkGameEnd();
+        }
+      } else {
+        // Clear winner if status is active (just in case)
+        if (this.gameStatus === 'active') {
+          this.winner = null;
+        }
+      }
 
       // Ensure piece cache is clean (safety)
       this._rebuildPieceLocations();
