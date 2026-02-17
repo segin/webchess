@@ -2,6 +2,19 @@ const GameStateManager = require('./gameState');
 const ChessErrorHandler = require('./errorHandler');
 const MoveGenerator = require('./moveGenerator');
 
+// Optimization: Pre-calculated move offsets to avoid allocation in hot loops
+const KNIGHT_MOVES = [
+  [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+  [1, -2], [1, 2], [2, -1], [2, 1]
+];
+const ORTHOGONAL_DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+const DIAGONAL_DIRS = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+const KING_MOVES = [
+  [-1, -1], [-1, 0], [-1, 1],
+  [0, -1],           [0, 1],
+  [1, -1], [1, 0], [1, 1]
+];
+
 class ChessGame {
   constructor(options = {}) {
     this.currentTurn = 'white';
@@ -2154,15 +2167,12 @@ class ChessGame {
     const attackingColor = defendingColor === 'white' ? 'black' : 'white';
 
     // 1. Check Knight attacks
-    const knightMoves = [
-      [-2, -1], [-2, 1], [-1, -2], [-1, 2],
-      [1, -2], [1, 2], [2, -1], [2, 1]
-    ];
-
-    for (const [rowOffset, colOffset] of knightMoves) {
+    // Use pre-defined constant to avoid allocation
+    for (const [rowOffset, colOffset] of KNIGHT_MOVES) {
       const r = row + rowOffset;
       const c = col + colOffset;
-      if (this.isValidSquare({ row: r, col: c })) {
+      // Optimization: Inline bounds check to avoid object creation
+      if (r >= 0 && r < 8 && c >= 0 && c < 8) {
         const piece = this.board[r][c];
         if (piece && piece.color === attackingColor && piece.type === 'knight') {
           attackingPieces.push({
@@ -2176,37 +2186,48 @@ class ChessGame {
     }
 
     // 2. Check Pawn attacks
-    const pawnDirection = defendingColor === 'white' ? -1 : 1; // Look "forward" relative to king = backward relative to pawn
-    // If king is white (at bottom), pawns attack from "above" (lower row index -> higher row index is pawn move, so we look at row - 1)
-    // Actually, pawns attack diagonally forward.
-    // A white king at (r, c) is attacked by black pawns at (r-1, c-1) and (r-1, c+1) if black pawns move "down" (increasing row)
-    // A black king at (r, c) is attacked by white pawns at (r+1, c-1) and (r+1, c+1) if white pawns move "up" (decreasing row)
-
+    // White pieces are attacked by black pawns from "above" (row-1)
+    // Black pieces are attacked by white pawns from "below" (row+1)
     const pawnAttackRow = defendingColor === 'white' ? row - 1 : row + 1;
     if (pawnAttackRow >= 0 && pawnAttackRow < 8) {
-      for (const colOffset of [-1, 1]) {
-        const pawnAttackCol = col + colOffset;
-        if (pawnAttackCol >= 0 && pawnAttackCol < 8) {
-          const piece = this.board[pawnAttackRow][pawnAttackCol];
-          if (piece && piece.color === attackingColor && piece.type === 'pawn') {
-             attackingPieces.push({
-              piece: piece,
-              position: { row: pawnAttackRow, col: pawnAttackCol },
-              attackType: 'diagonal_attack'
-            });
-            attackingSquares.push({ row: pawnAttackRow, col: pawnAttackCol });
-          }
+      // Check left capture
+      const leftCol = col - 1;
+      if (leftCol >= 0) {
+        const piece = this.board[pawnAttackRow][leftCol];
+        if (piece && piece.color === attackingColor && piece.type === 'pawn') {
+           attackingPieces.push({
+            piece: piece,
+            position: { row: pawnAttackRow, col: leftCol },
+            attackType: 'diagonal_attack'
+          });
+          attackingSquares.push({ row: pawnAttackRow, col: leftCol });
+        }
+      }
+
+      // Check right capture
+      const rightCol = col + 1;
+      if (rightCol < 8) {
+        const piece = this.board[pawnAttackRow][rightCol];
+        if (piece && piece.color === attackingColor && piece.type === 'pawn') {
+           attackingPieces.push({
+            piece: piece,
+            position: { row: pawnAttackRow, col: rightCol },
+            attackType: 'diagonal_attack'
+          });
+          attackingSquares.push({ row: pawnAttackRow, col: rightCol });
         }
       }
     }
 
     // 3. Check Sliding Pieces (Orthogonal: Rook, Queen)
-    const orthogonalDirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-    for (const [dr, dc] of orthogonalDirs) {
+    // Use pre-defined constant to avoid allocation
+    for (const [dr, dc] of ORTHOGONAL_DIRS) {
       for (let i = 1; i < 8; i++) {
         const r = row + i * dr;
         const c = col + i * dc;
-        if (!this.isValidSquare({ row: r, col: c })) break;
+
+        // Optimization: Inline bounds check
+        if (r < 0 || r >= 8 || c < 0 || c >= 8) break;
 
         const piece = this.board[r][c];
         if (piece) {
@@ -2224,12 +2245,14 @@ class ChessGame {
     }
 
     // 4. Check Sliding Pieces (Diagonal: Bishop, Queen)
-    const diagonalDirs = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
-    for (const [dr, dc] of diagonalDirs) {
+    // Use pre-defined constant to avoid allocation
+    for (const [dr, dc] of DIAGONAL_DIRS) {
       for (let i = 1; i < 8; i++) {
         const r = row + i * dr;
         const c = col + i * dc;
-        if (!this.isValidSquare({ row: r, col: c })) break;
+
+        // Optimization: Inline bounds check
+        if (r < 0 || r >= 8 || c < 0 || c >= 8) break;
 
         const piece = this.board[r][c];
         if (piece) {
@@ -2247,15 +2270,13 @@ class ChessGame {
     }
 
     // 5. Check adjacent King (illegal but possible in analysis)
-    const kingDirs = [
-      [-1, -1], [-1, 0], [-1, 1],
-      [0, -1],           [0, 1],
-      [1, -1], [1, 0], [1, 1]
-    ];
-    for (const [dr, dc] of kingDirs) {
+    // Use pre-defined constant to avoid allocation
+    for (const [dr, dc] of KING_MOVES) {
         const r = row + dr;
         const c = col + dc;
-        if (this.isValidSquare({ row: r, col: c })) {
+
+        // Optimization: Inline bounds check
+        if (r >= 0 && r < 8 && c >= 0 && c < 8) {
             const piece = this.board[r][c];
             if (piece && piece.color === attackingColor && piece.type === 'king') {
                  attackingPieces.push({
@@ -2332,20 +2353,18 @@ class ChessGame {
    * @returns {boolean} True if the square is under attack
    */
   isSquareUnderAttack(row, col, defendingColor) {
-    // Validate input parameters
-    if (!this.isValidSquare({ row, col }) || !defendingColor) {
+    // Optimization: Validate input parameters with inline bounds check
+    // Replace this.isValidSquare({ row, col }) with inline check to avoid object allocation
+    if (typeof row !== 'number' || typeof col !== 'number' ||
+        row < 0 || row > 7 || col < 0 || col > 7 || !defendingColor) {
       return false;
     }
 
     const attackingColor = defendingColor === 'white' ? 'black' : 'white';
 
     // 1. Check Knight attacks
-    const knightMoves = [
-      [-2, -1], [-2, 1], [-1, -2], [-1, 2],
-      [1, -2], [1, 2], [2, -1], [2, 1]
-    ];
-
-    for (const [rowOffset, colOffset] of knightMoves) {
+    // Use pre-defined constant to avoid allocation
+    for (const [rowOffset, colOffset] of KNIGHT_MOVES) {
       const r = row + rowOffset;
       const c = col + colOffset;
       // Manually check bounds for speed optimization
@@ -2363,12 +2382,14 @@ class ChessGame {
     const pawnAttackRow = defendingColor === 'white' ? row - 1 : row + 1;
     if (pawnAttackRow >= 0 && pawnAttackRow < 8) {
       // Check both diagonals
+      // Optimization: Manual inline check for left diagonal
       if (col > 0) {
         const piece = this.board[pawnAttackRow][col - 1];
         if (piece && piece.color === attackingColor && piece.type === 'pawn') {
           return true;
         }
       }
+      // Optimization: Manual inline check for right diagonal
       if (col < 7) {
         const piece = this.board[pawnAttackRow][col + 1];
         if (piece && piece.color === attackingColor && piece.type === 'pawn') {
@@ -2378,8 +2399,8 @@ class ChessGame {
     }
 
     // 3. Check Sliding Pieces (Orthogonal: Rook, Queen)
-    const orthogonalDirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-    for (const [dr, dc] of orthogonalDirs) {
+    // Use pre-defined constant to avoid allocation
+    for (const [dr, dc] of ORTHOGONAL_DIRS) {
       for (let i = 1; i < 8; i++) {
         const r = row + i * dr;
         const c = col + i * dc;
@@ -2398,8 +2419,8 @@ class ChessGame {
     }
 
     // 4. Check Sliding Pieces (Diagonal: Bishop, Queen)
-    const diagonalDirs = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
-    for (const [dr, dc] of diagonalDirs) {
+    // Use pre-defined constant to avoid allocation
+    for (const [dr, dc] of DIAGONAL_DIRS) {
       for (let i = 1; i < 8; i++) {
         const r = row + i * dr;
         const c = col + i * dc;
@@ -2419,13 +2440,8 @@ class ChessGame {
 
     // 5. Check King attacks (adjacent)
     // This is needed for king safety checks (kings cannot stand next to each other)
-    const kingMoves = [
-      [-1, -1], [-1, 0], [-1, 1],
-      [0, -1],           [0, 1],
-      [1, -1], [1, 0], [1, 1]
-    ];
-
-    for (const [dr, dc] of kingMoves) {
+    // Use pre-defined constant to avoid allocation
+    for (const [dr, dc] of KING_MOVES) {
       const r = row + dr;
       const c = col + dc;
       if (r >= 0 && r < 8 && c >= 0 && c < 8) {
