@@ -1,10 +1,20 @@
 const GameStateManager = require('./gameState');
 const ChessErrorHandler = require('./errorHandler');
 const MoveGenerator = require('./moveGenerator');
+const {
+  PIECE_VALUES,
+  PAWN_PST,
+  KNIGHT_PST,
+  BISHOP_PST,
+  ROOK_PST,
+  QUEEN_PST,
+  KING_MIDGAME_PST
+} = require('./evaluationConstants');
 
 class ChessGame {
   constructor(options = {}) {
     this.currentTurn = 'white';
+    this.boardScore = 0;
     this.gameStatus = 'active';
     this.winner = null;
     this.moveHistory = [];
@@ -53,6 +63,7 @@ class ChessGame {
 
   initializeBoard() {
     const board = Array(8).fill(null).map(() => Array(8).fill(null));
+    this.boardScore = 0;
 
     // Pawns
     for (let i = 0; i < 8; i++) {
@@ -86,10 +97,35 @@ class ChessGame {
     board[0][4] = { type: 'king', color: 'black' };
     board[7][4] = { type: 'king', color: 'white' };
 
-    // Initialize piece locations cache
+    // Initialize piece locations cache and calculate initial score
     this._rebuildPieceLocations(board);
 
     return board;
+  }
+
+  _getPieceValue(piece, row, col) {
+    if (!piece) return 0;
+
+    // Material value
+    const material = PIECE_VALUES[piece.type];
+
+    // Position value
+    let pst;
+    switch (piece.type) {
+        case 'pawn': pst = PAWN_PST; break;
+        case 'knight': pst = KNIGHT_PST; break;
+        case 'bishop': pst = BISHOP_PST; break;
+        case 'rook': pst = ROOK_PST; break;
+        case 'queen': pst = QUEEN_PST; break;
+        case 'king': pst = KING_MIDGAME_PST; break;
+        default: return 0;
+    }
+
+    const tableRow = piece.color === 'white' ? 7 - row : row;
+    const positional = pst[tableRow][col];
+
+    const total = material + positional;
+    return piece.color === 'white' ? total : -total;
   }
 
   /**
@@ -105,6 +141,7 @@ class ChessGame {
       white: null,
       black: null
     };
+    this.boardScore = 0;
 
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
@@ -114,6 +151,7 @@ class ChessGame {
           if (piece.type === 'king') {
             this.kingLocations[piece.color] = { row, col };
           }
+          this.boardScore += this._getPieceValue(piece, row, col);
         }
       }
     }
@@ -192,7 +230,8 @@ class ChessGame {
         enPassantTarget: this.enPassantTarget ? { ...this.enPassantTarget } : null,
         halfMoveClock: this.halfMoveClock,
         fullMoveNumber: this.fullMoveNumber,
-        inCheck: this.inCheck
+        inCheck: this.inCheck,
+        boardScore: this.boardScore
       };
 
       // Update castling rights BEFORE executing the move (so we can check captured pieces)
@@ -1040,6 +1079,9 @@ class ChessGame {
    * @param {string} promotion - Promotion piece type (for pawn promotion)
    */
   executeMoveOnBoard(from, to, piece, promotion, preMoveState = null) {
+    // Score update: Remove moving piece from source
+    this.boardScore -= this._getPieceValue(piece, from.row, from.col);
+
     const target = this.board[to.row][to.col];
     let capturedPiece = target;
     let isEnPassant = false;
@@ -1055,11 +1097,17 @@ class ChessGame {
 
       // Update cache for captured pawn
       if (capturedPiece) {
+        // Score update: Remove captured pawn (En Passant)
+        this.boardScore -= this._getPieceValue(capturedPiece, capturedPawnRow, capturedPawnCol);
         this._removePieceLocation(capturedPiece.color, { row: capturedPawnRow, col: capturedPawnCol });
       }
 
       this.board[capturedPawnRow][capturedPawnCol] = null;
       isEnPassant = true;
+    }
+    // Score update: Remove captured piece (Standard)
+    else if (capturedPiece) {
+      this.boardScore -= this._getPieceValue(capturedPiece, to.row, to.col);
     }
 
     // Handle castling
@@ -1070,6 +1118,10 @@ class ChessGame {
 
       // Update cache for rook move
       if (rook) {
+        // Score update: Move rook
+        this.boardScore -= this._getPieceValue(rook, from.row, rookFromCol);
+        this.boardScore += this._getPieceValue(rook, from.row, rookToCol);
+
         this._updatePieceLocation(rook.color, { row: from.row, col: rookFromCol }, { row: from.row, col: rookToCol });
       }
 
@@ -1099,6 +1151,8 @@ class ChessGame {
 
     // Handle pawn promotion
     let promotionPiece = null;
+    let finalPiece = piece;
+
     if (piece.type === 'pawn') {
       const promotionRow = piece.color === 'white' ? 0 : 7;
       if (to.row === promotionRow) {
@@ -1111,13 +1165,18 @@ class ChessGame {
           promotionPiece = 'queen'; // Fallback to queen
         }
 
-        // Replace pawn with promoted piece
-        this.board[to.row][to.col] = {
+        finalPiece = {
           type: promotionPiece,
           color: piece.color
         };
+
+        // Replace pawn with promoted piece
+        this.board[to.row][to.col] = finalPiece;
       }
     }
+
+    // Score update: Add moving piece at destination (using final piece type/value)
+    this.boardScore += this._getPieceValue(finalPiece, to.row, to.col);
 
     // Record move in history with enhanced tracking
     const moveData = {
@@ -3529,6 +3588,7 @@ class ChessGame {
         this.halfMoveClock = preMoveState.halfMoveClock;
         this.fullMoveNumber = preMoveState.fullMoveNumber;
         this.inCheck = preMoveState.inCheck;
+        this.boardScore = preMoveState.boardScore;
         // We need to re-evaluate checkDetails if inCheck was true, or clear it
         if (this.inCheck) {
             // Re-running isInCheck will populate checkDetails

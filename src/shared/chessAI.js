@@ -1,17 +1,31 @@
 const ChessGame = require('./chessGame');
+const {
+  PIECE_VALUES,
+  PAWN_PST,
+  KNIGHT_PST,
+  BISHOP_PST,
+  ROOK_PST,
+  QUEEN_PST,
+  KING_MIDGAME_PST
+} = require('./evaluationConstants');
 
 class ChessAI {
   constructor(difficulty = 'medium') {
     this.difficulty = difficulty;
     this.maxDepth = this.getMaxDepth(difficulty);
-    this.pieceValues = {
-      pawn: 100,
-      knight: 300,
-      bishop: 300,
-      rook: 500,
-      queen: 900,
-      king: 10000
+    this.pieceValues = PIECE_VALUES;
+
+    this.positionValues = {
+      pawn: PAWN_PST,
+      knight: KNIGHT_PST,
+      bishop: BISHOP_PST,
+      rook: ROOK_PST,
+      queen: QUEEN_PST,
+      king: KING_MIDGAME_PST
     };
+
+    this.zobristTable = this.initZobrist();
+    this.transpositionTable = new Map();
   }
   
   initZobrist() {
@@ -342,20 +356,8 @@ class ChessAI {
       return 0;
     }
     
-    let score = 0;
-    
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const piece = chessGame.board[row][col];
-        if (piece) {
-          const pieceValue = this.pieceValues[piece.type];
-          const positionValue = this.getPositionValue(piece, row, col);
-          const totalValue = pieceValue + positionValue;
-          
-          score += piece.color === 'white' ? totalValue : -totalValue;
-        }
-      }
-    }
+    // Use incrementally updated score from ChessGame
+    let score = chessGame.boardScore;
     
     // Mobility (skip for easy mode to save performance)
     if (this.difficulty !== 'easy') {
@@ -628,6 +630,9 @@ class ChessAI {
     newGame.halfMoveClock = chessGame.halfMoveClock;
     newGame.fullMoveNumber = chessGame.fullMoveNumber;
     
+    // Copy board score
+    newGame.boardScore = chessGame.boardScore;
+
     // Copy additional state if it exists
     if (chessGame.checkDetails) {
       newGame.checkDetails = { ...chessGame.checkDetails };
