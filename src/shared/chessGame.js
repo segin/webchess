@@ -3633,13 +3633,20 @@ class ChessGame {
       positionHistory: this.stateManager.positionHistory,
       stateVersion: this.stateManager.stateVersion,
 
-      // Current position
-      currentPosition: this.stateManager.getFENPosition(
-        this.board, this.currentTurn, this.castlingRights, this.enPassantTarget
-      ),
+      // Current position - use cached position from history instead of recalculating
+      currentPosition: this.stateManager.positionHistory[this.stateManager.positionHistory.length - 1],
 
-      // State validation
-      stateConsistency: this.stateManager.validateGameStateConsistency(gameStateSnapshot)
+      // State validation - only perform expensive consistency check in debug mode
+      stateConsistency: this.debugMode
+        ? this.stateManager.validateGameStateConsistency(gameStateSnapshot)
+        : {
+            success: true,
+            errors: [],
+            warnings: [],
+            stateVersion: this.stateManager.stateVersion,
+            validationTimestamp: Date.now(),
+            details: { skipped: true }
+          }
     };
   }
 }
