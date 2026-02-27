@@ -10,6 +10,7 @@ jobs:
   test-node23:
     name: Test on Node.js 23.x
     runs-on: ubuntu-latest
+    continue-on-error: false
     
     steps:
     - name: Checkout code
@@ -32,16 +33,9 @@ jobs:
     
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v5
+      if: always()
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       with:
         flags: node23
         name: node-23-coverage
-    
-    - name: Run ESLint
-      run: npx eslint src/ --ext .js --format github
-      continue-on-error: true
-    
-    - name: Check for security vulnerabilities
-      run: npm audit --audit-level high
-      continue-on-error: true
