@@ -1,86 +1,33 @@
 const ChessGame = require('./chessGame');
+const {
+  PIECE_VALUES,
+  PAWN_PST,
+  KNIGHT_PST,
+  BISHOP_PST,
+  ROOK_PST,
+  QUEEN_PST,
+  KING_MIDGAME_PST
+} = require('./evaluationConstants');
 
 class ChessAI {
   constructor(difficulty = 'medium') {
     this.difficulty = difficulty;
     this.maxDepth = this.getMaxDepth(difficulty);
-    this.pieceValues = {
-      pawn: 100,
-      knight: 300,
-      bishop: 300,
-      rook: 500,
-      queen: 900,
-      king: 10000
+    this.pieceValues = PIECE_VALUES;
+
+    this.positionValues = {
+      pawn: PAWN_PST,
+      knight: KNIGHT_PST,
+      bishop: BISHOP_PST,
+      rook: ROOK_PST,
+      queen: QUEEN_PST,
+      king: KING_MIDGAME_PST
     };
 
     // Initialize required tables
     this.zobristTable = this.initZobrist();
     this.transpositionTable = new Map();
     this.historyTable = Array(64).fill(0).map(() => Array(64).fill(0));
-
-    // Piece-Square Tables (White perspective, flipped for black)
-    this.positionValues = {
-      pawn: [
-        [0,  0,  0,  0,  0,  0,  0,  0],
-        [50, 50, 50, 50, 50, 50, 50, 50],
-        [10, 10, 20, 30, 30, 20, 10, 10],
-        [5,  5, 10, 25, 25, 10,  5,  5],
-        [0,  0,  0, 20, 20,  0,  0,  0],
-        [5, -5,-10,  0,  0,-10, -5,  5],
-        [5, 10, 10,-20,-20, 10, 10,  5],
-        [0,  0,  0,  0,  0,  0,  0,  0]
-      ],
-      knight: [
-        [-50,-40,-30,-30,-30,-30,-40,-50],
-        [-40,-20,  0,  0,  0,  0,-20,-40],
-        [-30,  0, 10, 15, 15, 10,  0,-30],
-        [-30,  5, 15, 20, 20, 15,  5,-30],
-        [-30,  0, 15, 20, 20, 15,  0,-30],
-        [-30,  5, 10, 15, 15, 10,  5,-30],
-        [-40,-20,  0,  5,  5,  0,-20,-40],
-        [-50,-40,-30,-30,-30,-30,-40,-50]
-      ],
-      bishop: [
-        [-20,-10,-10,-10,-10,-10,-10,-20],
-        [-10,  0,  0,  0,  0,  0,  0,-10],
-        [-10,  0,  5, 10, 10,  5,  0,-10],
-        [-10,  5,  5, 10, 10,  5,  5,-10],
-        [-10,  0, 10, 10, 10, 10,  0,-10],
-        [-10, 10, 10, 10, 10, 10, 10,-10],
-        [-10,  5,  0,  0,  0,  0,  5,-10],
-        [-20,-10,-10,-10,-10,-10,-10,-20]
-      ],
-      rook: [
-        [0,  0,  0,  0,  0,  0,  0,  0],
-        [5, 10, 10, 10, 10, 10, 10,  5],
-        [-5,  0,  0,  0,  0,  0,  0, -5],
-        [-5,  0,  0,  0,  0,  0,  0, -5],
-        [-5,  0,  0,  0,  0,  0,  0, -5],
-        [-5,  0,  0,  0,  0,  0,  0, -5],
-        [-5,  0,  0,  0,  0,  0,  0, -5],
-        [0,  0,  0,  5,  5,  0,  0,  0]
-      ],
-      queen: [
-        [-20,-10,-10, -5, -5,-10,-10,-20],
-        [-10,  0,  0,  0,  0,  0,  0,-10],
-        [-10,  0,  5,  5,  5,  5,  0,-10],
-        [-5,  0,  5,  5,  5,  5,  0, -5],
-        [0,  0,  5,  5,  5,  5,  0, -5],
-        [-10,  5,  5,  5,  5,  5,  0,-10],
-        [-10,  0,  5,  0,  0,  0,  0,-10],
-        [-20,-10,-10, -5, -5,-10,-10,-20]
-      ],
-      king: [
-        [-30,-40,-40,-50,-50,-40,-40,-30],
-        [-30,-40,-40,-50,-50,-40,-40,-30],
-        [-30,-40,-40,-50,-50,-40,-40,-30],
-        [-30,-40,-40,-50,-50,-40,-40,-30],
-        [-20,-30,-30,-40,-40,-30,-30,-20],
-        [-10,-20,-20,-20,-20,-20,-20,-10],
-        [20, 20,  0,  0,  0,  0, 20, 20],
-        [20, 30, 10,  0,  0, 10, 30, 20]
-      ]
-    };
   }
   
   initZobrist() {
@@ -429,20 +376,8 @@ class ChessAI {
       return 0;
     }
     
-    let score = 0;
-    
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const piece = chessGame.board[row][col];
-        if (piece) {
-          const pieceValue = this.pieceValues[piece.type];
-          const positionValue = this.getPositionValue(piece, row, col);
-          const totalValue = pieceValue + positionValue;
-          
-          score += piece.color === 'white' ? totalValue : -totalValue;
-        }
-      }
-    }
+    // Use incrementally updated score from ChessGame
+    let score = chessGame.boardScore;
     
     // Mobility (skip for easy mode to save performance)
     if (this.difficulty !== 'easy') {
@@ -764,6 +699,9 @@ class ChessAI {
     newGame.halfMoveClock = chessGame.halfMoveClock;
     newGame.fullMoveNumber = chessGame.fullMoveNumber;
     
+    // Copy board score
+    newGame.boardScore = chessGame.boardScore;
+
     // Copy additional state if it exists
     if (chessGame.checkDetails) {
       newGame.checkDetails = { ...chessGame.checkDetails };
