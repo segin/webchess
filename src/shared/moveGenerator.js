@@ -146,24 +146,25 @@ class MoveGenerator {
   isBlockingSquare(blockSquare, attackerPos, kingPos) {
     const rowDir = kingPos.row - attackerPos.row;
     const colDir = kingPos.col - attackerPos.col;
-    const distance = Math.max(Math.abs(rowDir), Math.abs(colDir));
-    if (distance === 0) return false;
+    const blockRowDir = blockSquare.row - attackerPos.row;
+    const blockColDir = blockSquare.col - attackerPos.col;
 
-    const rowStep = rowDir / distance;
-    const colStep = colDir / distance;
-
-    let currentRow = attackerPos.row + rowStep;
-    let currentCol = attackerPos.col + colStep;
-    let stepCount = 0;
-    while ((Math.round(currentRow) !== kingPos.row || Math.round(currentCol) !== kingPos.col) && stepCount < 8) {
-      if (Math.round(currentRow) === blockSquare.row && Math.round(currentCol) === blockSquare.col) {
-        return true;
-      }
-      currentRow += rowStep;
-      currentCol += colStep;
-      stepCount++;
+    // Check collinearity: cross product must be 0
+    if (rowDir * blockColDir !== colDir * blockRowDir) {
+      return false;
     }
-    return false;
+
+    // Check direction: dot product must be positive
+    if (rowDir * blockRowDir + colDir * blockColDir <= 0) {
+      return false;
+    }
+
+    // Check distance: block must be strictly closer than king
+    // Since aligned, comparison of Chebyshev distance is sufficient and fast
+    const distance = Math.max(Math.abs(rowDir), Math.abs(colDir));
+    const blockDistance = Math.max(Math.abs(blockRowDir), Math.abs(blockColDir));
+
+    return blockDistance > 0 && blockDistance < distance;
   }
 }
 
