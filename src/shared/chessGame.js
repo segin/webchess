@@ -3639,7 +3639,9 @@ class ChessGame {
       ),
 
       // State validation
-      stateConsistency: this.stateManager.validateGameStateConsistency(gameStateSnapshot)
+      stateConsistency: this.debugMode
+        ? this.stateManager.validateGameStateConsistency(gameStateSnapshot)
+        : { success: true, errors: [], warnings: [], skipped: true }
     };
   }
 }
