@@ -1419,44 +1419,8 @@ describe('ChessGame - Core Functionality', () => {
   });
 
   describe('Advanced Move Validation Edge Cases', () => {
-    test('should handle default case in piece type switch for isValidMoveSimple', () => {
-      const piece = { type: 'unknown', color: 'white' };
-      const from = { row: 6, col: 4 };
-      const to = { row: 5, col: 4 };
-
-      // Place piece on board
-      game.board[from.row][from.col] = piece;
-
-      const result = game.isValidMoveSimple(from, to, piece);
-      expect(result).toBe(false);
-    });
-
-    test('should handle king castling attempt in isValidMoveSimple', () => {
-      // Set up castling position
-      game.board[7][4] = { type: 'king', color: 'white' };
-      game.board[7][7] = { type: 'rook', color: 'white' };
-      // Clear path
-      game.board[7][5] = null;
-      game.board[7][6] = null;
-
-      const from = { row: 7, col: 4 };
-      const to = { row: 7, col: 6 };
-      const piece = { type: 'king', color: 'white' };
-
-      const result = game.isValidMoveSimple(from, to, piece);
-      expect(typeof result).toBe('boolean');
-    });
-
-    test('should handle invalid movement in isValidMoveSimple', () => {
-      const piece = { type: 'pawn', color: 'white' };
-      const from = { row: 5, col: 4 }; // Not starting position
-      const to = { row: 3, col: 4 }; // Invalid 2-square move from non-starting position
-
-      game.board[from.row][from.col] = piece;
-
-      const result = game.isValidMoveSimple(from, to, piece);
-      expect(result).toBe(false);
-    });
+    // Tests for isValidMoveSimple removed as the method was deprecated and removed
+    // in favor of optimized _isGeneratedMoveLegal used within generation context.
   });
 
   describe('Utility Methods and Additional Coverage', () => {
@@ -1834,55 +1798,6 @@ describe('ChessGame Advanced Coverage - Uncovered Lines', () => {
         game = new ChessGame();
     });
 
-    describe('isValidMoveSimple - Line Coverage', () => {
-        test('should handle invalid squares', () => {
-            const piece = { type: 'pawn', color: 'white' };
-            const invalidFrom = { row: -1, col: 4 };
-            const validTo = { row: 5, col: 4 };
-
-            const result = game.isValidMoveSimple(invalidFrom, validTo, piece);
-            expect(result).toBe(false);
-        });
-
-        test('should handle same square moves', () => {
-            const piece = { type: 'pawn', color: 'white' };
-            const square = { row: 6, col: 4 };
-
-            const result = game.isValidMoveSimple(square, square, piece);
-            expect(result).toBe(false);
-        });
-
-        test('should handle unknown piece types', () => {
-            const piece = { type: 'unknown', color: 'white' };
-            const from = { row: 6, col: 4 };
-            const to = { row: 5, col: 4 };
-
-            const result = game.isValidMoveSimple(from, to, piece);
-            expect(result).toBe(false);
-        });
-
-        test('should handle king castling in isValidMoveSimple', () => {
-            // Clear path for castling
-            game.board[7][5] = null;
-            game.board[7][6] = null;
-
-            const piece = { type: 'king', color: 'white' };
-            const from = { row: 7, col: 4 };
-            const to = { row: 7, col: 6 };
-
-            const result = game.isValidMoveSimple(from, to, piece);
-            expect(typeof result).toBe('boolean');
-        });
-
-        test('should handle capturing own piece', () => {
-            const piece = { type: 'rook', color: 'white' };
-            const from = { row: 7, col: 0 };
-            const to = { row: 7, col: 1 }; // White knight position
-
-            const result = game.isValidMoveSimple(from, to, piece);
-            expect(result).toBe(false);
-        });
-    });
 
     describe('Check Detection and Categorization', () => {
         test('should categorize no check', () => {
@@ -2920,46 +2835,6 @@ describe('ChessGame Advanced Coverage - Uncovered Lines', () => {
             });
         });
 
-        describe('isValidMoveSimple Edge Cases - Lines 2139, 2144, 2175', () => {
-            test('should handle default case in piece type switch', () => {
-                const piece = { type: 'unknown', color: 'white' };
-                const from = { row: 6, col: 4 };
-                const to = { row: 5, col: 4 };
-
-                // Place piece on board
-                game.board[from.row][from.col] = piece;
-
-                const result = game.isValidMoveSimple(from, to, piece);
-                expect(result).toBe(false);
-            });
-
-            test('should handle king castling attempt in isValidMoveSimple', () => {
-                // Set up castling position
-                game.board[7][4] = { type: 'king', color: 'white' };
-                game.board[7][7] = { type: 'rook', color: 'white' };
-                // Clear path
-                game.board[7][5] = null;
-                game.board[7][6] = null;
-
-                const from = { row: 7, col: 4 };
-                const to = { row: 7, col: 6 };
-                const piece = { type: 'king', color: 'white' };
-
-                const result = game.isValidMoveSimple(from, to, piece);
-                expect(typeof result).toBe('boolean');
-            });
-
-            test('should handle invalid movement in isValidMoveSimple', () => {
-                const piece = { type: 'pawn', color: 'white' };
-                const from = { row: 5, col: 4 }; // Not starting position
-                const to = { row: 3, col: 4 }; // Invalid 2-square move from non-starting position
-
-                game.board[from.row][from.col] = piece;
-
-                const result = game.isValidMoveSimple(from, to, piece);
-                expect(result).toBe(false);
-            });
-        });
 
         describe('categorizeCheck Method - Line 2282', () => {
             test('should return none for no attacking pieces', () => {
