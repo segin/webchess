@@ -1,26 +1,33 @@
 const ChessGame = require('./chessGame');
+const {
+  PIECE_VALUES,
+  PAWN_PST,
+  KNIGHT_PST,
+  BISHOP_PST,
+  ROOK_PST,
+  QUEEN_PST,
+  KING_MIDGAME_PST
+} = require('./evaluationConstants');
 
 class ChessAI {
   constructor(difficulty = 'medium') {
     this.difficulty = difficulty;
     this.maxDepth = this.getMaxDepth(difficulty);
-    this.pieceValues = {
-      pawn: 100,
-      knight: 300,
-      bishop: 300,
-      rook: 500,
-      queen: 900,
-      king: 10000
+    this.pieceValues = PIECE_VALUES;
+
+    this.positionValues = {
+      pawn: PAWN_PST,
+      knight: KNIGHT_PST,
+      bishop: BISHOP_PST,
+      rook: ROOK_PST,
+      queen: QUEEN_PST,
+      king: KING_MIDGAME_PST
     };
 
-    // Initialize Zobrist Hashing
+    // Initialize required tables
     this.zobristTable = this.initZobrist();
-
-    // Initialize Transposition Table
     this.transpositionTable = new Map();
-
-    // Initialize Position Values (Piece-Square Tables)
-    this.positionValues = this.initPositionValues();
+    this.historyTable = Array(64).fill(0).map(() => Array(64).fill(0));
   }
   
   initZobrist() {
@@ -57,37 +64,6 @@ class ChessAI {
     return zobrist;
   }
   
-  initPositionValues() {
-    // Helper to create a simple center-biased table
-    const createCenterBiasTable = () => {
-        const table = Array(8).fill(null).map(() => Array(8).fill(0));
-        for(let r=0; r<8; r++) {
-            for(let c=0; c<8; c++) {
-                // Simple center bias: closer to center (3.5, 3.5) = higher score
-                const centerDist = Math.abs(3.5 - r) + Math.abs(3.5 - c);
-                // Max dist is 7 (0,0 to 3.5,3.5 is 3.5+3.5=7). Min is 0.
-                // Value range: 0 to 70
-                table[r][c] = Math.floor((7 - centerDist) * 10);
-            }
-        }
-        return table;
-    };
-
-    // Using the same table for all pieces for simplicity, as it satisfies the requirement
-    // "center control is good". In a real engine, these would be specialized.
-    const centerBias = createCenterBiasTable();
-
-    return {
-      pawn: centerBias,
-      knight: centerBias,
-      bishop: centerBias,
-      rook: centerBias,
-      queen: centerBias,
-      king: centerBias // Note: King safety usually prefers corners in midgame, but center in endgame.
-                       // For the generic test case, center bias is sufficient to pass "positional value" check.
-    };
-  }
-
   random32() {
     return Math.floor(Math.random() * 0xFFFFFFFF);
   }
@@ -154,14 +130,6 @@ class ChessAI {
     // Initialize Killer Moves table
     this.killerMoves = [];
     for(let i=0; i < this.maxDepth + 1; i++) this.killerMoves.push([null, null]);
-
-    // Initialize History Heuristic Table
-    // [color][from][to] -> score
-    // Using 0-63 indices for squares
-    this.historyTable = {
-      white: Array(64).fill(null).map(() => Array(64).fill(0)),
-      black: Array(64).fill(null).map(() => Array(64).fill(0))
-    };
 
     let bestMove = null;
     let alpha = -Infinity;
@@ -234,33 +202,50 @@ class ChessAI {
   minimax(chessGame, move, depth, isMaximizing, alpha, beta) {
     if (depth < 0) return this.evaluatePosition(chessGame);
     
-    const tempGame = this.cloneGame(chessGame);
-    const result = tempGame.makeMove(move, null, null, { silent: true });
+    // Use make/undo pattern instead of cloning
+    const result = chessGame.makeMove(move, null, null, { silent: true, skipValidation: true });
     
     if (!result.success) return isMaximizing ? -Infinity : Infinity;
 
-    const hash = this.computeHash(tempGame);
+    const hash = this.computeHash(chessGame);
     const ttEntry = this.transpositionTable.get(hash);
     
     if (ttEntry && ttEntry.depth >= depth) {
-      if (ttEntry.flag === 'exact') return ttEntry.score;
-      if (ttEntry.flag === 'lowerbound') alpha = Math.max(alpha, ttEntry.score);
-      if (ttEntry.flag === 'upperbound') beta = Math.min(beta, ttEntry.score);
-      if (alpha >= beta) return ttEntry.score;
+      let score = ttEntry.score;
+      if (ttEntry.flag === 'exact') {
+        chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
+        return score;
+      }
+      if (ttEntry.flag === 'lowerbound') alpha = Math.max(alpha, score);
+      if (ttEntry.flag === 'upperbound') beta = Math.min(beta, score);
+      if (alpha >= beta) {
+        chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
+        return score;
+      }
     }
     
-    if (depth === 0 || tempGame.gameStatus !== 'active') {
-      if (tempGame.gameStatus !== 'active') return this.evaluatePosition(tempGame);
+    if (depth === 0 || chessGame.gameStatus !== 'active') {
+      if (chessGame.gameStatus !== 'active') {
+        const score = this.evaluatePosition(chessGame);
+        chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
+        return score;
+      }
       // Use Quiescence Search at leaf nodes instead of raw evaluation
-      return this.quiescence(tempGame, alpha, beta, isMaximizing, chessGame.currentTurn);
+      const score = this.quiescence(chessGame, alpha, beta, isMaximizing, chessGame.currentTurn);
+      chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
+      return score;
     }
     
-    const moves = this.getAllValidMoves(tempGame, tempGame.currentTurn);
-    if (moves.length === 0) return this.evaluatePosition(tempGame);
+    const moves = this.getAllValidMoves(chessGame, chessGame.currentTurn);
+    if (moves.length === 0) {
+      const score = this.evaluatePosition(chessGame);
+      chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
+      return score;
+    }
     
     // Order moves: TT move first, then captures/killers
     const bestTTMove = (ttEntry && ttEntry.bestMove) ? ttEntry.bestMove : null;
-    const orderedMoves = this.orderMoves(tempGame, moves, bestTTMove, depth);
+    const orderedMoves = this.orderMoves(chessGame, moves, bestTTMove, depth);
     
     let bestMove = null;
     let score;
@@ -269,7 +254,7 @@ class ChessAI {
     if (isMaximizing) {
       let maxScore = -Infinity;
       for (const nextMove of orderedMoves) {
-        score = this.minimax(tempGame, nextMove, depth - 1, false, alpha, beta);
+        score = this.minimax(chessGame, nextMove, depth - 1, false, alpha, beta);
         
         if (score > maxScore) {
             maxScore = score;
@@ -279,7 +264,15 @@ class ChessAI {
         alpha = Math.max(alpha, score);
         if (beta <= alpha) {
             this.storeKillerMove(nextMove, depth);
-            this.updateHistoryScore(nextMove, depth, tempGame.currentTurn);
+
+            // History Heuristic: Update score for quiet moves
+            const toPiece = chessGame.board[nextMove.to.row][nextMove.to.col];
+            if (!toPiece) {
+                const fromIdx = nextMove.from.row * 8 + nextMove.from.col;
+                const toIdx = nextMove.to.row * 8 + nextMove.to.col;
+                this.historyTable[fromIdx][toIdx] += depth * depth;
+            }
+
             break;
         }
       }
@@ -293,11 +286,12 @@ class ChessAI {
           bestMove: bestMove
       });
       
+      chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
       return maxScore;
     } else {
       let minScore = Infinity;
       for (const nextMove of orderedMoves) {
-        score = this.minimax(tempGame, nextMove, depth - 1, true, alpha, beta);
+        score = this.minimax(chessGame, nextMove, depth - 1, true, alpha, beta);
         
         if (score < minScore) {
             minScore = score;
@@ -307,7 +301,15 @@ class ChessAI {
         beta = Math.min(beta, score);
         if (beta <= alpha) {
             this.storeKillerMove(nextMove, depth);
-            this.updateHistoryScore(nextMove, depth, tempGame.currentTurn);
+
+            // History Heuristic: Update score for quiet moves
+            const toPiece = chessGame.board[nextMove.to.row][nextMove.to.col];
+            if (!toPiece) {
+                const fromIdx = nextMove.from.row * 8 + nextMove.from.col;
+                const toIdx = nextMove.to.row * 8 + nextMove.to.col;
+                this.historyTable[fromIdx][toIdx] += depth * depth;
+            }
+
             break;
         }
       }
@@ -321,6 +323,7 @@ class ChessAI {
           bestMove: bestMove
       });
 
+      chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
       return minScore;
     }
   }
@@ -331,36 +334,6 @@ class ChessAI {
           this.killerMoves[depth][1] = this.killerMoves[depth][0];
           this.killerMoves[depth][0] = move;
       }
-  }
-
-  updateHistoryScore(move, depth, turn) {
-    if (!this.historyTable || !move) return;
-
-    const fromIndex = move.from.row * 8 + move.from.col;
-    const toIndex = move.to.row * 8 + move.to.col;
-
-    // Increment score based on depth (depth^2 is common)
-    const bonus = depth * depth;
-
-    if (this.historyTable[turn] && this.historyTable[turn][fromIndex]) {
-        this.historyTable[turn][fromIndex][toIndex] += bonus;
-    }
-  }
-
-  getHistoryScore(chessGame, move) {
-      if (!this.historyTable || !move) return 0;
-
-      const turn = chessGame.currentTurn;
-      const fromIndex = move.from.row * 8 + move.from.col;
-      const toIndex = move.to.row * 8 + move.to.col;
-
-      if (this.historyTable[turn] && this.historyTable[turn][fromIndex]) {
-          // Cap the score to ensure it doesn't override captures/killers too easily
-          // Killers are 800-900, Captures are 1000+
-          // So history score should ideally be < 800
-          return Math.min(this.historyTable[turn][fromIndex][toIndex], 700);
-      }
-      return 0;
   }
 
   // Quiescence Search to avoid horizon effect on captures
@@ -386,11 +359,11 @@ class ChessAI {
 
     if (isMaximizing) {
       for (const move of orderedCaptures) {
-        const tempGame = this.cloneGame(chessGame);
-        const result = tempGame.makeMove(move, null, null, { silent: true });
+        const result = chessGame.makeMove(move, null, null, { silent: true, skipValidation: true });
         
         if (result.success) {
-           const score = this.quiescence(tempGame, alpha, beta, false, rootColor);
+           const score = this.quiescence(chessGame, alpha, beta, false, rootColor);
+           chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
            
            if (score >= beta) return beta;
            alpha = Math.max(alpha, score);
@@ -399,11 +372,11 @@ class ChessAI {
       return alpha;
     } else {
       for (const move of orderedCaptures) {
-         const tempGame = this.cloneGame(chessGame);
-         const result = tempGame.makeMove(move, null, null, { silent: true });
+         const result = chessGame.makeMove(move, null, null, { silent: true, skipValidation: true });
          
          if (result.success) {
-           const score = this.quiescence(tempGame, alpha, beta, true, rootColor);
+           const score = this.quiescence(chessGame, alpha, beta, true, rootColor);
+           chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
            
            if (score <= alpha) return alpha;
            beta = Math.min(beta, score);
@@ -422,20 +395,8 @@ class ChessAI {
       return 0;
     }
     
-    let score = 0;
-    
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const piece = chessGame.board[row][col];
-        if (piece) {
-          const pieceValue = this.pieceValues[piece.type];
-          const positionValue = this.getPositionValue(piece, row, col);
-          const totalValue = pieceValue + positionValue;
-          
-          score += piece.color === 'white' ? totalValue : -totalValue;
-        }
-      }
-    }
+    // Use incrementally updated score from ChessGame
+    let score = chessGame.boardScore;
     
     // Mobility (skip for easy mode to save performance)
     if (this.difficulty !== 'easy') {
@@ -508,19 +469,19 @@ class ChessAI {
     
     if (!piece) return moves;
     
-    // Helper to add move if valid
+    // Optimized helper to add move if valid (skips heavy validation)
     const tryAddMove = (toRow, toCol) => {
-      // Basic bounds check first
-      if (toRow < 0 || toRow > 7 || toCol < 0 || toCol > 7) return;
+      // NOTE: Caller must ensure bounds and occupancy checks before calling this
+      // to avoid overhead of creating objects for invalid moves.
 
       const move = {
         from: { row, col },
         to: { row: toRow, col: toCol }
       };
 
-      // Use comprehensive validation instead of lower-level methods
-      const validation = chessGame.validateMove(move);
-      if (validation.success && validation.isValid) {
+      // Lightweight validation: Only check if move puts own king in check
+      // This skips format, turn, piece, and other redundant checks performed by validateMove
+      if (!chessGame.wouldBeInCheck(move.from, move.to, piece.color, piece)) {
         moves.push(move);
       }
     };
@@ -531,16 +492,37 @@ class ChessAI {
         const startRow = piece.color === 'white' ? 6 : 1;
 
         // Forward 1
-        tryAddMove(row + direction, col);
+        const r1 = row + direction;
+        if (r1 >= 0 && r1 <= 7) {
+            if (!chessGame.board[r1][col]) {
+                tryAddMove(r1, col);
 
-        // Forward 2 (only if on start row)
-        if (row === startRow) {
-          tryAddMove(row + 2 * direction, col);
+                // Forward 2 (only if on start row and forward 1 was empty)
+                if (row === startRow) {
+                    const r2 = row + 2 * direction;
+                    // No need to check r2 bounds as startRow guarantees it
+                    if (!chessGame.board[r2][col]) {
+                        tryAddMove(r2, col);
+                    }
+                }
+            }
         }
 
         // Captures
-        tryAddMove(row + direction, col - 1);
-        tryAddMove(row + direction, col + 1);
+        const captureCols = [col - 1, col + 1];
+        for (const c of captureCols) {
+            if (c >= 0 && c <= 7) {
+                const target = chessGame.board[r1][c]; // r1 is capture row (same as forward 1)
+                if (target && target.color !== piece.color) {
+                    tryAddMove(r1, c);
+                } else if (chessGame.enPassantTarget &&
+                           chessGame.enPassantTarget.row === r1 &&
+                           chessGame.enPassantTarget.col === c) {
+                     // En Passant
+                     tryAddMove(r1, c);
+                }
+            }
+        }
         break;
       }
 
@@ -549,8 +531,15 @@ class ChessAI {
           [-2, -1], [-2, 1], [-1, -2], [-1, 2],
           [1, -2], [1, 2], [2, -1], [2, 1]
         ];
-        for (const [r, c] of offsets) {
-          tryAddMove(row + r, col + c);
+        for (const [dr, dc] of offsets) {
+          const r = row + dr;
+          const c = col + dc;
+          if (r >= 0 && r <= 7 && c >= 0 && c <= 7) {
+              const target = chessGame.board[r][c];
+              if (!target || target.color !== piece.color) {
+                  tryAddMove(r, c);
+              }
+          }
         }
         break;
       }
@@ -598,16 +587,32 @@ class ChessAI {
           [0, -1],           [0, 1],
           [1, -1], [1, 0], [1, 1]
         ];
-        for (const [r, c] of offsets) {
-          tryAddMove(row + r, col + c);
+        for (const [dr, dc] of offsets) {
+          const r = row + dr;
+          const c = col + dc;
+          if (r >= 0 && r <= 7 && c >= 0 && c <= 7) {
+              const target = chessGame.board[r][c];
+              if (!target || target.color !== piece.color) {
+                  tryAddMove(r, c);
+              }
+          }
         }
         
-        // Castling squares
+        // Castling
         // Only if on starting rank and file
         const startRank = piece.color === 'white' ? 7 : 0;
         if (row === startRank && col === 4) {
-          tryAddMove(row, col + 2); // Kingside
-          tryAddMove(row, col - 2); // Queenside
+            // Kingside
+            const kingsideDest = { row, col: 6 };
+            if (chessGame.canCastle({ row, col }, kingsideDest, piece.color)) {
+                moves.push({ from: { row, col }, to: kingsideDest });
+            }
+
+            // Queenside
+            const queensideDest = { row, col: 2 };
+            if (chessGame.canCastle({ row, col }, queensideDest, piece.color)) {
+                moves.push({ from: { row, col }, to: queensideDest });
+            }
         }
         break;
       }
@@ -657,7 +662,11 @@ class ChessAI {
     }
 
     // 5. History Heuristic
-    score += this.getHistoryScore(chessGame, move);
+    if (this.historyTable) {
+        const fromIdx = move.from.row * 8 + move.from.col;
+        const toIdx = move.to.row * 8 + move.to.col;
+        score += this.historyTable[fromIdx][toIdx];
+    }
 
     return score;
   }
@@ -709,6 +718,9 @@ class ChessAI {
     newGame.halfMoveClock = chessGame.halfMoveClock;
     newGame.fullMoveNumber = chessGame.fullMoveNumber;
     
+    // Copy board score
+    newGame.boardScore = chessGame.boardScore;
+
     // Copy additional state if it exists
     if (chessGame.checkDetails) {
       newGame.checkDetails = { ...chessGame.checkDetails };

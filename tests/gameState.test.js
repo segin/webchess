@@ -700,6 +700,7 @@ describe('GameState Additional Coverage for 95%+', () => {
   beforeEach(() => {
     const ChessGame = require('../src/shared/chessGame');
     game = new ChessGame();
+    game.debugMode = true;
     stateManager = game.stateManager;
   });
 
@@ -1011,6 +1012,7 @@ describe('Game State Management', () => {
 
   beforeEach(() => {
     game = new ChessGame();
+    game.debugMode = true;
     stateManager = game.stateManager; // Use the game's state manager instead of creating a new one
   });
 
@@ -1536,6 +1538,7 @@ describe('GameState Transition Validation Coverage', () => {
 
     beforeEach(() => {
       game = new ChessGame();
+    game.debugMode = true;
     });
 
     test('should handle complex game state serialization', () => {
@@ -1582,6 +1585,7 @@ describe('GameState Transition Validation Coverage', () => {
 
     beforeEach(() => {
       game = new ChessGame();
+    game.debugMode = true;
     });
 
     test('should handle corrupted state recovery', () => {
@@ -1631,6 +1635,7 @@ describe('GameState Transition Validation Coverage', () => {
 
     beforeEach(() => {
       game = new ChessGame();
+    game.debugMode = true;
     });
 
     test('should handle large move histories efficiently', () => {
@@ -1681,6 +1686,7 @@ describe('GameState Transition Validation Coverage', () => {
 
     beforeEach(() => {
       game = new ChessGame();
+    game.debugMode = true;
       stateManager = game.stateManager;
     });
 
@@ -1753,6 +1759,7 @@ describe('GameState Transition Validation Coverage', () => {
 
     beforeEach(() => {
       game = new ChessGame();
+    game.debugMode = true;
       stateManager = game.stateManager;
     });
 
@@ -1813,6 +1820,7 @@ describe('GameState Transition Validation Coverage', () => {
 
     beforeEach(() => {
       game = new ChessGame();
+    game.debugMode = true;
       stateManager = game.stateManager;
     });
 
@@ -1905,6 +1913,7 @@ describe('GameState Transition Validation Coverage', () => {
 
     beforeEach(() => {
       game = new ChessGame();
+    game.debugMode = true;
       stateManager = game.stateManager;
     });
 
@@ -1959,6 +1968,7 @@ describe('GameState Transition Validation Coverage', () => {
 
     beforeEach(() => {
       game = new ChessGame();
+    game.debugMode = true;
       stateManager = game.stateManager;
     });
 
@@ -2030,6 +2040,7 @@ describe('GameState Transition Validation Coverage', () => {
 
     beforeEach(() => {
       game = new ChessGame();
+    game.debugMode = true;
       stateManager = game.stateManager;
     });
 
@@ -2095,6 +2106,7 @@ describe('GameState Transition Validation Coverage', () => {
 
     beforeEach(() => {
       game = new ChessGame();
+    game.debugMode = true;
       stateManager = game.stateManager;
     });
 
@@ -2139,6 +2151,7 @@ describe('GameState Transition Validation Coverage', () => {
 
     beforeEach(() => {
       game = new ChessGame();
+    game.debugMode = true;
       stateManager = game.stateManager;
     });
 
@@ -2191,6 +2204,7 @@ describe('GameState Transition Validation Coverage', () => {
 
     beforeEach(() => {
       game = new ChessGame();
+    game.debugMode = true;
       stateManager = game.stateManager;
     });
 
@@ -2227,6 +2241,7 @@ describe('GameState Transition Validation Coverage', () => {
 
     beforeEach(() => {
       game = new ChessGame();
+    game.debugMode = true;
       stateManager = game.stateManager;
     });
 
@@ -2319,6 +2334,7 @@ describe('GameState Additional Coverage', () => {
 
   beforeEach(() => {
     game = new ChessGame();
+    game.debugMode = true;
     stateManager = game.stateManager;
   });
 
