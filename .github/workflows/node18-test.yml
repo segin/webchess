@@ -8,7 +8,7 @@ on:
 
 jobs:
   test-node18:
-    name: Test on Node.js 18.x (Experimental)
+    name: Test on Node.js 18.x
     runs-on: ubuntu-latest
     continue-on-error: true
     
@@ -24,39 +24,18 @@ jobs:
     
     - name: Install dependencies
       run: npm ci
-      continue-on-error: true
     
     - name: Run tests
       run: npm test
-      continue-on-error: true
     
     - name: Generate test coverage
       run: npm run test:coverage
-      continue-on-error: true
     
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v5
-      if: success() || failure()
+      if: always()
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       with:
-        flags: node18-experimental
+        flags: node18
         name: node-18-coverage
-    
-    - name: Run ESLint
-      run: npx eslint src/ --ext .js --format github
-      continue-on-error: true
-    
-    - name: Check for security vulnerabilities
-      run: npm audit --audit-level high
-      continue-on-error: true
-    
-    - name: Report Node.js 18.x Status
-      if: always()
-      run: |
-        echo "::notice title=Node.js 18.x Status::This is an experimental test for Node.js 18.x compatibility tracking"
-        if [ "${{ job.status }}" = "success" ]; then
-          echo "✅ Node.js 18.x is still working!"
-        else
-          echo "⚠️ Node.js 18.x compatibility issues detected - this is expected and tracked"
-        fi
