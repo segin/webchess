@@ -27,6 +27,7 @@ class GameManager {
     this.disconnectTimeouts = new Map(); // Track timeouts for cleanup
     this.playerGameCounts = new Map(); // Track game counts for rate limiting
     this.playerStats = new Map(); // Optimization: Pre-calculated player statistics
+    this.activityList = new Set(); // LRU cache for game activity (gameId)
     this.MAX_GAMES_PER_PLAYER = 5;
   }
 
@@ -63,6 +64,7 @@ class GameManager {
     this.playerToGame.set(playerId, gameId);
     this._addGameToPlayer(playerId, gameId);
     this.playerGameCounts.set(playerId, currentCount + 1);
+    this.activityList.add(gameId);
     
     return gameId;
   }
@@ -123,6 +125,7 @@ class GameManager {
     game.status = 'active';
     this._updateStatusIndex(game.id, oldStatus, 'active');
     game.lastActivity = Date.now();
+    this._markActive(gameId);
     
     this.playerToGame.set(playerId, gameId);
     this._addGameToPlayer(playerId, gameId);
@@ -165,6 +168,7 @@ class GameManager {
     }
 
     game.lastActivity = Date.now();
+    this._markActive(gameId);
 
     return {
       success: true,
@@ -283,6 +287,7 @@ class GameManager {
 
     game.chatMessages.push(chatMessage);
     game.lastActivity = Date.now();
+    this._markActive(gameId);
 
     // Limit chat history to 100 messages
     if (game.chatMessages.length > 100) {
@@ -358,6 +363,9 @@ class GameManager {
 
       // Remove from status index
       this._removeFromStatusIndex(game.status, gameId);
+
+      // Remove from activity list
+      this.activityList.delete(gameId);
 
       // Clean up player mappings
       this.playerToGame.delete(game.host);
@@ -520,6 +528,7 @@ class GameManager {
     game.status = 'active';
     this._updateStatusIndex(gameId, oldStatus, 'active');
     game.lastActivity = Date.now();
+    this._markActive(gameId);
 
     return { success: true };
   }
@@ -664,6 +673,7 @@ class GameManager {
         game.endTime = null;
       }
       game.lastActivity = Date.now();
+      this._markActive(gameId);
     }
 
     return result;
@@ -794,10 +804,24 @@ class GameManager {
     let cleaned = 0;
     const now = Date.now();
 
-    for (const [gameId, game] of this.games) {
+    // Iterate through activity list (ordered by insertion/update time)
+    // The beginning of the set contains the oldest activities
+    for (const gameId of this.activityList) {
+      const game = this.games.get(gameId);
+
+      // Safety check: if game somehow doesn't exist but is in activity list
+      if (!game) {
+        this.activityList.delete(gameId);
+        continue;
+      }
+
       if (now - game.lastActivity > maxAge) {
-        this.removeGame(gameId);
+        this.removeGame(gameId); // This removes from activityList too
         cleaned++;
+      } else {
+        // Since list is ordered by activity time, once we find an active game,
+        // all subsequent games are also active (more recently updated).
+        break;
       }
     }
 
@@ -815,15 +839,17 @@ class GameManager {
     const playerMappings = this.playerToGame.size;
     const disconnectedCount = this.disconnectedPlayers.size;
     const playerIndexSize = this.playerGames.size;
+    const activityListSize = this.activityList.size;
     
     // Rough estimation of memory usage
-    const estimatedMemory = (gameCount * 1000) + (playerMappings * 100) + (disconnectedCount * 50) + (playerIndexSize * 50);
+    const estimatedMemory = (gameCount * 1000) + (playerMappings * 100) + (disconnectedCount * 50) + (playerIndexSize * 50) + (activityListSize * 20);
 
     return {
       gameCount,
       playerMappings,
       disconnectedCount,
       playerIndexSize,
+      activityListSize,
       estimatedMemory
     };
   }
@@ -926,11 +952,24 @@ class GameManager {
     this.gamesByStatus.clear();
     this.playerToGame.clear();
     this.playerGames.clear();
+    this.activityList.clear();
     this.disconnectedPlayers.clear();
     if (this.playerGameCounts) {
       this.playerGameCounts.clear();
     }
     this.playerStats.clear();
+  }
+
+  /**
+   * Helper to mark a game as active (moving it to the end of the activity list)
+   * @param {string} gameId - Game ID
+   * @private
+   */
+  _markActive(gameId) {
+    if (this.activityList.has(gameId)) {
+      this.activityList.delete(gameId);
+    }
+    this.activityList.add(gameId);
   }
 
   /**
