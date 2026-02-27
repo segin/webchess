@@ -8,9 +8,9 @@ on:
 
 jobs:
   test-node20:
-    name: Test on Node.js 20.x (Experimental)
+    name: Test on Node.js 20.x
     runs-on: ubuntu-latest
-    continue-on-error: true
+    continue-on-error: false
     
     steps:
     - name: Checkout code
@@ -24,39 +24,18 @@ jobs:
     
     - name: Install dependencies
       run: npm ci
-      continue-on-error: true
     
     - name: Run tests
       run: npm test
-      continue-on-error: true
     
     - name: Generate test coverage
       run: npm run test:coverage
-      continue-on-error: true
     
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v5
-      if: success() || failure()
+      if: always()
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       with:
-        flags: node20-experimental
+        flags: node20
         name: node-20-coverage
-    
-    - name: Run ESLint
-      run: npx eslint src/ --ext .js --format github
-      continue-on-error: true
-    
-    - name: Check for security vulnerabilities
-      run: npm audit --audit-level high
-      continue-on-error: true
-    
-    - name: Report Node.js 20.x Status
-      if: always()
-      run: |
-        echo "::notice title=Node.js 20.x Status::This is an experimental test for Node.js 20.x compatibility tracking"
-        if [ "${{ job.status }}" = "success" ]; then
-          echo "✅ Node.js 20.x is still working!"
-        else
-          echo "⚠️ Node.js 20.x compatibility issues detected - this is expected and tracked"
-        fi

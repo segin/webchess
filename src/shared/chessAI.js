@@ -393,11 +393,11 @@ class ChessAI {
 
     if (isMaximizing) {
       for (const move of orderedCaptures) {
-        const tempGame = this.cloneGame(chessGame);
-        const result = tempGame.makeMove(move, null, null, { silent: true });
+        const result = chessGame.makeMove(move, null, null, { silent: true });
         
         if (result.success) {
-           const score = this.quiescence(tempGame, alpha, beta, false, rootColor);
+           const score = this.quiescence(chessGame, alpha, beta, false, rootColor);
+           chessGame.undoMove();
            
            if (score >= beta) return beta;
            alpha = Math.max(alpha, score);
@@ -406,11 +406,11 @@ class ChessAI {
       return alpha;
     } else {
       for (const move of orderedCaptures) {
-         const tempGame = this.cloneGame(chessGame);
-         const result = tempGame.makeMove(move, null, null, { silent: true });
+         const result = chessGame.makeMove(move, null, null, { silent: true });
          
          if (result.success) {
-           const score = this.quiescence(tempGame, alpha, beta, true, rootColor);
+           const score = this.quiescence(chessGame, alpha, beta, true, rootColor);
+           chessGame.undoMove();
            
            if (score <= alpha) return alpha;
            beta = Math.min(beta, score);
