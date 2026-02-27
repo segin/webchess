@@ -289,7 +289,7 @@ class GameManager {
 
     // Limit chat history to 100 messages
     if (game.chatMessages.length > 100) {
-      game.chatMessages = game.chatMessages.slice(-100);
+      game.chatMessages.splice(0, game.chatMessages.length - 100);
     }
 
     return {
