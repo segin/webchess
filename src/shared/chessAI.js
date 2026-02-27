@@ -202,33 +202,50 @@ class ChessAI {
   minimax(chessGame, move, depth, isMaximizing, alpha, beta) {
     if (depth < 0) return this.evaluatePosition(chessGame);
     
-    const tempGame = this.cloneGame(chessGame);
-    const result = tempGame.makeMove(move, null, null, { silent: true });
+    // Use make/undo pattern instead of cloning
+    const result = chessGame.makeMove(move, null, null, { silent: true, skipValidation: true });
     
     if (!result.success) return isMaximizing ? -Infinity : Infinity;
 
-    const hash = this.computeHash(tempGame);
+    const hash = this.computeHash(chessGame);
     const ttEntry = this.transpositionTable.get(hash);
     
     if (ttEntry && ttEntry.depth >= depth) {
-      if (ttEntry.flag === 'exact') return ttEntry.score;
-      if (ttEntry.flag === 'lowerbound') alpha = Math.max(alpha, ttEntry.score);
-      if (ttEntry.flag === 'upperbound') beta = Math.min(beta, ttEntry.score);
-      if (alpha >= beta) return ttEntry.score;
+      let score = ttEntry.score;
+      if (ttEntry.flag === 'exact') {
+        chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
+        return score;
+      }
+      if (ttEntry.flag === 'lowerbound') alpha = Math.max(alpha, score);
+      if (ttEntry.flag === 'upperbound') beta = Math.min(beta, score);
+      if (alpha >= beta) {
+        chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
+        return score;
+      }
     }
     
-    if (depth === 0 || tempGame.gameStatus !== 'active') {
-      if (tempGame.gameStatus !== 'active') return this.evaluatePosition(tempGame);
+    if (depth === 0 || chessGame.gameStatus !== 'active') {
+      if (chessGame.gameStatus !== 'active') {
+        const score = this.evaluatePosition(chessGame);
+        chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
+        return score;
+      }
       // Use Quiescence Search at leaf nodes instead of raw evaluation
-      return this.quiescence(tempGame, alpha, beta, isMaximizing, chessGame.currentTurn);
+      const score = this.quiescence(chessGame, alpha, beta, isMaximizing, chessGame.currentTurn);
+      chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
+      return score;
     }
     
-    const moves = this.getAllValidMoves(tempGame, tempGame.currentTurn);
-    if (moves.length === 0) return this.evaluatePosition(tempGame);
+    const moves = this.getAllValidMoves(chessGame, chessGame.currentTurn);
+    if (moves.length === 0) {
+      const score = this.evaluatePosition(chessGame);
+      chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
+      return score;
+    }
     
     // Order moves: TT move first, then captures/killers
     const bestTTMove = (ttEntry && ttEntry.bestMove) ? ttEntry.bestMove : null;
-    const orderedMoves = this.orderMoves(tempGame, moves, bestTTMove, depth);
+    const orderedMoves = this.orderMoves(chessGame, moves, bestTTMove, depth);
     
     let bestMove = null;
     let score;
@@ -237,7 +254,7 @@ class ChessAI {
     if (isMaximizing) {
       let maxScore = -Infinity;
       for (const nextMove of orderedMoves) {
-        score = this.minimax(tempGame, nextMove, depth - 1, false, alpha, beta);
+        score = this.minimax(chessGame, nextMove, depth - 1, false, alpha, beta);
         
         if (score > maxScore) {
             maxScore = score;
@@ -249,7 +266,7 @@ class ChessAI {
             this.storeKillerMove(nextMove, depth);
 
             // History Heuristic: Update score for quiet moves
-            const toPiece = tempGame.board[nextMove.to.row][nextMove.to.col];
+            const toPiece = chessGame.board[nextMove.to.row][nextMove.to.col];
             if (!toPiece) {
                 const fromIdx = nextMove.from.row * 8 + nextMove.from.col;
                 const toIdx = nextMove.to.row * 8 + nextMove.to.col;
@@ -269,11 +286,12 @@ class ChessAI {
           bestMove: bestMove
       });
       
+      chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
       return maxScore;
     } else {
       let minScore = Infinity;
       for (const nextMove of orderedMoves) {
-        score = this.minimax(tempGame, nextMove, depth - 1, true, alpha, beta);
+        score = this.minimax(chessGame, nextMove, depth - 1, true, alpha, beta);
         
         if (score < minScore) {
             minScore = score;
@@ -285,7 +303,7 @@ class ChessAI {
             this.storeKillerMove(nextMove, depth);
 
             // History Heuristic: Update score for quiet moves
-            const toPiece = tempGame.board[nextMove.to.row][nextMove.to.col];
+            const toPiece = chessGame.board[nextMove.to.row][nextMove.to.col];
             if (!toPiece) {
                 const fromIdx = nextMove.from.row * 8 + nextMove.from.col;
                 const toIdx = nextMove.to.row * 8 + nextMove.to.col;
@@ -305,6 +323,7 @@ class ChessAI {
           bestMove: bestMove
       });
 
+      chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
       return minScore;
     }
   }
@@ -340,11 +359,11 @@ class ChessAI {
 
     if (isMaximizing) {
       for (const move of orderedCaptures) {
-        const result = chessGame.makeMove(move, null, null, { silent: true });
+        const result = chessGame.makeMove(move, null, null, { silent: true, skipValidation: true });
         
         if (result.success) {
            const score = this.quiescence(chessGame, alpha, beta, false, rootColor);
-           chessGame.undoMove();
+           chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
            
            if (score >= beta) return beta;
            alpha = Math.max(alpha, score);
@@ -353,11 +372,11 @@ class ChessAI {
       return alpha;
     } else {
       for (const move of orderedCaptures) {
-         const result = chessGame.makeMove(move, null, null, { silent: true });
+         const result = chessGame.makeMove(move, null, null, { silent: true, skipValidation: true });
          
          if (result.success) {
            const score = this.quiescence(chessGame, alpha, beta, true, rootColor);
-           chessGame.undoMove();
+           chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
            
            if (score <= alpha) return alpha;
            beta = Math.min(beta, score);
