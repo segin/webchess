@@ -144,26 +144,27 @@ class MoveGenerator {
   }
 
   isBlockingSquare(blockSquare, attackerPos, kingPos) {
-    const rowDir = kingPos.row - attackerPos.row;
-    const colDir = kingPos.col - attackerPos.col;
-    const distance = Math.max(Math.abs(rowDir), Math.abs(colDir));
-    if (distance === 0) return false;
+    const dr = kingPos.row - attackerPos.row;
+    const dc = kingPos.col - attackerPos.col;
+    const drBlock = blockSquare.row - attackerPos.row;
+    const dcBlock = blockSquare.col - attackerPos.col;
 
-    const rowStep = rowDir / distance;
-    const colStep = colDir / distance;
+    // 1. Check collinearity using cross product
+    // If (dr, dc) and (drBlock, dcBlock) are collinear, their cross product is 0.
+    // Cross product: x1*y2 - x2*y1 = 0 => dc * drBlock - dr * dcBlock = 0
+    if (dc * drBlock !== dr * dcBlock) return false;
 
-    let currentRow = attackerPos.row + rowStep;
-    let currentCol = attackerPos.col + colStep;
-    let stepCount = 0;
-    while ((Math.round(currentRow) !== kingPos.row || Math.round(currentCol) !== kingPos.col) && stepCount < 8) {
-      if (Math.round(currentRow) === blockSquare.row && Math.round(currentCol) === blockSquare.col) {
-        return true;
-      }
-      currentRow += rowStep;
-      currentCol += colStep;
-      stepCount++;
-    }
-    return false;
+    // 2. Check direction (dot product > 0)
+    // The vector to blockSquare must be in the same direction as the vector to kingPos.
+    // Dot product: dr * drBlock + dc * dcBlock > 0
+    if (dr * drBlock + dc * dcBlock <= 0) return false;
+
+    // 3. Check length (must be strictly less than distance to king)
+    // Using squared distance avoids square roots
+    const distSqToKing = dr * dr + dc * dc;
+    const distSqToBlock = drBlock * drBlock + dcBlock * dcBlock;
+
+    return distSqToBlock < distSqToKing;
   }
 }
 
