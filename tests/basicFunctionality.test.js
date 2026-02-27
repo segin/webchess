@@ -41,6 +41,8 @@ describe('Basic Chess Game Functionality', () => {
     });
 
     test(testUtils.NamingPatterns.gameStateTest('game state structure', 'provide complete game state information'), () => {
+      // Enable debug mode for state consistency check
+      game.debugMode = true;
       // Use current API to get game state
       const gameState = game.getGameState();
       
