@@ -18,6 +18,8 @@
     "test:coverage:monitor": "npm run test:coverage && node scripts/coverage-monitor.js",
     "coverage:validate": "node scripts/coverage-validation.js",
     "coverage:monitor": "node scripts/coverage-monitor.js",
+    "test:comprehensive": "npm test",
+    "test:jest": "jest",
     "test:verbose": "jest --verbose",
     "test:browser": "echo '\\n🌐 Browser Testing Instructions:\\n\\n1. Open public/test-runner.html in your web browser\\n2. Click \"Run All Browser Tests\" to execute the complete test suite\\n3. Individual test categories can be run separately:\\n   - Browser Environment Tests: DOM elements and localStorage\\n   - Mobile Compatibility Tests: Mobile-specific functionality\\n   - Game Integration Tests: WebChess game logic integration\\n\\n📊 For complete test coverage including server-side logic, use: npm test\\n'",
     "install:production": "npm install --production",
@@ -47,6 +49,7 @@
     "tslib": "^2.8.1"
   },
   "devDependencies": {
+    "eslint": "^8.57.0",
     "jest": "^30.2.0",
     "lighthouse": "^13.0.3",
     "nodemon": "^3.1.14",
