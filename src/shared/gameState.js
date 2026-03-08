@@ -711,12 +711,14 @@ class GameStateManager {
 
     // 1. Deep copy board (Hot path, 8x8)
     if (Array.isArray(gameState.board)) {
-      const newBoard = new Array(gameState.board.length);
-      for (let i = 0; i < gameState.board.length; i++) {
+      const boardLength = gameState.board.length;
+      const newBoard = new Array(boardLength);
+      for (let i = 0; i < boardLength; i++) {
         const row = gameState.board[i];
         if (Array.isArray(row)) {
-          const newRow = new Array(row.length);
-          for (let j = 0; j < row.length; j++) {
+          const rowLength = row.length;
+          const newRow = new Array(rowLength);
+          for (let j = 0; j < rowLength; j++) {
             const piece = row[j];
             // Piece is { type, color } or null
             newRow[j] = piece ? { type: piece.type, color: piece.color } : null;
