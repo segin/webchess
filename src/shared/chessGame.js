@@ -1978,11 +1978,12 @@ class ChessGame {
    * @returns {string} Simple move notation
    */
   getMoveNotation(from, to, piece) {
-    const fromSquare = String.fromCharCode(97 + from.col) + (8 - from.row);
-    const toSquare = String.fromCharCode(97 + to.col) + (8 - to.row);
-    const pieceSymbol = piece.type === 'pawn' ? '' : piece.type[0].toUpperCase();
+    const files = 'abcdefgh';
+    const fromSquare = files[from.col] + (8 - from.row);
+    const toSquare = files[to.col] + (8 - to.row);
+    const pieceSymbol = piece.type === 'pawn' ? '' : (piece.type === 'knight' ? 'N' : piece.type[0].toUpperCase());
 
-    return pieceSymbol + fromSquare + '-' + toSquare;
+    return `${pieceSymbol}${fromSquare}-${toSquare}`;
   }
 
   /**
@@ -3520,20 +3521,6 @@ class ChessGame {
    */
   getBoardCopy() {
     return this.board.map(row => row.map(piece => piece ? { ...piece } : null));
-  }
-
-  /**
-   * Get move notation for a move
-   * @param {Object} from - Source square
-   * @param {Object} to - Destination square
-   * @param {Object} piece - Piece being moved
-   * @returns {string} Move notation
-   */
-  getMoveNotation(from, to, piece) {
-    const files = 'abcdefgh';
-    const fromSquare = files[from.col] + (8 - from.row);
-    const toSquare = files[to.col] + (8 - to.row);
-    return `${piece.type}${fromSquare}-${toSquare}`;
   }
 
   /**
