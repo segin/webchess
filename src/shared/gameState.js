@@ -1385,12 +1385,53 @@ class GameStateManager {
   }
 
   /**
+   * Helper to estimate object size without JSON.stringify
+   * @param {*} obj - Object to estimate size for
+   * @param {WeakSet} seen - Set of seen objects to prevent circular reference infinite loops
+   * @returns {number} Estimated size in bytes
+   * @private
+   */
+  _estimateSize(obj, seen = new WeakSet()) {
+    if (obj === null || obj === undefined) return 0;
+
+    switch (typeof obj) {
+      case 'number':
+        return 8; // 64-bit float
+      case 'boolean':
+        return 4;
+      case 'string':
+        return obj.length * 2; // UTF-16 characters are 2 bytes
+      case 'object':
+        if (seen.has(obj)) return 0; // Prevent circular references
+        seen.add(obj);
+
+        let size = 0;
+        if (Array.isArray(obj)) {
+          for (let i = 0; i < obj.length; i++) {
+            size += this._estimateSize(obj[i], seen);
+          }
+        } else {
+          for (const key in obj) {
+            if (Object.prototype.hasOwnProperty.call(obj, key)) {
+              size += key.length * 2; // Size of the key string
+              size += this._estimateSize(obj[key], seen); // Size of the value
+            }
+          }
+        }
+        return size;
+      default:
+        return 0;
+    }
+  }
+
+  /**
    * Get memory usage information
    * @returns {Object} Memory usage statistics
    */
   getMemoryUsage() {
-    const positionHistorySize = JSON.stringify(this.positionHistory).length;
-    const metadataSize = JSON.stringify(this.gameMetadata).length;
+    // Note: These are rough estimates for debugging/monitoring
+    const positionHistorySize = this._estimateSize(this.positionHistory);
+    const metadataSize = this._estimateSize(this.gameMetadata);
     
     return {
       positionHistorySize,
