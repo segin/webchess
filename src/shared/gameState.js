@@ -1263,9 +1263,8 @@ class GameStateManager {
    */
   validateCurrentTurn() {
     const errors = [];
-    const validTurns = ['white', 'black'];
     
-    if (!validTurns.includes(this.currentTurn)) {
+    if (this.currentTurn !== 'white' && this.currentTurn !== 'black') {
       errors.push(`Invalid current turn: ${this.currentTurn}`);
     }
     
