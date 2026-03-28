@@ -1435,6 +1435,7 @@ class ChessGame {
   getGameStateForSnapshot() {
     return {
       board: this.board,
+      pieceCount: this.pieceLocations.white.length + this.pieceLocations.black.length,
       currentTurn: this.currentTurn,
       gameStatus: this.gameStatus,
       winner: this.winner,
