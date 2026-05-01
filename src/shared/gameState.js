@@ -1068,34 +1068,6 @@ class GameStateManager {
   }
 
   /**
-   * Restore from checkpoint
-   * @param {Object} checkpoint - Checkpoint to restore from
-   * @returns {Object} Restoration result
-   */
-  restoreFromCheckpoint(checkpoint) {
-    if (!checkpoint || !checkpoint.state) {
-      return {
-        success: false,
-        message: 'Invalid checkpoint'
-      };
-    }
-
-    const gameState = this.deserializeGameState(checkpoint.state);
-    if (!gameState) {
-      return {
-        success: false,
-        message: 'Failed to deserialize checkpoint state'
-      };
-    }
-
-    return {
-      success: true,
-      gameState,
-      metadata: checkpoint.metadata
-    };
-  }
-
-  /**
    * Compare two game states
    * @param {Object} state1 - First game state
    * @param {Object} state2 - Second game state
@@ -1401,7 +1373,9 @@ class GameStateManager {
   }
 
   /**
-   * Optimize state storage by removing redundant data
+   * Optimize state storage by removing redundant data.
+   * WARNING: do not call during active play — deduplication removes the repeated
+   * position entries required for threefold-repetition detection.
    */
   optimizeStateStorage() {
     // Remove duplicate positions from history
@@ -1410,7 +1384,6 @@ class GameStateManager {
 
     // Clean up old metadata if needed
     if (this.gameMetadata.startTime && Date.now() - this.gameMetadata.startTime > 24 * 60 * 60 * 1000) {
-      // For games older than 24 hours, we can optimize metadata
       delete this.gameMetadata.intermediateStates;
     }
   }

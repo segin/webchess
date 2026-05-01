@@ -2081,15 +2081,21 @@ class WebChessClient {
     const chatMessages = document.getElementById('mobile-chat-messages');
     const messageDiv = document.createElement('div');
     messageDiv.className = `chat-message ${isOwn ? 'own-message' : 'other-message'}`;
-    
-    messageDiv.innerHTML = `
-      <div class="chat-sender">${sender}</div>
-      <div class="chat-text">${this.escapeHtml(message)}</div>
-    `;
-    
+
+    const senderEl = document.createElement('div');
+    senderEl.className = 'chat-sender';
+    senderEl.textContent = sender;
+
+    const textEl = document.createElement('div');
+    textEl.className = 'chat-text';
+    textEl.textContent = message;
+
+    messageDiv.appendChild(senderEl);
+    messageDiv.appendChild(textEl);
+
     chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
-    
+
     // Limit to 50 messages
     while (chatMessages.children.length > 50) {
       chatMessages.removeChild(chatMessages.firstChild);

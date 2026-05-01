@@ -1,6 +1,4 @@
-// Use crypto.randomUUID() for Node.js 14.17+ instead of uuid package
 const { randomUUID, randomBytes } = require('crypto');
-const uuidv4 = randomUUID;
 const ChessGame = require('../shared/chessGame');
 
 function escapeHTML(str) {
@@ -29,6 +27,11 @@ class GameManager {
     this.playerStats = new Map(); // Optimization: Pre-calculated player statistics
     this.activityList = new Set(); // Optimization: Track game activity for efficient cleanup
     this.MAX_GAMES_PER_PLAYER = 5;
+    this.settings = {
+      maxGamesPerPlayer: 3,
+      gameTimeout: 30 * 60 * 1000,
+      cleanupInterval: 5 * 60 * 1000
+    };
   }
 
   generateGameId() {
@@ -106,8 +109,9 @@ class GameManager {
     if (!gameId || typeof gameId !== 'string') {
       return { success: false, message: 'Game not found' };
     }
-    const game = this.games.get(gameId.toUpperCase());
-    
+    const normalizedId = gameId.toUpperCase();
+    const game = this.games.get(normalizedId);
+
     if (!game) {
       return { success: false, message: 'Game not found' };
     }
@@ -124,10 +128,10 @@ class GameManager {
     game.guest = playerId;
     game.status = 'active';
     this._updateStatusIndex(game.id, oldStatus, 'active');
-    this._markGameActive(gameId);
-    
-    this.playerToGame.set(playerId, gameId);
-    this._addGameToPlayer(playerId, gameId);
+    this._markGameActive(normalizedId);
+
+    this.playerToGame.set(playerId, normalizedId);
+    this._addGameToPlayer(playerId, normalizedId);
 
     return {
       success: true,
@@ -613,7 +617,7 @@ class GameManager {
     if (!this.validateGameAccess(gameId, playerId)) return false;
     if (!this.isPlayerTurn(gameId, playerId)) return false;
 
-    const result = game.chess.makeMove(move);
+    const result = game.chess.validateMove(move);
     return result.success;
   }
 
@@ -896,13 +900,6 @@ class GameManager {
    * @param {Object} newSettings - New settings
    */
   updateSettings(newSettings) {
-    if (!this.settings) {
-      this.settings = {
-        maxGamesPerPlayer: 3,
-        gameTimeout: 30 * 60 * 1000, // 30 minutes
-        cleanupInterval: 5 * 60 * 1000 // 5 minutes
-      };
-    }
     this.settings = { ...this.settings, ...newSettings };
   }
 
@@ -911,9 +908,6 @@ class GameManager {
    * @returns {Object} Current settings
    */
   getSettings() {
-    if (!this.settings) {
-      this.updateSettings({});
-    }
     return { ...this.settings };
   }
 

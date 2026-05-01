@@ -63,9 +63,6 @@ class MoveGenerator {
       }
       if (rowDiff === 2 * direction && from.row === startRow) {
         const pathClear = !this.game.board[from.row + direction][from.col] && !this.game.board[to.row][to.col];
-        if (!pathClear) {
-          console.log(`DEBUG: Pawn 2-square move blocked at ${from.row + direction},${from.col} or ${to.row},${to.col}`);
-        }
         return pathClear;
       }
       return false;
