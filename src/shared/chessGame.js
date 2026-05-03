@@ -358,15 +358,23 @@ class ChessGame {
       }
     }
 
-    // Step 9: Special move validation
-    const specialMoveValidation = this.validateSpecialMoves(from, to, piece, promotion);
-    if (specialMoveValidation.success === false || specialMoveValidation.isValid === false) {
+    // Step 9: Special move validation (pass null for inCheck initially to avoid early call)
+    let currentlyInCheck = null;
 
+    // Castling attempt requires check status
+    if (isCastlingAttempt) {
+      currentlyInCheck = this.isInCheck(piece.color);
+    }
+
+    const specialMoveValidation = this.validateSpecialMoves(from, to, piece, promotion, currentlyInCheck);
+    if (specialMoveValidation.success === false || specialMoveValidation.isValid === false) {
       return specialMoveValidation;
     }
 
     // Step 10: Check validation - either resolution (if in check) or constraint (if not in check)
-    const currentlyInCheck = this.isInCheck(piece.color);
+    if (currentlyInCheck === null) {
+      currentlyInCheck = this.isInCheck(piece.color);
+    }
 
     if (currentlyInCheck) {
       // When in check, validate that the move resolves the check
@@ -376,7 +384,7 @@ class ChessGame {
       }
     } else {
       // When not in check, validate that the move doesn't put king in check
-      const checkValidation = this.validateCheckConstraints(from, to, piece);
+      const checkValidation = this.validateCheckConstraints(from, to, piece, currentlyInCheck);
       if (checkValidation.success === false || checkValidation.isValid === false) {
         return checkValidation;
       }
@@ -691,10 +699,10 @@ class ChessGame {
    * @param {string} promotion - Promotion piece type
    * @returns {Object} Validation result
    */
-  validateSpecialMoves(from, to, piece, promotion) {
+  validateSpecialMoves(from, to, piece, promotion, inCheck = null) {
     // Castling validation
     if (piece.type === 'king' && Math.abs(to.col - from.col) === 2) {
-      const castlingValidation = this.validateCastling(from, to, piece.color);
+      const castlingValidation = this.validateCastling(from, to, piece.color, inCheck);
       if (castlingValidation.success === false || castlingValidation.isValid === false) {
         return castlingValidation;
       }
@@ -762,10 +770,10 @@ class ChessGame {
    * @param {Object} piece - The piece being moved
    * @returns {Object} Validation result
    */
-  validateCheckConstraints(from, to, piece) {
+  validateCheckConstraints(from, to, piece, inCheck = null) {
     // When king is already in check, skip all check constraint validation
     // since check resolution validation handles this case
-    const currentlyInCheck = this.isInCheck(piece.color);
+    const currentlyInCheck = inCheck !== null ? inCheck : this.isInCheck(piece.color);
     if (currentlyInCheck) {
       return { success: true, isValid: true };
     }
@@ -938,7 +946,7 @@ class ChessGame {
    * @param {string} color - Color of the king attempting to castle
    * @returns {boolean} True if castling is valid
    */
-  canCastle(from, to, color) {
+  canCastle(from, to, color, inCheck = null) {
     // Validate basic parameters
     if (!this.isValidSquare(from) || !this.isValidSquare(to) || !color) {
       return false;
@@ -971,7 +979,8 @@ class ChessGame {
     }
 
     // Check if king is currently in check (cannot castle while in check)
-    if (this.isInCheck(color)) {
+    const currentlyInCheck = inCheck !== null ? inCheck : this.isInCheck(color);
+    if (currentlyInCheck) {
       return false;
     }
 
@@ -1007,7 +1016,7 @@ class ChessGame {
    * @param {string} color - Color of the king attempting to castle
    * @returns {Object} Detailed validation result
    */
-  validateCastling(from, to, color) {
+  validateCastling(from, to, color, inCheck = null) {
     const errors = [];
 
     // Validate basic parameters
@@ -1051,7 +1060,8 @@ class ChessGame {
     }
 
     // Check if king is currently in check
-    if (this.isInCheck(color)) {
+    const currentlyInCheck = inCheck !== null ? inCheck : this.isInCheck(color);
+    if (currentlyInCheck) {
       errors.push('Cannot castle while in check');
     }
 
@@ -1598,7 +1608,8 @@ class ChessGame {
    * @returns {boolean} True if checkmate
    */
   isCheckmate(color) {
-    return this.isInCheck(color) && !this.hasValidMoves(color);
+    const inCheck = this.isInCheck(color);
+    return this.isCheckmateGivenCheckStatus(color, inCheck);
   }
 
   /**
@@ -1608,7 +1619,8 @@ class ChessGame {
    * @returns {boolean} True if stalemate
    */
   isStalemate(color) {
-    return !this.isInCheck(color) && !this.hasValidMoves(color);
+    const inCheck = this.isInCheck(color);
+    return this.isStalemateGivenCheckStatus(color, inCheck);
   }
 
   /**
@@ -1618,7 +1630,7 @@ class ChessGame {
    * @returns {boolean} True if checkmate
    */
   isCheckmateGivenCheckStatus(color, inCheck) {
-    return inCheck && !this.hasValidMoves(color);
+    return inCheck && !this.hasValidMoves(color, inCheck);
   }
 
   /**
@@ -1628,7 +1640,7 @@ class ChessGame {
    * @returns {boolean} True if stalemate
    */
   isStalemateGivenCheckStatus(color, inCheck) {
-    return !inCheck && !this.hasValidMoves(color);
+    return !inCheck && !this.hasValidMoves(color, inCheck);
   }
 
   /**
@@ -1639,7 +1651,7 @@ class ChessGame {
    */
   analyzeStalematePosition(color) {
     const inCheck = this.isInCheck(color);
-    const legalMoves = this.getAllLegalMoves(color);
+    const legalMoves = this.getAllLegalMoves(color, inCheck);
 
     return {
       isStalemate: !inCheck && legalMoves.length === 0,
@@ -1661,14 +1673,16 @@ class ChessGame {
    * @param {string} color - Color to get moves for
    * @returns {Array} Array of legal move objects
    */
-  getAllLegalMoves(color) {
+  getAllLegalMoves(color, inCheck = null) {
     const legalMoves = [];
     const locations = this.pieceLocations[color];
 
     // Fallback if cache is missing (should not happen in normal operation)
     if (!locations) {
-      return this._getAllLegalMovesFallback(color);
+      return this._getAllLegalMovesFallback(color, inCheck);
     }
+
+    let currentlyInCheck = inCheck;
 
     for (const from of locations) {
       const piece = this.board[from.row][from.col];
@@ -1683,7 +1697,12 @@ class ChessGame {
 
       for (const to of potentialMoves) {
         // Optimized validation for generated moves
-        if (this._isGeneratedMoveLegal(from, to, piece)) {
+        // Only fetch check status if we have a castling attempt and don't have it yet
+        if (piece.type === 'king' && Math.abs(to.col - from.col) > 1 && currentlyInCheck === null) {
+          currentlyInCheck = this.isInCheck(color);
+        }
+
+        if (this._isGeneratedMoveLegal(from, to, piece, currentlyInCheck)) {
           legalMoves.push({
             from: from,
             to: to,
@@ -1707,11 +1726,11 @@ class ChessGame {
    * @param {Object} piece - The piece being moved
    * @returns {boolean} True if the move is legal
    */
-  _isGeneratedMoveLegal(from, to, piece) {
+  _isGeneratedMoveLegal(from, to, piece, inCheck = null) {
     // 1. Castling specific check
     // generateKingMoves adds castling targets based on position only
     if (piece.type === 'king' && Math.abs(to.col - from.col) > 1) {
-      return this.canCastle(from, to, piece.color);
+      return this.canCastle(from, to, piece.color, inCheck);
     }
 
     // 2. Check if move puts/leaves king in check
@@ -1720,8 +1739,9 @@ class ChessGame {
     return !this.wouldBeInCheck(from, to, piece.color, piece, 'queen');
   }
 
-  _getAllLegalMovesFallback(color) {
+  _getAllLegalMovesFallback(color, inCheck = null) {
     const legalMoves = [];
+    let currentlyInCheck = inCheck;
 
     // Full board scan fallback if cache is missing or corrupted
     for (let row = 0; row < 8; row++) {
@@ -1739,7 +1759,10 @@ class ChessGame {
 
         for (const to of potentialMoves) {
           // Optimized validation for generated moves
-          if (this._isGeneratedMoveLegal(from, to, piece)) {
+          if (piece.type === 'king' && Math.abs(to.col - from.col) > 1 && currentlyInCheck === null) {
+            currentlyInCheck = this.isInCheck(color);
+          }
+          if (this._isGeneratedMoveLegal(from, to, piece, currentlyInCheck)) {
             legalMoves.push({
               from: from,
               to: to,
@@ -2052,7 +2075,7 @@ class ChessGame {
    * @param {string} color - Color to check for valid moves
    * @returns {boolean} True if the color has any valid moves
    */
-  hasValidMoves(color) {
+  hasValidMoves(color, inCheck = null) {
     // Always rebuild cache to handle tests/external code that modifies board directly
     this._rebuildPieceLocations();
 
@@ -2060,8 +2083,10 @@ class ChessGame {
 
     // Fallback if cache is missing (should not happen in normal operation)
     if (!locations) {
-      return this._hasValidMovesLegacy(color);
+      return this._hasValidMovesLegacy(color, inCheck);
     }
+
+    let currentlyInCheck = inCheck;
 
     for (const from of locations) {
       const piece = this.board[from.row][from.col];
@@ -2076,7 +2101,10 @@ class ChessGame {
 
       for (const to of potentialMoves) {
         // Optimized validation for generated moves
-        if (this._isGeneratedMoveLegal(from, to, piece)) {
+        if (piece.type === 'king' && Math.abs(to.col - from.col) > 1 && currentlyInCheck === null) {
+          currentlyInCheck = this.isInCheck(color);
+        }
+        if (this._isGeneratedMoveLegal(from, to, piece, currentlyInCheck)) {
           return true; // Found at least one valid move
         }
       }
@@ -2086,7 +2114,9 @@ class ChessGame {
   }
 
   // Legacy implementation for fallback or verification
-  _hasValidMovesLegacy(color) {
+  _hasValidMovesLegacy(color, inCheck = null) {
+    let currentlyInCheck = inCheck;
+
     // Iterate through all squares to find pieces of the given color
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
@@ -2103,7 +2133,10 @@ class ChessGame {
 
         for (const to of potentialMoves) {
           // Optimized validation for generated moves
-          if (this._isGeneratedMoveLegal(from, to, piece)) {
+          if (piece.type === 'king' && Math.abs(to.col - from.col) > 1 && currentlyInCheck === null) {
+            currentlyInCheck = this.isInCheck(color);
+          }
+          if (this._isGeneratedMoveLegal(from, to, piece, currentlyInCheck)) {
             return true; // Found at least one valid move
           }
         }
