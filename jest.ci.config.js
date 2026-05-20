@@ -27,7 +27,7 @@ module.exports = {
   ],
   
   // Minimal coverage reporters for CI
-  coverageReporters: ['text-summary', 'lcov', 'json-summary'],
+  coverageReporters: ['text-summary', 'lcov', 'json-summary', 'json'],
   
   // CI-specific test execution optimizations
   cache: false, // Disable cache for consistent CI results

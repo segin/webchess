@@ -251,6 +251,9 @@ class ChessGame {
         boardScore: this.boardScore
       };
 
+      // Read the target square BEFORE executing the move (needed for halfMoveClock)
+      const targetPiece = this.board[to.row][to.col];
+
       // Update castling rights BEFORE executing the move (so we can check captured pieces)
       this.updateCastlingRights(from, to, originalPiece);
 
@@ -258,10 +261,12 @@ class ChessGame {
       this.executeMoveOnBoard(from, to, piece, promotion, preMoveState);
 
       // Update game state (pass original piece since board has changed)
-      this.updateGameState(from, to, originalPiece, options.silent);
+      this.updateGameState(from, to, originalPiece, options.silent, targetPiece);
 
       // Check for game end conditions
-      this.checkGameEnd();
+      if (!options.skipGameEndCheck) {
+        this.checkGameEnd();
+      }
 
       // Return success response using error handler
       return this.errorHandler.createSuccess('Move executed successfully', {
@@ -1471,7 +1476,7 @@ class ChessGame {
    * @param {Object} to - Destination square
    * @param {Object} piece - The piece that moved
    */
-  updateGameState(from, to, piece, silent = false) {
+  updateGameState(from, to, piece, silent = false, capturedPiece = null) {
     // Validate turn sequence before updating - piece.color should match current turn
     if (this.currentTurn !== piece.color) {
       throw new Error(`Turn sequence validation failed: expected ${piece.color}, but it's ${this.currentTurn}'s turn`);
@@ -1499,7 +1504,7 @@ class ChessGame {
     // Castling rights are now updated before move execution in makeMove
 
     // Update half-move clock (for 50-move rule)
-    const capturedPiece = this.board[to.row][to.col];
+    // capturedPiece is the piece that was on the target square BEFORE the move
     if (piece.type === 'pawn' || capturedPiece) {
       this.halfMoveClock = 0; // Reset on pawn move or capture
     } else {
@@ -1563,6 +1568,14 @@ class ChessGame {
       // Player is not in check - check for stalemate (without calling isInCheck again)
       if (this.isStalemateGivenCheckStatus(currentColor, inCheck)) {
         newStatus = 'stalemate';
+        winner = null;
+      } else if (this.halfMoveClock >= 100) {
+        // 50-move rule: 100 half-moves without pawn move or capture
+        newStatus = 'draw';
+        winner = null;
+      } else if (this.stateManager.checkThreefoldRepetition()) {
+        // Threefold repetition
+        newStatus = 'draw';
         winner = null;
       } else {
         // Game continues normally
@@ -1970,21 +1983,7 @@ class ChessGame {
     return blockingPawns >= 2; // At least 2 pawns involved in blocking
   }
 
-  /**
-   * Generate simple move notation for debugging
-   * @param {Object} from - Source square
-   * @param {Object} to - Destination square
-   * @param {Object} piece - Piece being moved
-   * @returns {string} Simple move notation
-   */
-  getMoveNotation(from, to, piece) {
-    const files = 'abcdefgh';
-    const fromSquare = files[from.col] + (8 - from.row);
-    const toSquare = files[to.col] + (8 - to.row);
-    const pieceSymbol = piece.type === 'pawn' ? '' : (piece.type === 'knight' ? 'N' : piece.type[0].toUpperCase());
 
-    return `${pieceSymbol}${fromSquare}-${toSquare}`;
-  }
 
   /**
    * Enhanced draw declaration logic for stalemate
@@ -3521,6 +3520,22 @@ class ChessGame {
    */
   getBoardCopy() {
     return this.board.map(row => row.map(piece => piece ? { ...piece } : null));
+  }
+
+  /**
+   * Get move notation for a move
+   * @param {Object} from - Source square
+   * @param {Object} to - Destination square
+   * @param {Object} piece - Piece being moved
+   * @returns {string} Move notation
+   */
+  getMoveNotation(from, to, piece) {
+    const files = 'abcdefgh';
+    const fromSquare = files[from.col] + (8 - from.row);
+    const toSquare = files[to.col] + (8 - to.row);
+    const pieceSymbol = piece.type === 'pawn' ? '' : (piece.type === 'knight' ? 'N' : piece.type[0].toUpperCase());
+
+    return `${pieceSymbol}${fromSquare}-${toSquare}`;
   }
 
   /**

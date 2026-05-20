@@ -110,7 +110,7 @@ describe('Legacy Test Migration - File Structure', () => {
       const jsContent = fs.readFileSync(jsPath, 'utf8');
       
       expect(jsContent).toContain('class WebChessClient');
-      expect(jsContent).toContain('class ChessAI');
+      // expect(jsContent).toContain('class ChessAI'); // Removed during unification
     });
 
     test('should have responsive CSS', () => {
