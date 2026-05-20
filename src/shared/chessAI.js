@@ -267,7 +267,12 @@ class ChessAI {
 
             // History Heuristic: Update score for quiet moves
             const toPiece = chessGame.board[nextMove.to.row][nextMove.to.col];
-            if (!toPiece) {
+            const isEnPassant = chessGame.enPassantTarget &&
+                                chessGame.enPassantTarget.row === nextMove.to.row &&
+                                chessGame.enPassantTarget.col === nextMove.to.col &&
+                                chessGame.board[nextMove.from.row][nextMove.from.col]?.type === 'pawn';
+
+            if (!toPiece && !isEnPassant) {
                 const fromIdx = nextMove.from.row * 8 + nextMove.from.col;
                 const toIdx = nextMove.to.row * 8 + nextMove.to.col;
                 this.historyTable[fromIdx][toIdx] += depth * depth;
@@ -304,7 +309,12 @@ class ChessAI {
 
             // History Heuristic: Update score for quiet moves
             const toPiece = chessGame.board[nextMove.to.row][nextMove.to.col];
-            if (!toPiece) {
+            const isEnPassant = chessGame.enPassantTarget &&
+                                chessGame.enPassantTarget.row === nextMove.to.row &&
+                                chessGame.enPassantTarget.col === nextMove.to.col &&
+                                chessGame.board[nextMove.from.row][nextMove.from.col]?.type === 'pawn';
+
+            if (!toPiece && !isEnPassant) {
                 const fromIdx = nextMove.from.row * 8 + nextMove.from.col;
                 const toIdx = nextMove.to.row * 8 + nextMove.to.col;
                 this.historyTable[fromIdx][toIdx] += depth * depth;
@@ -646,8 +656,16 @@ class ChessAI {
     const toPiece = chessGame.board[move.to.row][move.to.col];
 
     // 2. Captures (MVV-LVA)
+    const isEnPassant = chessGame.enPassantTarget &&
+                        chessGame.enPassantTarget.row === move.to.row &&
+                        chessGame.enPassantTarget.col === move.to.col &&
+                        fromPiece && fromPiece.type === 'pawn';
+
     if (toPiece) {
       score = 10 * this.pieceValues[toPiece.type] - this.pieceValues[fromPiece.type] + 1000;
+    } else if (isEnPassant) {
+      // En Passant capture: target is a pawn
+      score = 10 * this.pieceValues['pawn'] - this.pieceValues['pawn'] + 1000;
     }
 
     // 3. Killer Moves
@@ -662,10 +680,13 @@ class ChessAI {
     }
 
     // 5. History Heuristic
-    if (this.historyTable) {
+    if (!toPiece && !isEnPassant && this.historyTable) {
         const fromIdx = move.from.row * 8 + move.from.col;
         const toIdx = move.to.row * 8 + move.to.col;
-        score += this.historyTable[fromIdx][toIdx];
+
+        // Cap history score to ensure captures and killer moves take precedence
+        const historyScore = Math.min(this.historyTable[fromIdx][toIdx], 700);
+        score += historyScore;
     }
 
     return score;
