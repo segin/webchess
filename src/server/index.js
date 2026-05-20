@@ -10,6 +10,14 @@ const io = socketIo(server);
 
 const gameManager = new GameManager();
 
+// Session middleware for Socket.IO
+io.use((socket, next) => {
+  const { token } = socket.handshake.auth;
+  // Use existing token or generate a new one
+  socket.sessionToken = token || require('crypto').randomUUID();
+  next();
+});
+
 // Serve static files with cache headers
 app.use(express.static(path.join(__dirname, '../../public'), {
   setHeaders: (res, path) => {
@@ -78,11 +86,17 @@ const chatRateLimit = createRateLimiter(10, 5000);     // 10 messages per 5s
 const actionRateLimit = createRateLimiter(5, 5000);    // 5 actions per 5s
 
 io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+  console.log('User connected:', socket.sessionToken);
+
+  // Handle player reconnection
+  gameManager.handleReconnect(socket.sessionToken);
+
+  // Send the session token back to the client for persistence
+  socket.emit('session-token', { token: socket.sessionToken });
 
   socket.on('host-game', () => {
     if (!actionRateLimit(socket, 'host-game')) return;
-    const gameId = gameManager.createGame(socket.id);
+    const gameId = gameManager.createGame(socket.sessionToken);
     if (!gameId) {
       socket.emit('host-error', { message: 'Game limit reached. Please finish existing games.' });
       return;
@@ -96,7 +110,7 @@ io.on('connection', (socket) => {
     if (!actionRateLimit(socket, 'join-game')) return;
     const gameId = typeof data.gameId === 'string' ? data.gameId.toUpperCase() : null;
     if (!gameId) return;
-    const result = gameManager.joinGame(gameId, socket.id);
+    const result = gameManager.joinGame(gameId, socket.sessionToken);
 
     if (result.success) {
       socket.join(gameId);
@@ -117,7 +131,7 @@ io.on('connection', (socket) => {
     const gameId = typeof data.gameId === 'string' ? data.gameId.toUpperCase() : null;
     const { move } = data;
     if (!gameId || !move) return;
-    const result = gameManager.makeMove(gameId, socket.id, move);
+    const result = gameManager.makeMove(gameId, socket.sessionToken, move);
 
     if (result.success) {
       io.to(gameId).emit('move-made', {
@@ -150,7 +164,7 @@ io.on('connection', (socket) => {
     if (!actionRateLimit(socket, 'resign')) return;
     const gameId = typeof data.gameId === 'string' ? data.gameId.toUpperCase() : null;
     if (!gameId) return;
-    const result = gameManager.resignGame(gameId, socket.id);
+    const result = gameManager.resignGame(gameId, socket.sessionToken);
 
     if (result.success) {
       io.to(gameId).emit('game-end', {
@@ -176,7 +190,7 @@ io.on('connection', (socket) => {
     }
 
     // Add message using GameManager
-    const result = gameManager.addChatMessage(gameId, socket.id, message);
+    const result = gameManager.addChatMessage(gameId, socket.sessionToken, message);
 
     if (result.success) {
       // Broadcast to the other player (not back to sender)
@@ -197,7 +211,7 @@ io.on('connection', (socket) => {
       return;
     }
     
-    const result = gameManager.getChatMessages(gameId, socket.id);
+    const result = gameManager.getChatMessages(gameId, socket.sessionToken);
     
     if (result.success) {
       socket.emit('chat-history', {
@@ -222,7 +236,7 @@ io.on('connection', (socket) => {
     const game = gameManager.games.get(gameId);
     const isValid = !!(game &&
                    (game.status === 'active' || game.status === 'waiting') &&
-                   (game.host === socket.id || game.guest === socket.id));
+                   (game.host === socket.sessionToken || game.guest === socket.sessionToken));
 
     socket.emit('session-validation', {
       valid: isValid,
@@ -232,8 +246,8 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-    gameManager.handleDisconnect(socket.id);
+    console.log('User disconnected:', socket.sessionToken);
+    gameManager.handleDisconnect(socket.sessionToken);
   });
 });
 

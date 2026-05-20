@@ -264,7 +264,9 @@ class ChessGame {
       this.updateGameState(from, to, originalPiece, options.silent, targetPiece);
 
       // Check for game end conditions
-      this.checkGameEnd();
+      if (!options.skipGameEndCheck) {
+        this.checkGameEnd();
+      }
 
       // Return success response using error handler
       return this.errorHandler.createSuccess('Move executed successfully', {

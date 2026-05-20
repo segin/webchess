@@ -229,6 +229,19 @@ class GameManager {
     }
   }
 
+  handleReconnect(playerId) {
+    if (this.disconnectedPlayers.has(playerId)) {
+      this.disconnectedPlayers.delete(playerId);
+      const timeoutId = this.disconnectTimeouts.get(playerId);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        this.disconnectTimeouts.delete(playerId);
+      }
+      return true;
+    }
+    return false;
+  }
+
   checkDisconnectedPlayer(playerId) {
     const disconnectedInfo = this.disconnectedPlayers.get(playerId);
     if (disconnectedInfo) {

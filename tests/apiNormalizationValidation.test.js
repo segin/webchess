@@ -496,12 +496,7 @@ describe('API Normalization Validation', () => {
       // Check for key test files that should exist
       const expectedTestFiles = [
         'chessGame.test.js',
-        'pawnMovement.test.js',
-        'rookMovement.test.js',
-        'knightMovement.test.js',
-        'bishopMovement.test.js',
-        'queenMovement.test.js',
-        'kingMovement.test.js',
+        'pieceMovement.test.js',
         'castlingValidation.test.js',
         'checkDetection.test.js',
         'checkmateDetection.test.js',

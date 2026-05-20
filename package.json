@@ -27,7 +27,8 @@
     "daemon:stop": "sudo systemctl stop webchess",
     "daemon:restart": "sudo systemctl restart webchess",
     "daemon:status": "sudo systemctl status webchess",
-    "daemon:logs": "sudo journalctl -u webchess -f"
+    "daemon:logs": "sudo journalctl -u webchess -f",
+    "build": "esbuild src/shared/browser-entry.js --bundle --outfile=public/shared.bundle.js --minify"
   },
   "keywords": [
     "chess",
@@ -47,6 +48,8 @@
     "tslib": "^2.8.1"
   },
   "devDependencies": {
+    "baseline-browser-mapping": "^2.10.31",
+    "esbuild": "^0.28.0",
     "jest": "^30.2.0",
     "lighthouse": "^13.0.3",
     "nodemon": "^3.1.14",
