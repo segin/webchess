@@ -69,7 +69,7 @@ class CoverageValidator {
     const validation = {
       passed: true,
       global: this.analyzeGlobalCoverage(summary.total),
-      files: this.analyzeFileCoverage(detailed),
+      files: this.analyzeFileCoverage(summary, detailed),
       recommendations: []
     };
 
@@ -86,7 +86,7 @@ class CoverageValidator {
     ];
 
     for (const file of criticalFiles) {
-      const fileData = validation.files.find(f => f.path === file);
+      const fileData = validation.files.find(f => f.path.endsWith(file));
       if (fileData && !fileData.passed) {
         validation.passed = false;
       }
@@ -132,7 +132,7 @@ class CoverageValidator {
     return result;
   }
 
-  analyzeFileCoverage(detailed) {
+  analyzeFileCoverage(summary, detailed) {
     const files = [];
 
     for (const [filePath, data] of Object.entries(detailed)) {
@@ -147,22 +147,25 @@ class CoverageValidator {
         uncoveredFunctions: []
       };
 
-      // Analyze metrics
-      for (const [metric, metricData] of Object.entries(data)) {
-        if (typeof metricData === 'object' && metricData.pct !== undefined) {
-          const percentage = metricData.pct;
-          const threshold = this.thresholds[metric];
-          
-          fileAnalysis.metrics[metric] = {
-            percentage,
-            threshold,
-            passed: percentage >= threshold,
-            covered: metricData.covered,
-            total: metricData.total
-          };
+      // Analyze metrics from summary
+      const fileSummary = summary[filePath];
+      if (fileSummary) {
+        for (const [metric, metricData] of Object.entries(fileSummary)) {
+          if (typeof metricData === 'object' && metricData.pct !== undefined) {
+            const percentage = metricData.pct;
+            const threshold = this.thresholds[metric];
+            
+            fileAnalysis.metrics[metric] = {
+              percentage,
+              threshold,
+              passed: percentage >= threshold,
+              covered: metricData.covered,
+              total: metricData.total
+            };
 
-          if (percentage < threshold) {
-            fileAnalysis.passed = false;
+            if (percentage < threshold) {
+              fileAnalysis.passed = false;
+            }
           }
         }
       }

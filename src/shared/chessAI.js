@@ -203,7 +203,7 @@ class ChessAI {
     if (depth < 0) return this.evaluatePosition(chessGame);
     
     // Use make/undo pattern instead of cloning
-    const result = chessGame.makeMove(move, null, null, { silent: true, skipValidation: true });
+    const result = chessGame.makeMove(move, null, null, { silent: true, skipValidation: true, skipGameEndCheck: true });
     
     if (!result.success) return isMaximizing ? -Infinity : Infinity;
 
@@ -359,7 +359,7 @@ class ChessAI {
 
     if (isMaximizing) {
       for (const move of orderedCaptures) {
-        const result = chessGame.makeMove(move, null, null, { silent: true, skipValidation: true });
+        const result = chessGame.makeMove(move, null, null, { silent: true, skipValidation: true, skipGameEndCheck: true });
         
         if (result.success) {
            const score = this.quiescence(chessGame, alpha, beta, false, rootColor);
@@ -372,7 +372,7 @@ class ChessAI {
       return alpha;
     } else {
       for (const move of orderedCaptures) {
-         const result = chessGame.makeMove(move, null, null, { silent: true, skipValidation: true });
+         const result = chessGame.makeMove(move, null, null, { silent: true, skipValidation: true, skipGameEndCheck: true });
          
          if (result.success) {
            const score = this.quiescence(chessGame, alpha, beta, true, rootColor);

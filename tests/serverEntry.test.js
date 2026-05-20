@@ -28,7 +28,8 @@ jest.mock('socket.io', () => {
   const mockIo = {
     on: jest.fn(),
     emit: jest.fn(),
-    to: jest.fn().mockReturnThis()
+    to: jest.fn().mockReturnThis(),
+    use: jest.fn()
   };
   return jest.fn(() => mockIo);
 });
