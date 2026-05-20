@@ -26,7 +26,15 @@ class WebChessClient {
   
   initializeSocket() {
     try {
-      this.socket = io();
+      const token = localStorage.getItem('webchess_session_token');
+      this.socket = io({
+        auth: { token }
+      });
+      
+      this.socket.on('session-token', (data) => {
+        localStorage.setItem('webchess_session_token', data.token);
+        console.log('Session token persisted:', data.token);
+      });
     } catch (error) {
       console.error('Socket.IO not available:', error);
       this.socket = null;
@@ -334,6 +342,14 @@ class WebChessClient {
     this.playerColor = null;
     this.gameState = null;
     this.isPracticeMode = false;
+    if (this.whiteAIWorker) {
+      this.whiteAIWorker.terminate();
+      this.whiteAIWorker = null;
+    }
+    if (this.blackAIWorker) {
+      this.blackAIWorker.terminate();
+      this.blackAIWorker = null;
+    }
     this.clearSessionStorage();
     this.updateResumeButton();
   }
@@ -391,10 +407,14 @@ class WebChessClient {
     // Let's create two instances if needed to keep their memories separate (better for testing)
     // or just one and reconfigure. Separate is safer.
     if (this.players.white.type === 'ai') {
-        this.whiteAI = new ChessAI(this.players.white.difficulty);
+        this.whiteAIWorker = new Worker('aiWorker.js');
+        this.whiteAIWorker.postMessage({ type: 'INIT', data: { difficulty: this.players.white.difficulty } });
+        this.whiteAIWorker.onmessage = this.handleAIWorkerMessage.bind(this);
     }
     if (this.players.black.type === 'ai') {
-        this.blackAI = new ChessAI(this.players.black.difficulty);
+        this.blackAIWorker = new Worker('aiWorker.js');
+        this.blackAIWorker.postMessage({ type: 'INIT', data: { difficulty: this.players.black.difficulty } });
+        this.blackAIWorker.onmessage = this.handleAIWorkerMessage.bind(this);
     }
 
     this.chess = new ChessGame();
@@ -403,12 +423,37 @@ class WebChessClient {
     document.getElementById('gameScreen').style.display = 'block';
     document.getElementById('currentGameId').textContent = 'Practice Mode';
     
-    this.renderBoard();
-    this.updateStatus();
+    this.gameState = {
+        board: this.chess.board,
+        currentTurn: this.chess.currentTurn,
+        status: this.chess.gameStatus
+    };
+    this.updateGameBoard();
+    this.updateGameStatus();
     
     // Trigger first move if White is AI
     if (this.players.white.type === 'ai') {
         setTimeout(() => this.makeAIMove(), 500);
+    }
+  }
+
+  handleAIWorkerMessage(e) {
+    const { type, data, error } = e.data;
+    if (type === 'ERROR') {
+        console.error("AI Worker Error:", error);
+        return;
+    }
+    if (type === 'MOVE_CALCULATED') {
+        const move = data.move;
+        if (move) {
+            this.makeMove(move.from, move.to, move.promotion);
+            
+            // If next player is also AI, trigger next move
+            if (this.chess.gameStatus === 'active' && 
+                this.players[this.chess.currentTurn].type === 'ai') {
+                setTimeout(() => this.makeAIMove(), 500); 
+            }
+        }
     }
   }
 
@@ -418,32 +463,33 @@ class WebChessClient {
     const turn = this.chess.currentTurn;
     if (this.players[turn].type !== 'ai') return;
 
-    const aiInstance = turn === 'white' ? this.whiteAI : this.blackAI;
+    const worker = turn === 'white' ? this.whiteAIWorker : this.blackAIWorker;
     
-    // Use setTimeout to allow UI to render before heavy calculation
-    // and to prevent freezing during AI vs AI
-    setTimeout(() => {
-        const move = aiInstance.getBestMove(this.chess);
-        if (move) {
-            this.makeMove(move.from, move.to, move.promotion);
-            
-            // If next player is also AI, trigger next move
-            if (this.chess.gameStatus === 'active' && 
-                this.players[this.chess.currentTurn].type === 'ai') {
-                // Add delay for watchability
-                setTimeout(() => this.makeAIMove(), 500); 
-            }
-        }
-    }, 100);
+    // Get FEN position to send to worker
+    const fen = this.chess.stateManager.getFENPosition(
+        this.chess.board,
+        this.chess.currentTurn,
+        this.chess.castlingRights,
+        this.chess.enPassantTarget
+    );
+    
+    worker.postMessage({ type: 'CALCULATE_MOVE', data: { fen: fen } });
   }
 
   makeMove(from, to, promotion = null) {
     if (this.isPractice) {
         const moveResult = this.chess.makeMove({ from, to, promotion });
         if (moveResult.success) {
-            this.renderBoard();
-            this.updateStatus();
-            this.checkGameOver();
+            this.gameState = {
+                board: this.chess.board,
+                currentTurn: this.chess.currentTurn,
+                status: this.chess.gameStatus
+            };
+            this.updateGameBoard();
+            this.updateGameStatus();
+            if (this.chess.gameStatus !== 'active' && this.chess.gameStatus !== 'check') {
+                this.showGameEndScreen(this.chess.gameStatus, this.chess.winner);
+            }
             
             // If against AI (and I just moved as human), trigger AI response
             if (this.chess.gameStatus === 'active' && 
@@ -2081,15 +2127,21 @@ class WebChessClient {
     const chatMessages = document.getElementById('mobile-chat-messages');
     const messageDiv = document.createElement('div');
     messageDiv.className = `chat-message ${isOwn ? 'own-message' : 'other-message'}`;
-    
-    messageDiv.innerHTML = `
-      <div class="chat-sender">${sender}</div>
-      <div class="chat-text">${this.escapeHtml(message)}</div>
-    `;
-    
+
+    const senderEl = document.createElement('div');
+    senderEl.className = 'chat-sender';
+    senderEl.textContent = sender;
+
+    const textEl = document.createElement('div');
+    textEl.className = 'chat-text';
+    textEl.textContent = message;
+
+    messageDiv.appendChild(senderEl);
+    messageDiv.appendChild(textEl);
+
     chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
-    
+
     // Limit to 50 messages
     while (chatMessages.children.length > 50) {
       chatMessages.removeChild(chatMessages.firstChild);
@@ -2198,490 +2250,3 @@ class WebChessClient {
 }
 
 // Simple ChessAI implementation for client-side use
-class ChessAI {
-  constructor(difficulty = 'medium') {
-    this.difficulty = difficulty;
-    this.maxDepth = this.getMaxDepth(difficulty);
-    this.pieceValues = {
-      pawn: 100,
-      knight: 300,
-      bishop: 300,
-      rook: 500,
-      queen: 900,
-      king: 10000
-    };
-  }
-  
-  getMaxDepth(difficulty) {
-    switch (difficulty) {
-      case 'easy': return 1;
-      case 'medium': return 2;
-      case 'hard': return 3;
-      default: return 2;
-    }
-  }
-  
-  getBestMove(gameState) {
-    const moves = this.getAllValidMoves(gameState);
-    
-    if (moves.length === 0) {
-      return null;
-    }
-    
-    // Easy mode: random moves occasionally
-    if (this.difficulty === 'easy' && Math.random() < 0.4) {
-      return moves[Math.floor(Math.random() * moves.length)];
-    }
-    
-    let bestMove = null;
-    let bestScore = gameState.currentTurn === 'white' ? -Infinity : Infinity;
-    
-    for (const move of moves) {
-      const score = this.evaluateMove(gameState, move);
-      
-      if (gameState.currentTurn === 'white' && score > bestScore) {
-        bestScore = score;
-        bestMove = move;
-      } else if (gameState.currentTurn === 'black' && score < bestScore) {
-        bestScore = score;
-        bestMove = move;
-      }
-    }
-    
-    return bestMove;
-  }
-  
-  getAllValidMoves(gameState) {
-    const moves = [];
-    
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const piece = gameState.board[row][col];
-        if (piece && piece.color === gameState.currentTurn) {
-          const pieceMoves = this.getValidMovesForPiece(gameState, row, col);
-          moves.push(...pieceMoves);
-        }
-      }
-    }
-    
-    return moves;
-  }
-  
-  getValidMovesForPiece(gameState, row, col) {
-    const moves = [];
-    const piece = gameState.board[row][col];
-    
-    if (!piece) return moves;
-    
-    let checkedMoves = 0;
-    let rejectedMoves = 0;
-    
-    for (let toRow = 0; toRow < 8; toRow++) {
-      for (let toCol = 0; toCol < 8; toCol++) {
-        const move = {
-          from: { row, col },
-          to: { row: toRow, col: toCol }
-        };
-        
-        checkedMoves++;
-        
-        if (this.isValidMove(gameState, move)) {
-          moves.push(move);
-        } else {
-          rejectedMoves++;
-        }
-      }
-    }
-    
-    return moves;
-  }
-  
-  isValidMove(gameState, move) {
-    if (!move || !move.from || !move.to) return false;
-    
-    const piece = gameState.board[move.from.row][move.from.col];
-    if (!piece || piece.color !== gameState.currentTurn) return false;
-    
-    // Check if trying to capture a king (not allowed)
-    const targetSquare = gameState.board[move.to.row][move.to.col];
-    if (targetSquare && targetSquare.type === 'king') return false;
-    
-    // Check if the move is a valid piece move
-    if (!this.isValidPieceMoveAI(move, piece, gameState)) return false;
-    
-    // Check if the move would leave the king in check
-    if (this.wouldLeaveKingInCheckAI(move, gameState)) {
-      // Debug: show which moves are rejected due to leaving king in check
-      if (gameState.currentTurn === 'black' && piece.type === 'king') {
-        console.log(`King move ${String.fromCharCode(97 + move.from.col)}${8 - move.from.row} to ${String.fromCharCode(97 + move.to.col)}${8 - move.to.row} would leave king in check`);
-      }
-      return false;
-    }
-    
-    return true;
-  }
-  
-  isValidPieceMoveAI(move, piece, gameState) {
-    if (!move || !move.from || !move.to) return false;
-    
-    const dx = Math.abs(move.to.col - move.from.col);
-    const dy = Math.abs(move.to.row - move.from.row);
-    const target = gameState.board[move.to.row][move.to.col];
-    
-    // Can't capture own piece
-    if (target && target.color === piece.color) return false;
-    
-    switch (piece.type) {
-      case 'pawn':
-        return this.isValidPawnMoveAI(move, piece, gameState);
-      case 'rook':
-        return (dx === 0 || dy === 0) && this.isPathClearAI(move, gameState);
-      case 'bishop':
-        return dx === dy && this.isPathClearAI(move, gameState);
-      case 'queen':
-        return (dx === 0 || dy === 0 || dx === dy) && this.isPathClearAI(move, gameState);
-      case 'knight':
-        return (dx === 2 && dy === 1) || (dx === 1 && dy === 2);
-      case 'king':
-        return dx <= 1 && dy <= 1;
-      default:
-        return false;
-    }
-  }
-  
-  isValidPawnMoveAI(move, piece, gameState) {
-    if (!move || !move.from || !move.to) return false;
-    
-    const direction = piece.color === 'white' ? -1 : 1;
-    const startRow = piece.color === 'white' ? 6 : 1;
-    const dy = move.to.row - move.from.row;
-    const dx = Math.abs(move.to.col - move.from.col);
-    const target = gameState.board[move.to.row][move.to.col];
-    
-    // Forward move
-    if (dx === 0) {
-      if (target) return false; // Blocked
-      if (dy === direction) return true; // One square forward
-      if (dy === 2 * direction && move.from.row === startRow) return true; // Two squares from start
-      return false;
-    }
-    
-    // Diagonal capture
-    if (dx === 1 && dy === direction) {
-      // Regular diagonal capture
-      if (target && target.color !== piece.color) {
-        return true;
-      }
-      
-      // En passant capture
-      if (gameState.enPassantTarget &&
-          move.to.row === gameState.enPassantTarget.row &&
-          move.to.col === gameState.enPassantTarget.col) {
-        return true;
-      }
-      
-      return false;
-    }
-    
-    return false;
-  }
-  
-  isPathClearAI(move, gameState) {
-    const dx = Math.sign(move.to.col - move.from.col);
-    const dy = Math.sign(move.to.row - move.from.row);
-    let row = move.from.row + dy;
-    let col = move.from.col + dx;
-    
-    while (row !== move.to.row || col !== move.to.col) {
-      if (gameState.board[row][col]) return false;
-      row += dy;
-      col += dx;
-    }
-    
-    return true;
-  }
-  
-  wouldLeaveKingInCheckAI(move, gameState) {
-    // Make a temporary move to test
-    const originalPiece = gameState.board[move.to.row][move.to.col];
-    const movingPiece = gameState.board[move.from.row][move.from.col];
-    
-    gameState.board[move.to.row][move.to.col] = movingPiece;
-    gameState.board[move.from.row][move.from.col] = null;
-    
-    const inCheck = this.isKingInCheckAI(movingPiece.color, gameState);
-    
-    // Restore the board
-    gameState.board[move.from.row][move.from.col] = movingPiece;
-    gameState.board[move.to.row][move.to.col] = originalPiece;
-    
-    return inCheck;
-  }
-  
-  isKingInCheckAI(color, gameState) {
-    // Find the king
-    let kingRow = -1, kingCol = -1;
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const piece = gameState.board[row][col];
-        if (piece && piece.type === 'king' && piece.color === color) {
-          kingRow = row;
-          kingCol = col;
-          break;
-        }
-      }
-      if (kingRow !== -1) break;
-    }
-    
-    if (kingRow === -1) return false; // No king found
-    
-    // Check if any opponent piece can attack the king
-    const opponentColor = color === 'white' ? 'black' : 'white';
-    
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const piece = gameState.board[row][col];
-        if (piece && piece.color === opponentColor) {
-          const attackMove = {
-            from: { row, col },
-            to: { row: kingRow, col: kingCol }
-          };
-          
-          // Check if this piece can attack the king position
-          if (this.isValidPieceMoveAI(attackMove, piece, gameState)) {
-            return true;
-          }
-        }
-      }
-    }
-    
-    return false;
-  }
-  
-  isValidMoveForPiece(piece, fromRow, fromCol, toRow, toCol, gameState) {
-    const rowDiff = Math.abs(toRow - fromRow);
-    const colDiff = Math.abs(toCol - fromCol);
-    
-    switch (piece.type) {
-      case 'pawn':
-        const direction = piece.color === 'white' ? -1 : 1;
-        const startRow = piece.color === 'white' ? 6 : 1;
-        const rowMove = toRow - fromRow;
-        
-        if (colDiff === 0) {
-          return (rowMove === direction && !gameState.board[toRow][toCol]) ||
-                 (fromRow === startRow && rowMove === 2 * direction && !gameState.board[toRow][toCol]);
-        } else if (colDiff === 1 && rowMove === direction) {
-          return gameState.board[toRow][toCol] !== null;
-        }
-        return false;
-        
-      case 'rook':
-        return (fromRow === toRow || fromCol === toCol) && this.isPathClear(gameState, fromRow, fromCol, toRow, toCol);
-        
-      case 'knight':
-        return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
-        
-      case 'bishop':
-        return rowDiff === colDiff && this.isPathClear(gameState, fromRow, fromCol, toRow, toCol);
-        
-      case 'queen':
-        return ((fromRow === toRow || fromCol === toCol) || (rowDiff === colDiff)) &&
-               this.isPathClear(gameState, fromRow, fromCol, toRow, toCol);
-        
-      case 'king':
-        return rowDiff <= 1 && colDiff <= 1;
-        
-      default:
-        return false;
-    }
-  }
-  
-  isPathClear(gameState, fromRow, fromCol, toRow, toCol) {
-    const rowStep = toRow === fromRow ? 0 : (toRow - fromRow) / Math.abs(toRow - fromRow);
-    const colStep = toCol === fromCol ? 0 : (toCol - fromCol) / Math.abs(toCol - fromCol);
-    
-    let row = fromRow + rowStep;
-    let col = fromCol + colStep;
-    
-    while (row !== toRow || col !== move.to.col) {
-      if (gameState.board[row][col]) return false;
-      row += rowStep;
-      col += colStep;
-    }
-    
-    return true;
-  }
-  
-  evaluateMove(gameState, move) {
-    let score = 0;
-    
-    // Capture value
-    const target = gameState.board[move.to.row][move.to.col];
-    if (target) {
-      score += this.pieceValues[target.type];
-    }
-    
-    // Center control
-    const centerDistance = Math.abs(move.to.row - 3.5) + Math.abs(move.to.col - 3.5);
-    score += (7 - centerDistance) * 5;
-    
-    // Random factor for variety
-    score += Math.random() * 10;
-    
-    return score;
-  }
-  
-  // Check validation methods for AI
-  isKingInCheck(gameState, color) {
-    const kingPos = this.findKing(gameState, color);
-    if (!kingPos) return false;
-    
-    const opponentColor = color === 'white' ? 'black' : 'white';
-    
-    // Check if any opponent piece can attack the king
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const piece = gameState.board[row][col];
-        if (piece && piece.color === opponentColor) {
-          const move = { from: { row, col }, to: kingPos };
-          if (this.isValidPieceMove(gameState, move, piece)) {
-            return true;
-          }
-        }
-      }
-    }
-    
-    return false;
-  }
-  
-  findKing(gameState, color) {
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const piece = gameState.board[row][col];
-        if (piece && piece.type === 'king' && piece.color === color) {
-          return { row, col };
-        }
-      }
-    }
-    return null;
-  }
-  
-  wouldLeaveKingInCheck(gameState, move, color) {
-    // Make a temporary move to test
-    const originalPiece = gameState.board[move.to.row][move.to.col];
-    const movingPiece = gameState.board[move.from.row][move.from.col];
-    
-    gameState.board[move.to.row][move.to.col] = movingPiece;
-    gameState.board[move.from.row][move.from.col] = null;
-    
-    const inCheck = this.isKingInCheck(gameState, color);
-    
-    // Restore the board
-    gameState.board[move.from.row][move.from.col] = movingPiece;
-    gameState.board[move.to.row][move.to.col] = originalPiece;
-    
-    return inCheck;
-  }
-  
-  isValidPieceMove(gameState, move, piece) {
-    const dx = Math.abs(move.to.col - move.from.col);
-    const dy = Math.abs(move.to.row - move.from.row);
-    const target = gameState.board[move.to.row][move.to.col];
-    
-    // Can't capture own piece
-    if (target && target.color === piece.color) return false;
-    
-    switch (piece.type) {
-      case 'pawn':
-        return this.isValidPawnMove(gameState, move, piece);
-      case 'rook':
-        return (dx === 0 || dy === 0) && this.isPathClear(gameState, move);
-      case 'bishop':
-        return dx === dy && this.isPathClear(gameState, move);
-      case 'queen':
-        return (dx === 0 || dy === 0 || dx === dy) && this.isPathClear(gameState, move);
-      case 'knight':
-        return (dx === 2 && dy === 1) || (dx === 1 && dy === 2);
-      case 'king':
-        return dx <= 1 && dy <= 1;
-      default:
-        return false;
-    }
-  }
-  
-  isValidPawnMove(gameState, move, piece) {
-    const direction = piece.color === 'white' ? -1 : 1;
-    const startRow = piece.color === 'white' ? 6 : 1;
-    const dy = move.to.row - move.from.row;
-    const dx = Math.abs(move.to.col - move.from.col);
-    const target = gameState.board[move.to.row][move.to.col];
-    
-    // Forward move
-    if (dx === 0) {
-      if (target) return false; // Blocked
-      if (dy === direction) return true; // One square forward
-      if (dy === 2 * direction && move.from.row === startRow) return true; // Two squares from start
-      return false;
-    }
-    
-    // Diagonal capture
-    if (dx === 1 && dy === direction) {
-      // Regular diagonal capture
-      if (target && target.color !== piece.color) {
-        return true;
-      }
-      
-      // En passant capture
-      if (gameState.enPassantTarget &&
-          move.to.row === gameState.enPassantTarget.row &&
-          move.to.col === gameState.enPassantTarget.col) {
-        return true;
-      }
-      
-      return false;
-    }
-    
-    return false;
-  }
-  
-  isPathClear(gameState, move) {
-    if (!move || !move.from || !move.to) return false;
-    
-    const dx = Math.sign(move.to.col - move.from.col);
-    const dy = Math.sign(move.to.row - move.from.row);
-    let row = move.from.row + dy;
-    let col = move.from.col + dx;
-    
-    while (row !== move.to.row || col !== move.to.col) {
-      if (gameState.board[row][col]) return false;
-      row += dy;
-      col += dx;
-    }
-    
-    return true;
-  }
-  
-  getAllValidMovesForColor(color) {
-    const validMoves = [];
-    
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const piece = this.gameState.board[row][col];
-        if (piece && piece.color === color) {
-          const pieceMoves = this.getValidMoves(row, col);
-          pieceMoves.forEach(move => {
-            validMoves.push({
-              from: { row, col },
-              to: { row: move.row, col: move.col }
-            });
-          });
-        }
-      }
-    }
-    
-    return validMoves;
-  }
-}
-
-// WebChessClient initialization is now handled in index.html to ensure proper timing

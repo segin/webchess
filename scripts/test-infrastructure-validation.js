@@ -108,10 +108,10 @@ class TestInfrastructureValidator {
       const expectedCategories = [
         'chessGame.test.js',
         'gameState.test.js',
-        'errorHandling.test.js',
+        'errorHandler.test.js',
         'performanceTests.test.js',
         'integrationTests.test.js',
-        'browserCompatible.test.js'
+        'browserCompatibilityComprehensive.test.js'
       ];
 
       expectedCategories.forEach(category => {

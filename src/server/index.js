@@ -10,6 +10,14 @@ const io = socketIo(server);
 
 const gameManager = new GameManager();
 
+// Session middleware for Socket.IO
+io.use((socket, next) => {
+  const { token } = socket.handshake.auth;
+  // Use existing token or generate a new one
+  socket.sessionToken = token || require('crypto').randomUUID();
+  next();
+});
+
 // Serve static files with cache headers
 app.use(express.static(path.join(__dirname, '../../public'), {
   setHeaders: (res, path) => {
@@ -59,11 +67,36 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../../public/index.html'));
 });
 
+// Simple per-socket rate limiter: max `limit` events per `windowMs`
+function createRateLimiter(limit, windowMs) {
+  return function checkRate(socket, eventName) {
+    if (!socket._rateLimits) socket._rateLimits = {};
+    const now = Date.now();
+    const key = eventName;
+    if (!socket._rateLimits[key]) socket._rateLimits[key] = [];
+    socket._rateLimits[key] = socket._rateLimits[key].filter(t => now - t < windowMs);
+    if (socket._rateLimits[key].length >= limit) return false;
+    socket._rateLimits[key].push(now);
+    return true;
+  };
+}
+
+const moveRateLimit = createRateLimiter(30, 10000);    // 30 moves per 10s
+const chatRateLimit = createRateLimiter(10, 5000);     // 10 messages per 5s
+const actionRateLimit = createRateLimiter(5, 5000);    // 5 actions per 5s
+
 io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+  console.log('User connected:', socket.sessionToken);
+
+  // Handle player reconnection
+  gameManager.handleReconnect(socket.sessionToken);
+
+  // Send the session token back to the client for persistence
+  socket.emit('session-token', { token: socket.sessionToken });
 
   socket.on('host-game', () => {
-    const gameId = gameManager.createGame(socket.id);
+    if (!actionRateLimit(socket, 'host-game')) return;
+    const gameId = gameManager.createGame(socket.sessionToken);
     if (!gameId) {
       socket.emit('host-error', { message: 'Game limit reached. Please finish existing games.' });
       return;
@@ -73,14 +106,17 @@ io.on('connection', (socket) => {
   });
 
   socket.on('join-game', (data) => {
-    const { gameId } = data;
-    const result = gameManager.joinGame(gameId, socket.id);
-    
+    if (!data || typeof data !== 'object') return;
+    if (!actionRateLimit(socket, 'join-game')) return;
+    const gameId = typeof data.gameId === 'string' ? data.gameId.toUpperCase() : null;
+    if (!gameId) return;
+    const result = gameManager.joinGame(gameId, socket.sessionToken);
+
     if (result.success) {
       socket.join(gameId);
       socket.emit('game-joined', { gameId, color: result.color });
       socket.to(gameId).emit('opponent-joined', { color: result.opponentColor });
-      
+
       io.to(gameId).emit('game-start', {
         gameState: gameManager.getGameState(gameId)
       });
@@ -90,29 +126,33 @@ io.on('connection', (socket) => {
   });
 
   socket.on('make-move', (data) => {
-    const { gameId, move } = data;
-    const result = gameManager.makeMove(gameId, socket.id, move);
-    
+    if (!data || typeof data !== 'object') return;
+    if (!moveRateLimit(socket, 'make-move')) return;
+    const gameId = typeof data.gameId === 'string' ? data.gameId.toUpperCase() : null;
+    const { move } = data;
+    if (!gameId || !move) return;
+    const result = gameManager.makeMove(gameId, socket.sessionToken, move);
+
     if (result.success) {
       io.to(gameId).emit('move-made', {
         move,
         gameState: result.gameState,
         nextTurn: result.nextTurn
       });
-      
-      if (result.gameState.status !== 'active') {
+
+      if (result.gameState.status !== 'active' && result.gameState.status !== 'check') {
         io.to(gameId).emit('game-end', {
           status: result.gameState.status,
           winner: result.gameState.winner
         });
-        
+
         // Clean up chat when game ends
         setTimeout(() => {
           gameManager.cleanupGameChat(gameId);
         }, 30000); // Clean up after 30 seconds
       }
     } else {
-      socket.emit('move-error', { 
+      socket.emit('move-error', {
         message: result.message,
         errorCode: result.errorCode
       });
@@ -120,15 +160,18 @@ io.on('connection', (socket) => {
   });
 
   socket.on('resign', (data) => {
-    const { gameId } = data;
-    const result = gameManager.resignGame(gameId, socket.id);
-    
+    if (!data || typeof data !== 'object') return;
+    if (!actionRateLimit(socket, 'resign')) return;
+    const gameId = typeof data.gameId === 'string' ? data.gameId.toUpperCase() : null;
+    if (!gameId) return;
+    const result = gameManager.resignGame(gameId, socket.sessionToken);
+
     if (result.success) {
       io.to(gameId).emit('game-end', {
         status: 'resigned',
         winner: result.winner
       });
-      
+
       // Clean up chat when game ends
       setTimeout(() => {
         gameManager.cleanupGameChat(gameId);
@@ -137,16 +180,18 @@ io.on('connection', (socket) => {
   });
 
   socket.on('chat-message', (data) => {
-    const { gameId, message } = data;
-    
-    // Basic validation
+    if (!data || typeof data !== 'object') return;
+    if (!chatRateLimit(socket, 'chat-message')) return;
+    const gameId = typeof data.gameId === 'string' ? data.gameId.toUpperCase() : null;
+    const { message } = data;
+
     if (!gameId || !message || typeof message !== 'string') {
       return;
     }
-    
+
     // Add message using GameManager
-    const result = gameManager.addChatMessage(gameId, socket.id, message);
-    
+    const result = gameManager.addChatMessage(gameId, socket.sessionToken, message);
+
     if (result.success) {
       // Broadcast to the other player (not back to sender)
       socket.to(gameId).emit('chat-message', {
@@ -159,13 +204,14 @@ io.on('connection', (socket) => {
   });
 
   socket.on('get-chat-history', (data) => {
-    const { gameId } = data;
-    
+    if (!data || typeof data !== 'object') return;
+    const gameId = typeof data.gameId === 'string' ? data.gameId.toUpperCase() : null;
+
     if (!gameId) {
       return;
     }
     
-    const result = gameManager.getChatMessages(gameId, socket.id);
+    const result = gameManager.getChatMessages(gameId, socket.sessionToken);
     
     if (result.success) {
       socket.emit('chat-history', {
@@ -176,19 +222,23 @@ io.on('connection', (socket) => {
   });
 
   socket.on('validate-session', (data) => {
-    const { gameId } = data;
-    
+    if (!data || typeof data !== 'object') {
+      socket.emit('session-validation', { valid: false });
+      return;
+    }
+    const gameId = typeof data.gameId === 'string' ? data.gameId.toUpperCase() : null;
+
     if (!gameId) {
       socket.emit('session-validation', { valid: false });
       return;
     }
-    
+
     const game = gameManager.games.get(gameId);
-    const isValid = !!(game && 
-                   (game.status === 'active' || game.status === 'waiting') && 
-                   (game.host === socket.id || game.guest === socket.id));
-    
-    socket.emit('session-validation', { 
+    const isValid = !!(game &&
+                   (game.status === 'active' || game.status === 'waiting') &&
+                   (game.host === socket.sessionToken || game.guest === socket.sessionToken));
+
+    socket.emit('session-validation', {
       valid: isValid,
       gameId: gameId,
       gameStatus: game ? game.status : null
@@ -196,8 +246,8 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-    gameManager.handleDisconnect(socket.id);
+    console.log('User disconnected:', socket.sessionToken);
+    gameManager.handleDisconnect(socket.sessionToken);
   });
 });
 

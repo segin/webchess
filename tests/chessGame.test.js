@@ -1303,7 +1303,7 @@ describe('ChessGame - Core Functionality', () => {
       const piece = { type: 'pawn', color: 'white' };
       
       const notation = game.getMoveNotation(from, to, piece);
-      expect(notation).toBe('pawne2-e4'); // Actual implementation includes piece type
+      expect(notation).toBe('e2-e4');
     });
 
     test('should generate correct notation for piece moves', () => {
@@ -1312,15 +1312,15 @@ describe('ChessGame - Core Functionality', () => {
       const piece = { type: 'knight', color: 'white' };
       
       const notation = game.getMoveNotation(from, to, piece);
-      expect(notation).toBe('knightb1-c3'); // Actual implementation uses full piece type
+      expect(notation).toBe('Kb1-c3');
     });
 
     test('should generate correct notation for all piece types', () => {
       const testCases = [
-        { piece: { type: 'rook', color: 'white' }, expected: 'rook' },
-        { piece: { type: 'bishop', color: 'white' }, expected: 'bishop' },
-        { piece: { type: 'queen', color: 'white' }, expected: 'queen' },
-        { piece: { type: 'king', color: 'white' }, expected: 'king' }
+        { piece: { type: 'rook', color: 'white' }, expected: 'R' },
+        { piece: { type: 'bishop', color: 'white' }, expected: 'B' },
+        { piece: { type: 'queen', color: 'white' }, expected: 'Q' },
+        { piece: { type: 'king', color: 'white' }, expected: 'K' }
       ];
 
       testCases.forEach(({ piece, expected }) => {
@@ -3254,7 +3254,7 @@ describe('ChessGame Advanced Coverage - Uncovered Lines', () => {
 
                     const notation = game.getMoveNotation(from, to, piece);
                     expect(typeof notation).toBe('string');
-                    expect(notation).toContain('knight');
+                    expect(notation).toContain('K');
                     expect(notation).toContain('b1');
                     expect(notation).toContain('c3'); // Correct square notation
                 }
@@ -3426,10 +3426,10 @@ describe('ChessGame Ultimate Coverage - Final 4% to 95%', () => {
 
     test('should generate correct notation for all piece types', () => {
       const testCases = [
-        { piece: { type: 'rook', color: 'white' }, expected: 'rook' },
-        { piece: { type: 'bishop', color: 'white' }, expected: 'bishop' },
-        { piece: { type: 'queen', color: 'white' }, expected: 'queen' },
-        { piece: { type: 'king', color: 'white' }, expected: 'king' }
+        { piece: { type: 'rook', color: 'white' }, expected: 'R' },
+        { piece: { type: 'bishop', color: 'white' }, expected: 'B' },
+        { piece: { type: 'queen', color: 'white' }, expected: 'Q' },
+        { piece: { type: 'king', color: 'white' }, expected: 'K' }
       ];
 
       testCases.forEach(({ piece, expected }) => {

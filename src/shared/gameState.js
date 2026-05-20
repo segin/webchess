@@ -711,12 +711,14 @@ class GameStateManager {
 
     // 1. Deep copy board (Hot path, 8x8)
     if (Array.isArray(gameState.board)) {
-      const newBoard = new Array(gameState.board.length);
-      for (let i = 0; i < gameState.board.length; i++) {
+      const boardLength = gameState.board.length;
+      const newBoard = new Array(boardLength);
+      for (let i = 0; i < boardLength; i++) {
         const row = gameState.board[i];
         if (Array.isArray(row)) {
-          const newRow = new Array(row.length);
-          for (let j = 0; j < row.length; j++) {
+          const rowLength = row.length;
+          const newRow = new Array(rowLength);
+          for (let j = 0; j < rowLength; j++) {
             const piece = row[j];
             // Piece is { type, color } or null
             newRow[j] = piece ? { type: piece.type, color: piece.color } : null;
@@ -1068,34 +1070,6 @@ class GameStateManager {
   }
 
   /**
-   * Restore from checkpoint
-   * @param {Object} checkpoint - Checkpoint to restore from
-   * @returns {Object} Restoration result
-   */
-  restoreFromCheckpoint(checkpoint) {
-    if (!checkpoint || !checkpoint.state) {
-      return {
-        success: false,
-        message: 'Invalid checkpoint'
-      };
-    }
-
-    const gameState = this.deserializeGameState(checkpoint.state);
-    if (!gameState) {
-      return {
-        success: false,
-        message: 'Failed to deserialize checkpoint state'
-      };
-    }
-
-    return {
-      success: true,
-      gameState,
-      metadata: checkpoint.metadata
-    };
-  }
-
-  /**
    * Compare two game states
    * @param {Object} state1 - First game state
    * @param {Object} state2 - Second game state
@@ -1385,43 +1359,42 @@ class GameStateManager {
   }
 
   /**
-   * Helper to estimate object size without JSON.stringify
+   * Recursively estimate the memory size of an object
    * @param {*} obj - Object to estimate size for
-   * @param {WeakSet} seen - Set of seen objects to prevent circular reference infinite loops
+   * @param {WeakSet} visited - Set to track visited objects (for circular references)
    * @returns {number} Estimated size in bytes
    * @private
    */
-  _estimateSize(obj, seen = new WeakSet()) {
-    if (obj === null || obj === undefined) return 0;
+  _estimateSize(obj, visited = new WeakSet()) {
+    if (obj === null) return 4;
+    if (obj === undefined) return 0;
 
-    switch (typeof obj) {
-      case 'number':
-        return 8; // 64-bit float
-      case 'boolean':
-        return 4;
-      case 'string':
-        return obj.length * 2; // UTF-16 characters are 2 bytes
-      case 'object':
-        if (seen.has(obj)) return 0; // Prevent circular references
-        seen.add(obj);
+    const type = typeof obj;
+    if (type === 'number') return 8;
+    if (type === 'string') return obj.length * 2;
+    if (type === 'boolean') return 4;
 
-        let size = 0;
-        if (Array.isArray(obj)) {
-          for (let i = 0; i < obj.length; i++) {
-            size += this._estimateSize(obj[i], seen);
-          }
-        } else {
-          for (const key in obj) {
-            if (Object.prototype.hasOwnProperty.call(obj, key)) {
-              size += key.length * 2; // Size of the key string
-              size += this._estimateSize(obj[key], seen); // Size of the value
-            }
+    if (type === 'object') {
+      if (visited.has(obj)) return 0;
+      visited.add(obj);
+
+      let size = 16; // Base object overhead
+      if (Array.isArray(obj)) {
+        for (let i = 0; i < obj.length; i++) {
+          size += this._estimateSize(obj[i], visited);
+        }
+      } else {
+        for (const key in obj) {
+          if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            size += key.length * 2;
+            size += this._estimateSize(obj[key], visited);
           }
         }
-        return size;
-      default:
-        return 0;
+      }
+      return size;
     }
+
+    return 0;
   }
 
   /**
@@ -1442,7 +1415,9 @@ class GameStateManager {
   }
 
   /**
-   * Optimize state storage by removing redundant data
+   * Optimize state storage by removing redundant data.
+   * WARNING: do not call during active play — deduplication removes the repeated
+   * position entries required for threefold-repetition detection.
    */
   optimizeStateStorage() {
     // Remove duplicate positions from history
@@ -1451,7 +1426,6 @@ class GameStateManager {
 
     // Clean up old metadata if needed
     if (this.gameMetadata.startTime && Date.now() - this.gameMetadata.startTime > 24 * 60 * 60 * 1000) {
-      // For games older than 24 hours, we can optimize metadata
       delete this.gameMetadata.intermediateStates;
     }
   }
