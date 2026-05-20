@@ -1984,6 +1984,7 @@ class ChessGame {
   }
 
 
+
   /**
    * Enhanced draw declaration logic for stalemate
    * Updates game state and provides detailed information
@@ -3530,8 +3531,11 @@ class ChessGame {
    */
   getMoveNotation(from, to, piece) {
     const files = 'abcdefgh';
-    const pieceSymbol = piece.type === 'pawn' ? '' : piece.type[0].toUpperCase();
-    return `${pieceSymbol}${files[from.col]}${8 - from.row}-${files[to.col]}${8 - to.row}`;
+    const fromSquare = files[from.col] + (8 - from.row);
+    const toSquare = files[to.col] + (8 - to.row);
+    const pieceSymbol = piece.type === 'pawn' ? '' : (piece.type === 'knight' ? 'N' : piece.type[0].toUpperCase());
+
+    return `${pieceSymbol}${fromSquare}-${toSquare}`;
   }
 
   /**
