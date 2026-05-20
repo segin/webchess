@@ -25,6 +25,7 @@ class GameManager {
     this.disconnectTimeouts = new Map(); // Track timeouts for cleanup
     this.playerGameCounts = new Map(); // Track game counts for rate limiting
     this.playerStats = new Map(); // Optimization: Pre-calculated player statistics
+    this.availableGamesCache = new Map(); // Optimization: Fast lookup for available games
     this.activityList = new Set(); // Optimization: Track game activity for efficient cleanup
     this.MAX_GAMES_PER_PLAYER = 5;
     this.settings = {
@@ -464,10 +465,28 @@ class GameManager {
       if (game.guest) {
         game.host = game.guest;
         game.guest = null;
+
+        // If game is in waiting status, update cache with new host
+        if (game.status === 'waiting') {
+          this.availableGamesCache.set(gameId, {
+            gameId,
+            host: game.host,
+            createdAt: game.createdAt
+          });
+        }
       }
     } else if (game.guest === playerId) {
       decrementStats();
       game.guest = null;
+
+      // If game is in waiting status and guest leaves, it becomes available again
+      if (game.status === 'waiting') {
+        this.availableGamesCache.set(gameId, {
+          gameId,
+          host: game.host,
+          createdAt: game.createdAt
+        });
+      }
       this.playerToGame.delete(playerId);
       this._removeGameFromPlayer(playerId, gameId);
     } else {
@@ -718,20 +737,21 @@ class GameManager {
    * Get available games (waiting for players)
    * @returns {Array} Array of available game objects
    */
-  getAvailableGames() {
+  /**
+   * Get available games (waiting for players)
+   * @param {number} limit - Maximum number of games to return
+   * @returns {Array} Array of available game objects
+   */
+  getAvailableGames(limit = Infinity) {
     const availableGames = [];
-    const waitingGames = this.getGamesByStatus('waiting');
+    let count = 0;
 
-    for (const gameId of waitingGames) {
-      const game = this.games.get(gameId);
-      if (game && !game.guest) {
-        availableGames.push({
-          gameId,
-          host: game.host,
-          createdAt: game.createdAt
-        });
-      }
+    for (const game of this.availableGamesCache.values()) {
+      if (count >= limit) break;
+      availableGames.push(game);
+      count++;
     }
+
     return availableGames;
   }
 
@@ -955,6 +975,7 @@ class GameManager {
       this.playerGameCounts.clear();
     }
     this.playerStats.clear();
+    this.availableGamesCache.clear();
     this.activityList.clear();
   }
 
@@ -1046,6 +1067,18 @@ class GameManager {
       this.gamesByStatus.set(status, new Set());
     }
     this.gamesByStatus.get(status).add(gameId);
+
+    // Maintain available games cache
+    if (status === 'waiting') {
+      const game = this.games.get(gameId);
+      if (game && !game.guest) {
+        this.availableGamesCache.set(gameId, {
+          gameId,
+          host: game.host,
+          createdAt: game.createdAt
+        });
+      }
+    }
   }
 
   /**
@@ -1059,6 +1092,11 @@ class GameManager {
       if (set.size === 0) {
         this.gamesByStatus.delete(status);
       }
+    }
+
+    // Maintain available games cache
+    if (status === 'waiting') {
+      this.availableGamesCache.delete(gameId);
     }
   }
 
