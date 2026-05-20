@@ -14,8 +14,8 @@ module.exports = {
   coverageDirectory: coverageConfig.reporting.directory,
   // Always include text and text-summary for coverage output
   coverageReporters: isCI 
-    ? ['text', 'text-summary', 'lcov', 'json-summary'] 
-    : ['text', 'text-summary', 'lcov', 'html', 'json-summary'],
+    ? ['text', 'text-summary', 'lcov', 'json-summary', 'json'] 
+    : ['text', 'text-summary', 'lcov', 'html', 'json-summary', 'json'],
   testMatch: [
     '**/tests/**/*.test.js',
     '**/tests/**/*.spec.js'
