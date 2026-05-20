@@ -1,29 +1,41 @@
 const ChessGame = require('../../src/shared/chessGame');
+const { performance } = require('perf_hooks');
 
-const benchmarkGetMoveNotation = () => {
+function runBenchmark() {
+  console.log('--- Benchmarking getMoveNotation ---');
+
   const game = new ChessGame();
-  const from = { row: 6, col: 4 };
-  const to = { row: 4, col: 4 };
-  const piece = { type: 'pawn', color: 'white' };
+
+  const moves = [
+    { from: { row: 6, col: 4 }, to: { row: 4, col: 4 }, piece: { type: 'pawn', color: 'white' } },
+    { from: { row: 7, col: 1 }, to: { row: 5, col: 2 }, piece: { type: 'knight', color: 'white' } },
+    { from: { row: 0, col: 3 }, to: { row: 4, col: 7 }, piece: { type: 'queen', color: 'black' } },
+    { from: { row: 7, col: 4 }, to: { row: 7, col: 6 }, piece: { type: 'king', color: 'white' } },
+    { from: { row: 0, col: 0 }, to: { row: 0, col: 3 }, piece: { type: 'rook', color: 'black' } },
+    { from: { row: 7, col: 2 }, to: { row: 3, col: 6 }, piece: { type: 'bishop', color: 'white' } }
+  ];
 
   const iterations = 1000000;
-  console.log(`Starting benchmark for getMoveNotation with ${iterations} iterations...`);
 
-  const start = process.hrtime.bigint();
-  for (let i = 0; i < iterations; i++) {
-    game.getMoveNotation(from, to, piece);
+  // Warmup
+  for (let i = 0; i < 10000; i++) {
+    const move = moves[i % moves.length];
+    game.getMoveNotation(move.from, move.to, move.piece);
   }
-  const end = process.hrtime.bigint();
 
-  const durationNs = Number(end - start);
-  const durationMs = durationNs / 1000000;
-  const avgNs = durationNs / iterations;
+  // Benchmark
+  const start = performance.now();
+  for (let i = 0; i < iterations; i++) {
+    const move = moves[i % moves.length];
+    game.getMoveNotation(move.from, move.to, move.piece);
+  }
+  const end = performance.now();
 
-  console.log(`Duration: ${durationMs.toFixed(2)}ms`);
-  console.log(`Average: ${avgNs.toFixed(2)}ns per call`);
+  const totalTime = end - start;
+  const avgTime = (totalTime * 1e6) / iterations; // in nanoseconds
 
-  // Verify result
-  console.log(`Result: ${game.getMoveNotation(from, to, piece)}`);
-};
+  console.log(`Total Time for ${iterations} calls: ${totalTime.toFixed(2)} ms`);
+  console.log(`Average Time per call: ${avgTime.toFixed(2)} ns`);
+}
 
-benchmarkGetMoveNotation();
+runBenchmark();

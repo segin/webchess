@@ -1303,7 +1303,7 @@ describe('ChessGame - Core Functionality', () => {
       const piece = { type: 'pawn', color: 'white' };
       
       const notation = game.getMoveNotation(from, to, piece);
-      expect(notation).toBe('e2-e4');
+      expect(notation).toBe('e2-e4'); // pawn has no prefix
     });
 
     test('should generate correct notation for piece moves', () => {
@@ -1312,7 +1312,7 @@ describe('ChessGame - Core Functionality', () => {
       const piece = { type: 'knight', color: 'white' };
       
       const notation = game.getMoveNotation(from, to, piece);
-      expect(notation).toBe('Kb1-c3');
+      expect(notation).toBe('Nb1-c3'); // piece uses 1st letter capitalized
     });
 
     test('should generate correct notation for all piece types', () => {
@@ -3254,7 +3254,7 @@ describe('ChessGame Advanced Coverage - Uncovered Lines', () => {
 
                     const notation = game.getMoveNotation(from, to, piece);
                     expect(typeof notation).toBe('string');
-                    expect(notation).toContain('K');
+                    expect(notation).toContain('N');
                     expect(notation).toContain('b1');
                     expect(notation).toContain('c3'); // Correct square notation
                 }

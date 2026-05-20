@@ -718,7 +718,7 @@ class GameManager {
     if (!this.playerGames.has(playerId)) {
       return [];
     }
-    return Array.from(this.playerGames.get(playerId));
+    return [...this.playerGames.get(playerId)];
   }
 
   /**
@@ -892,9 +892,9 @@ class GameManager {
       this.eventHandlers = {};
     }
     if (!this.eventHandlers[event]) {
-      this.eventHandlers[event] = [];
+      this.eventHandlers[event] = new Set();
     }
-    this.eventHandlers[event].push(handler);
+    this.eventHandlers[event].add(handler);
   }
 
   /**
@@ -905,10 +905,7 @@ class GameManager {
   removeEventHandler(event, handler) {
     if (!this.eventHandlers || !this.eventHandlers[event]) return;
     
-    const index = this.eventHandlers[event].indexOf(handler);
-    if (index > -1) {
-      this.eventHandlers[event].splice(index, 1);
-    }
+    this.eventHandlers[event].delete(handler);
   }
 
   /**
