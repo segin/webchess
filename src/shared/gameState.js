@@ -840,7 +840,7 @@ class GameStateManager {
     const moveCount = gameState.moveHistory ? gameState.moveHistory.length : 0;
     const phase = this.detectGamePhase(gameState);
     
-    const complexityAnalysis = this.analyzePositionComplexity(gameState.board);
+    const complexityAnalysis = this.analyzePositionComplexity(gameState.board, gameState.pieceCount);
 
     return {
       phase,
@@ -1009,22 +1009,31 @@ class GameStateManager {
   /**
    * Analyze position complexity
    * @param {Array} board - Chess board state
-   * @returns {boolean} True if position is complex
+   * @param {number} pieceCount - Optional pre-calculated piece count
+   * @returns {Object} Complexity analysis and piece count
    */
-  analyzePositionComplexity(board) {
+  analyzePositionComplexity(board, pieceCount) {
+    // If pieceCount is provided, use it to bypass O(N^2) board scan
+    if (typeof pieceCount === 'number') {
+      return {
+        isComplex: pieceCount > 20,
+        pieceCount
+      };
+    }
+
     if (!Array.isArray(board)) return { isComplex: false, pieceCount: 0 };
     
-    let pieceCount = 0;
+    let count = 0;
     for (let row = 0; row < 8; row++) {
       if (!Array.isArray(board[row])) continue;
       for (let col = 0; col < 8; col++) {
-        if (board[row][col]) pieceCount++;
+        if (board[row][col]) count++;
       }
     }
     
     return {
-      isComplex: pieceCount > 20,
-      pieceCount
+      isComplex: count > 20,
+      pieceCount: count
     };
   }
 
