@@ -1402,6 +1402,7 @@ class GameStateManager {
    * @returns {Object} Memory usage statistics
    */
   getMemoryUsage() {
+    // Note: These are rough estimates for debugging/monitoring
     const positionHistorySize = this._estimateSize(this.positionHistory);
     const metadataSize = this._estimateSize(this.gameMetadata);
     
