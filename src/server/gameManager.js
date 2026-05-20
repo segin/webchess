@@ -718,7 +718,7 @@ class GameManager {
     if (!this.playerGames.has(playerId)) {
       return [];
     }
-    return Array.from(this.playerGames.get(playerId));
+    return [...this.playerGames.get(playerId)];
   }
 
   /**
