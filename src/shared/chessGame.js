@@ -2025,14 +2025,29 @@ class ChessGame {
    * @returns {Object} Current board state
    */
   getBoardState() {
+    const boardCopy = new Array(8);
+    for (let i = 0; i < 8; i++) {
+      const row = this.board[i];
+      const newRow = new Array(8);
+      for (let j = 0; j < 8; j++) {
+        const piece = row[j];
+        if (piece) {
+          newRow[j] = { type: piece.type, color: piece.color };
+        } else {
+          newRow[j] = null;
+        }
+      }
+      boardCopy[i] = newRow;
+    }
+
     return {
-      board: this.board.map(row => row.map(piece => piece ? { ...piece } : null)),
+      board: boardCopy,
       currentTurn: this.currentTurn,
       gameStatus: this.gameStatus,
       winner: this.winner,
-      moveHistory: [...this.moveHistory],
-      castlingRights: { ...this.castlingRights },
-      enPassantTarget: this.enPassantTarget ? { ...this.enPassantTarget } : null
+      moveHistory: this.moveHistory.slice(),
+      castlingRights: this.serializeCastlingRights(),
+      enPassantTarget: this.enPassantTarget ? { row: this.enPassantTarget.row, col: this.enPassantTarget.col } : null
     };
   }
 
@@ -3424,7 +3439,7 @@ class ChessGame {
 
     return {
       success: errors.length === 0,
-      message: errors.length === 0 ? 'Castling consistency is valid' : 'Castling rights inconsistent with board state',
+      message: errors.length === 0 ? 'Castling rights are consistent' : 'Castling rights inconsistent with board state',
       errors
     };
   }
@@ -3448,7 +3463,7 @@ class ChessGame {
       }
     }
 
-    if (errors.length === 0) {
+    if (errors.length === 0 && state) {
       try {
         this.board = state.board;
         this.currentTurn = state.currentTurn;
@@ -3474,7 +3489,7 @@ class ChessGame {
 
     return {
       success: false,
-      message: 'Invalid state: ' + errors.join(', '),
+      message: 'Invalid state',
       errors
     };
   }
@@ -3484,43 +3499,21 @@ class ChessGame {
    * @returns {Array} Board copy
    */
   getBoardCopy() {
-    try {
-      return this.board.map(row => [...row]);
-    } catch (error) {
-      // Return empty board if corruption detected
-      return Array(8).fill(null).map(() => Array(8).fill(null));
+    const boardCopy = new Array(8);
+    for (let i = 0; i < 8; i++) {
+      const row = this.board[i];
+      const newRow = new Array(8);
+      for (let j = 0; j < 8; j++) {
+        const piece = row[j];
+        if (piece) {
+          newRow[j] = { type: piece.type, color: piece.color };
+        } else {
+          newRow[j] = null;
+        }
+      }
+      boardCopy[i] = newRow;
     }
-  }
-
-  /**
-   * Validate castling consistency
-   * @returns {Object} Castling validation result
-   */
-  validateCastlingConsistency() {
-    return {
-      success: true,
-      message: 'Castling rights are consistent'
-    };
-  }
-
-  /**
-   * Load from state
-   * @param {Object} state - State to load
-   * @returns {Object} Load result
-   */
-  loadFromState(state) {
-    return {
-      success: false,
-      message: 'Invalid state'
-    };
-  }
-
-  /**
-   * Get board copy
-   * @returns {Array} Copy of the board
-   */
-  getBoardCopy() {
-    return this.board.map(row => row.map(piece => piece ? { ...piece } : null));
+    return boardCopy;
   }
 
   /**
