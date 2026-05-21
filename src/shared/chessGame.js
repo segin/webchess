@@ -2035,8 +2035,19 @@ class ChessGame {
    * @returns {Object} Current board state
    */
   getBoardState() {
+    const newBoard = new Array(8);
+    for (let r = 0; r < 8; r++) {
+      const row = this.board[r];
+      const newRow = new Array(8);
+      for (let c = 0; c < 8; c++) {
+        const piece = row[c];
+        newRow[c] = piece ? { type: piece.type, color: piece.color } : null;
+      }
+      newBoard[r] = newRow;
+    }
+
     return {
-      board: this.board.map(row => row.map(piece => piece ? { ...piece } : null)),
+      board: newBoard,
       currentTurn: this.currentTurn,
       gameStatus: this.gameStatus,
       winner: this.winner,
@@ -3495,10 +3506,24 @@ class ChessGame {
    */
   getBoardCopy() {
     try {
-      return this.board.map(row => [...row]);
+      const newBoard = new Array(8);
+      for (let r = 0; r < 8; r++) {
+        const row = this.board[r];
+        const newRow = new Array(8);
+        for (let c = 0; c < 8; c++) {
+          const piece = row[c];
+          newRow[c] = piece ? { type: piece.type, color: piece.color } : null;
+        }
+        newBoard[r] = newRow;
+      }
+      return newBoard;
     } catch (error) {
       // Return empty board if corruption detected
-      return Array(8).fill(null).map(() => Array(8).fill(null));
+      const emptyBoard = new Array(8);
+      for (let r = 0; r < 8; r++) {
+        emptyBoard[r] = new Array(8).fill(null);
+      }
+      return emptyBoard;
     }
   }
 
@@ -3525,13 +3550,6 @@ class ChessGame {
     };
   }
 
-  /**
-   * Get board copy
-   * @returns {Array} Copy of the board
-   */
-  getBoardCopy() {
-    return this.board.map(row => row.map(piece => piece ? { ...piece } : null));
-  }
 
   /**
    * Get move notation for a move

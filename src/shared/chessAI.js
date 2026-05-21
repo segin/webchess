@@ -683,7 +683,17 @@ class ChessAI {
     const newGame = new ChessGame({ isClone: true });
     
     // Copy board state
-    newGame.board = chessGame.board.map(row => row.map(piece => piece ? { ...piece } : null));
+    const newBoard = new Array(8);
+    for (let r = 0; r < 8; r++) {
+      const row = chessGame.board[r];
+      const newRow = new Array(8);
+      for (let c = 0; c < 8; c++) {
+        const piece = row[c];
+        newRow[c] = piece ? { type: piece.type, color: piece.color } : null;
+      }
+      newBoard[r] = newRow;
+    }
+    newGame.board = newBoard;
     
     // Rebuild piece locations cache for the new board
     // Optimize: shallow copy the arrays if they exist on source
