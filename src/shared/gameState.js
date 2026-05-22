@@ -35,7 +35,7 @@ class GameStateManager {
    */
   getFENPosition(board, currentTurn, castlingRights, enPassantTarget) {
     let fen = '';
-    
+
     // Board position
     for (let row = 0; row < 8; row++) {
       let emptyCount = 0;
@@ -49,7 +49,7 @@ class GameStateManager {
           // Use proper chess notation symbols
           const symbolMap = {
             'king': 'k',
-            'queen': 'q', 
+            'queen': 'q',
             'rook': 'r',
             'bishop': 'b',
             'knight': 'n',
@@ -66,10 +66,10 @@ class GameStateManager {
       }
       if (row < 7) fen += '/';
     }
-    
+
     // Active color
     fen += ' ' + (currentTurn === 'white' ? 'w' : 'b');
-    
+
     // Castling rights
     let castling = '';
     if (castlingRights.white.kingside) castling += 'K';
@@ -77,7 +77,7 @@ class GameStateManager {
     if (castlingRights.black.kingside) castling += 'k';
     if (castlingRights.black.queenside) castling += 'q';
     fen += ' ' + (castling || '-');
-    
+
     // En passant target
     if (enPassantTarget) {
       const file = String.fromCharCode(97 + enPassantTarget.col);
@@ -86,7 +86,6 @@ class GameStateManager {
     } else {
       fen += ' -';
     }
-    
     return fen;
   }
 
@@ -109,7 +108,6 @@ class GameStateManager {
         }
       };
     }
-
     if (currentTurn !== expectedColor) {
       return {
         success: false,
@@ -137,7 +135,6 @@ class GameStateManager {
         }
       };
     }
-
     return {
       success: true,
       message: 'Turn sequence is valid',
@@ -167,7 +164,6 @@ class GameStateManager {
    */
   updateGameStatus(currentStatus, newStatus, winner = null) {
     const validStatuses = ['active', 'check', 'checkmate', 'stalemate', 'draw'];
-    
     if (!validStatuses.includes(newStatus)) {
       return {
         success: false,
@@ -221,7 +217,6 @@ class GameStateManager {
     // Update metadata
     this.gameMetadata.lastMoveTime = Date.now();
     this.stateVersion++;
-
     return {
       success: true,
       message: `Game status updated from ${currentStatus} to ${newStatus}`,
@@ -246,26 +241,31 @@ class GameStateManager {
       return {
         success: true,
         message: `Status remains ${fromStatus}`,
-        details: { fromStatus, toStatus }
+        details: {
+          fromStatus,
+          toStatus
+        }
       };
     }
-
     const validTransitions = {
       'active': ['check', 'checkmate', 'stalemate', 'draw'],
       'check': ['active', 'checkmate', 'stalemate', 'draw'],
-      'checkmate': [], // Terminal state
-      'stalemate': [], // Terminal state
+      'checkmate': [],
+      // Terminal state
+      'stalemate': [],
+      // Terminal state
       'draw': [] // Terminal state
     };
-
     if (!validTransitions[fromStatus]) {
       return {
         success: false,
         message: `Unknown source status: ${fromStatus}`,
-        details: { fromStatus, toStatus }
+        details: {
+          fromStatus,
+          toStatus
+        }
       };
     }
-
     if (!validTransitions[fromStatus].includes(toStatus)) {
       return {
         success: false,
@@ -277,11 +277,13 @@ class GameStateManager {
         }
       };
     }
-
     return {
       success: true,
       message: `Valid transition from ${fromStatus} to ${toStatus}`,
-      details: { fromStatus, toStatus }
+      details: {
+        fromStatus,
+        toStatus
+      }
     };
   }
 
@@ -301,37 +303,36 @@ class GameStateManager {
       timestamp: Date.now(),
       gameStateSnapshot: {
         inCheck: gameState.inCheck,
-        checkDetails: gameState.checkDetails ? { ...gameState.checkDetails } : null,
-        castlingRights: gameState.castlingRights
-          ? {
-              white: { ...gameState.castlingRights.white },
-              black: { ...gameState.castlingRights.black },
-            }
-          : gameState.castlingRights,
-        enPassantTarget: gameState.enPassantTarget ? { ...gameState.enPassantTarget } : null,
+        checkDetails: gameState.checkDetails ? {
+          ...gameState.checkDetails
+        } : null,
+        castlingRights: gameState.castlingRights ? {
+          white: {
+            ...gameState.castlingRights.white
+          },
+          black: {
+            ...gameState.castlingRights.black
+          }
+        } : gameState.castlingRights,
+        enPassantTarget: gameState.enPassantTarget ? {
+          ...gameState.enPassantTarget
+        } : null,
         halfMoveClock: gameState.halfMoveClock,
         fullMoveNumber: fullMoveNumber
       },
-      positionAfterMove: this.getFENPosition(
-        gameState.board, 
-        gameState.currentTurn, 
-        gameState.castlingRights, 
-        gameState.enPassantTarget
-      )
+      positionAfterMove: this.getFENPosition(gameState.board, gameState.currentTurn, gameState.castlingRights, gameState.enPassantTarget)
     };
-
     moveHistory.push(enhancedMove);
     this.gameMetadata.totalMoves++;
     this.gameMetadata.lastMoveTime = Date.now();
-    
+
     // Update position history for repetition detection
     this.positionHistory.push(enhancedMove.positionAfterMove);
-    
+
     // Keep position history manageable (last 100 positions should be enough)
     if (this.positionHistory.length > 100) {
       this.positionHistory = this.positionHistory.slice(-100);
     }
-
     return enhancedMove;
   }
 
@@ -371,7 +372,6 @@ class GameStateManager {
     if (gameState.fullMoveNumber < 1) {
       errors.push(`Invalid full move number: ${gameState.fullMoveNumber}`);
     }
-
     if (gameState.halfMoveClock < 0) {
       errors.push(`Invalid half move clock: ${gameState.halfMoveClock}`);
     }
@@ -380,13 +380,15 @@ class GameStateManager {
     if (gameState.gameStatus === 'checkmate' && !gameState.winner) {
       errors.push('Checkmate status requires a winner');
     }
-
     if (['stalemate', 'draw'].includes(gameState.gameStatus) && gameState.winner) {
       errors.push(`${gameState.gameStatus} status should not have a winner`);
     }
 
     // Validate board state
-    const kingCount = { white: 0, black: 0 };
+    const kingCount = {
+      white: 0,
+      black: 0
+    };
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         const piece = gameState.board[row][col];
@@ -395,7 +397,6 @@ class GameStateManager {
         }
       }
     }
-
     if (kingCount.white !== 1) {
       errors.push(`Invalid white king count: ${kingCount.white}`);
     }
@@ -412,18 +413,11 @@ class GameStateManager {
     if (this.positionHistory.length === 0) {
       errors.push('Position history is empty');
     }
-
-    const currentPosition = this.getFENPosition(
-      gameState.board, 
-      gameState.currentTurn, 
-      gameState.castlingRights, 
-      gameState.enPassantTarget
-    );
+    const currentPosition = this.getFENPosition(gameState.board, gameState.currentTurn, gameState.castlingRights, gameState.enPassantTarget);
     const lastRecordedPosition = this.positionHistory[this.positionHistory.length - 1];
     if (currentPosition !== lastRecordedPosition) {
       warnings.push('Current position does not match last recorded position');
     }
-
     return {
       success: errors.length === 0,
       errors: errors,
@@ -449,20 +443,26 @@ class GameStateManager {
       return {
         isValid: false,
         errors: ['Invalid board structure'],
-        details: { expectedRows: 8, actualRows: board ? board.length : 0 }
+        details: {
+          expectedRows: 8,
+          actualRows: board ? board.length : 0
+        }
       };
     }
-
     const errors = [];
-    const kingCount = { white: 0, black: 0 };
-    const pieceCount = { white: 0, black: 0 };
-
+    const kingCount = {
+      white: 0,
+      black: 0
+    };
+    const pieceCount = {
+      white: 0,
+      black: 0
+    };
     for (let row = 0; row < 8; row++) {
       if (!Array.isArray(board[row]) || board[row].length !== 8) {
         errors.push(`Row ${row} has invalid structure`);
         continue;
       }
-
       for (let col = 0; col < 8; col++) {
         const piece = board[row][col];
         if (piece) {
@@ -470,15 +470,12 @@ class GameStateManager {
             errors.push(`Invalid piece at (${row},${col}): missing type or color`);
             continue;
           }
-
           if (!['white', 'black'].includes(piece.color)) {
             errors.push(`Invalid piece color at (${row},${col}): ${piece.color}`);
           }
-
           if (!['pawn', 'rook', 'knight', 'bishop', 'queen', 'king'].includes(piece.type)) {
             errors.push(`Invalid piece type at (${row},${col}): ${piece.type}`);
           }
-
           pieceCount[piece.color]++;
           if (piece.type === 'king') {
             kingCount[piece.color]++;
@@ -494,11 +491,13 @@ class GameStateManager {
     if (kingCount.black !== 1) {
       errors.push(`Invalid black king count: ${kingCount.black} (expected 1)`);
     }
-
     return {
       isValid: errors.length === 0,
       errors,
-      details: { kingCount, pieceCount }
+      details: {
+        kingCount,
+        pieceCount
+      }
     };
   }
 
@@ -508,8 +507,10 @@ class GameStateManager {
    * @returns {Object} King count validation result
    */
   validateKingCount(board) {
-    const kingCount = { white: 0, black: 0 };
-    
+    const kingCount = {
+      white: 0,
+      black: 0
+    };
     if (!Array.isArray(board)) {
       return {
         isValid: false,
@@ -518,10 +519,8 @@ class GameStateManager {
         errors: ['Invalid board structure']
       };
     }
-
     for (let row = 0; row < 8; row++) {
       if (!Array.isArray(board[row])) continue;
-      
       for (let col = 0; col < 8; col++) {
         const piece = board[row][col];
         if (piece && piece.type === 'king') {
@@ -529,13 +528,11 @@ class GameStateManager {
         }
       }
     }
-
     return {
       isValid: kingCount.white === 1 && kingCount.black === 1,
       whiteKings: kingCount.white,
       blackKings: kingCount.black,
-      errors: kingCount.white !== 1 || kingCount.black !== 1 ? 
-        [`Expected 1 king per color, found white: ${kingCount.white}, black: ${kingCount.black}`] : []
+      errors: kingCount.white !== 1 || kingCount.black !== 1 ? [`Expected 1 king per color, found white: ${kingCount.white}, black: ${kingCount.black}`] : []
     };
   }
 
@@ -552,10 +549,8 @@ class GameStateManager {
         errors: ['Invalid game state or missing move history']
       };
     }
-
     const expectedTurn = this.calculateExpectedTurnFromHistory(gameState.moveHistory);
     const isValid = gameState.currentTurn === expectedTurn;
-
     return {
       isValid,
       expectedTurn,
@@ -581,7 +576,6 @@ class GameStateManager {
     // En passant is only valid immediately after a pawn two-square move
     const lastMove = gameState.moveHistory[gameState.moveHistory.length - 1];
     let expectedTarget = null;
-
     if (lastMove && lastMove.piece === 'pawn') {
       const rowDiff = Math.abs(lastMove.to.row - lastMove.from.row);
       if (rowDiff === 2) {
@@ -592,12 +586,8 @@ class GameStateManager {
         };
       }
     }
-
     const actualTarget = gameState.enPassantTarget;
-    const isValid = (expectedTarget === null && actualTarget === null) ||
-                   (expectedTarget !== null && actualTarget !== null &&
-                    expectedTarget.row === actualTarget.row && expectedTarget.col === actualTarget.col);
-
+    const isValid = expectedTarget === null && actualTarget === null || expectedTarget !== null && actualTarget !== null && expectedTarget.row === actualTarget.row && expectedTarget.col === actualTarget.col;
     return {
       isValid,
       expectedTarget,
@@ -618,22 +608,14 @@ class GameStateManager {
     this.stateVersion++;
 
     // Track position if it's different
-    const newPosition = this.getFENPosition(
-      newState.board, 
-      newState.currentTurn, 
-      newState.castlingRights, 
-      newState.enPassantTarget
-    );
-
-    if (this.positionHistory.length === 0 || 
-        this.positionHistory[this.positionHistory.length - 1] !== newPosition) {
+    const newPosition = this.getFENPosition(newState.board, newState.currentTurn, newState.castlingRights, newState.enPassantTarget);
+    if (this.positionHistory.length === 0 || this.positionHistory[this.positionHistory.length - 1] !== newPosition) {
       this.addPositionToHistory(newPosition);
     }
 
     // Update metadata
     this.gameMetadata.lastMoveTime = Date.now();
-    if (newState.moveHistory && oldState.moveHistory && 
-        newState.moveHistory.length > oldState.moveHistory.length) {
+    if (newState.moveHistory && oldState.moveHistory && newState.moveHistory.length > oldState.moveHistory.length) {
       this.gameMetadata.totalMoves = newState.moveHistory.length;
     }
   }
@@ -651,7 +633,7 @@ class GameStateManager {
    */
   addPositionToHistory(position) {
     this.positionHistory.push(position);
-    
+
     // Keep position history manageable
     if (this.positionHistory.length > 100) {
       this.positionHistory = this.positionHistory.slice(-100);
@@ -664,7 +646,6 @@ class GameStateManager {
    */
   checkThreefoldRepetition() {
     if (this.positionHistory.length < 3) return false;
-
     const positionCounts = {};
     for (const position of this.positionHistory) {
       positionCounts[position] = (positionCounts[position] || 0) + 1;
@@ -680,7 +661,10 @@ class GameStateManager {
    * @param {Object} metadata - Metadata updates
    */
   updateGameMetadata(metadata) {
-    this.gameMetadata = { ...this.gameMetadata, ...metadata };
+    this.gameMetadata = {
+      ...this.gameMetadata,
+      ...metadata
+    };
   }
 
   /**
@@ -692,8 +676,11 @@ class GameStateManager {
     return {
       timestamp: Date.now(),
       stateVersion: this.stateVersion,
-      gameState: this._cloneGameState(gameState), // Optimized deep copy
-      metadata: { ...this.gameMetadata },
+      gameState: this._cloneGameState(gameState),
+      // Optimized deep copy
+      metadata: {
+        ...this.gameMetadata
+      },
       positionHistory: [...this.positionHistory]
     };
   }
@@ -707,7 +694,9 @@ class GameStateManager {
     if (!gameState) return null;
 
     // Shallow copy top-level primitives
-    const clone = { ...gameState };
+    const clone = {
+      ...gameState
+    };
 
     // 1. Deep copy board (Hot path, 8x8)
     if (Array.isArray(gameState.board)) {
@@ -721,7 +710,10 @@ class GameStateManager {
           for (let j = 0; j < rowLength; j++) {
             const piece = row[j];
             // Piece is { type, color } or null
-            newRow[j] = piece ? { type: piece.type, color: piece.color } : null;
+            newRow[j] = piece ? {
+              type: piece.type,
+              color: piece.color
+            } : null;
           }
           newBoard[i] = newRow;
         } else {
@@ -734,9 +726,15 @@ class GameStateManager {
     // 2. Deep copy Move History (Can be large)
     if (Array.isArray(gameState.moveHistory)) {
       clone.moveHistory = gameState.moveHistory.map(m => {
-        const newMove = { ...m };
-        if (newMove.from) newMove.from = { ...newMove.from };
-        if (newMove.to) newMove.to = { ...newMove.to };
+        const newMove = {
+          ...m
+        };
+        if (newMove.from) newMove.from = {
+          ...newMove.from
+        };
+        if (newMove.to) newMove.to = {
+          ...newMove.to
+        };
         return newMove;
       });
     }
@@ -744,27 +742,41 @@ class GameStateManager {
     // 3. Deep copy Castling Rights
     if (gameState.castlingRights) {
       clone.castlingRights = {
-        white: { ...gameState.castlingRights.white },
-        black: { ...gameState.castlingRights.black }
+        white: {
+          ...gameState.castlingRights.white
+        },
+        black: {
+          ...gameState.castlingRights.black
+        }
       };
     }
 
     // 4. Deep copy En Passant Target
     if (gameState.enPassantTarget) {
-      clone.enPassantTarget = { ...gameState.enPassantTarget };
+      clone.enPassantTarget = {
+        ...gameState.enPassantTarget
+      };
     }
 
     // 5. Deep copy Check Details (Manual Optimized)
     if (gameState.checkDetails) {
       const cd = gameState.checkDetails;
       clone.checkDetails = {
-        kingPosition: cd.kingPosition ? { ...cd.kingPosition } : null,
+        kingPosition: cd.kingPosition ? {
+          ...cd.kingPosition
+        } : null,
         attackingPieces: Array.isArray(cd.attackingPieces) ? cd.attackingPieces.map(ap => ({
-          piece: ap.piece ? { ...ap.piece } : null,
-          position: ap.position ? { ...ap.position } : null,
+          piece: ap.piece ? {
+            ...ap.piece
+          } : null,
+          position: ap.position ? {
+            ...ap.position
+          } : null,
           attackType: ap.attackType
         })) : [],
-        attackingSquares: Array.isArray(cd.attackingSquares) ? cd.attackingSquares.map(sq => ({ ...sq })) : [],
+        attackingSquares: Array.isArray(cd.attackingSquares) ? cd.attackingSquares.map(sq => ({
+          ...sq
+        })) : [],
         isDoubleCheck: cd.isDoubleCheck,
         checkType: cd.checkType
       };
@@ -772,9 +784,10 @@ class GameStateManager {
 
     // 6. Metadata & Position History & Consistency (if present in gameState)
     if (gameState.gameMetadata) {
-      clone.gameMetadata = { ...gameState.gameMetadata };
+      clone.gameMetadata = {
+        ...gameState.gameMetadata
+      };
     }
-
     if (Array.isArray(gameState.positionHistory)) {
       clone.positionHistory = [...gameState.positionHistory];
     }
@@ -790,13 +803,14 @@ class GameStateManager {
         validationTimestamp: sc.validationTimestamp,
         details: sc.details ? {
           turnConsistency: sc.details.turnConsistency,
-          kingCount: sc.details.kingCount ? { ...sc.details.kingCount } : null,
+          kingCount: sc.details.kingCount ? {
+            ...sc.details.kingCount
+          } : null,
           moveHistoryLength: sc.details.moveHistoryLength,
           positionHistoryLength: sc.details.positionHistoryLength
         } : null
       };
     }
-
     return clone;
   }
 
@@ -807,24 +821,22 @@ class GameStateManager {
    */
   validateStateSnapshot(snapshot) {
     const errors = [];
-
     if (!snapshot) {
       errors.push('Snapshot is null or undefined');
-      return { isValid: false, errors };
+      return {
+        isValid: false,
+        errors
+      };
     }
-
     if (!snapshot.timestamp || typeof snapshot.timestamp !== 'number') {
       errors.push('Invalid or missing timestamp');
     }
-
     if (!snapshot.stateVersion || typeof snapshot.stateVersion !== 'number') {
       errors.push('Invalid or missing state version');
     }
-
     if (!snapshot.gameState) {
       errors.push('Missing game state');
     }
-
     return {
       isValid: errors.length === 0,
       errors
@@ -839,9 +851,7 @@ class GameStateManager {
   analyzeGameProgression(gameState) {
     const moveCount = gameState.moveHistory ? gameState.moveHistory.length : 0;
     const phase = this.detectGamePhase(gameState);
-    
     const complexityAnalysis = this.analyzePositionComplexity(gameState.board, gameState.pieceCount);
-
     return {
       phase,
       moveCount,
@@ -863,7 +873,6 @@ class GameStateManager {
     const moveCount = gameState.moveHistory ? gameState.moveHistory.length : 0;
     const materialBalance = this.calculateMaterialBalance(gameState.board);
     const totalMaterial = materialBalance.white.total + materialBalance.black.total;
-
     if (moveCount < 20) {
       return 'opening';
     } else if (totalMaterial < 20 || moveCount > 60) {
@@ -880,21 +889,42 @@ class GameStateManager {
    */
   calculateMaterialBalance(board) {
     const pieceValues = {
-      pawn: 1, knight: 3, bishop: 3, rook: 5, queen: 9, king: 0
+      pawn: 1,
+      knight: 3,
+      bishop: 3,
+      rook: 5,
+      queen: 9,
+      king: 0
     };
-
     const balance = {
-      white: { pawn: 0, knight: 0, bishop: 0, rook: 0, queen: 0, king: 0, total: 0 },
-      black: { pawn: 0, knight: 0, bishop: 0, rook: 0, queen: 0, king: 0, total: 0 }
+      white: {
+        pawn: 0,
+        knight: 0,
+        bishop: 0,
+        rook: 0,
+        queen: 0,
+        king: 0,
+        total: 0
+      },
+      black: {
+        pawn: 0,
+        knight: 0,
+        bishop: 0,
+        rook: 0,
+        queen: 0,
+        king: 0,
+        total: 0
+      }
     };
-
     if (!Array.isArray(board)) {
-      return { white: balance.white, black: balance.black, difference: 0 };
+      return {
+        white: balance.white,
+        black: balance.black,
+        difference: 0
+      };
     }
-
     for (let row = 0; row < 8; row++) {
       if (!Array.isArray(board[row])) continue;
-      
       for (let col = 0; col < 8; col++) {
         const piece = board[row][col];
         if (piece && piece.type && piece.color) {
@@ -903,7 +933,6 @@ class GameStateManager {
         }
       }
     }
-
     return {
       white: balance.white,
       black: balance.black,
@@ -917,37 +946,6 @@ class GameStateManager {
    * @param {string} color - Color to analyze
    * @returns {Object} Piece activity analysis
    */
-  analyzePieceActivity(board, color) {
-    const activePieces = [];
-    let totalMobility = 0;
-
-    if (!Array.isArray(board)) {
-      return { activePieces: [], totalMobility: 0, averageMobility: 0 };
-    }
-
-    for (let row = 0; row < 8; row++) {
-      if (!Array.isArray(board[row])) continue;
-      
-      for (let col = 0; col < 8; col++) {
-        const piece = board[row][col];
-        if (piece && piece.color === color) {
-          const mobility = this.calculatePieceMobility(board, row, col, piece);
-          activePieces.push({
-            type: piece.type,
-            position: { row, col },
-            mobility
-          });
-          totalMobility += mobility;
-        }
-      }
-    }
-
-    return {
-      activePieces,
-      totalMobility,
-      averageMobility: activePieces.length > 0 ? totalMobility / activePieces.length : 0
-    };
-  }
 
   /**
    * Calculate mobility for a specific piece
@@ -957,23 +955,6 @@ class GameStateManager {
    * @param {Object} piece - Piece object
    * @returns {number} Number of legal moves
    */
-  calculatePieceMobility(board, row, col, piece) {
-    // Simplified mobility calculation - count potential moves
-    let mobility = 0;
-    
-    for (let toRow = 0; toRow < 8; toRow++) {
-      for (let toCol = 0; toCol < 8; toCol++) {
-        if (toRow === row && toCol === col) continue;
-        
-        // Basic movement pattern check (simplified)
-        if (this.isBasicMoveValid(piece.type, row, col, toRow, toCol)) {
-          mobility++;
-        }
-      }
-    }
-    
-    return mobility;
-  }
 
   /**
    * Basic move validation for mobility calculation
@@ -984,27 +965,6 @@ class GameStateManager {
    * @param {number} toCol - Target column
    * @returns {boolean} True if move pattern is valid
    */
-  isBasicMoveValid(pieceType, fromRow, fromCol, toRow, toCol) {
-    const rowDiff = Math.abs(toRow - fromRow);
-    const colDiff = Math.abs(toCol - fromCol);
-
-    switch (pieceType) {
-      case 'pawn':
-        return colDiff <= 1 && rowDiff <= 2;
-      case 'rook':
-        return rowDiff === 0 || colDiff === 0;
-      case 'knight':
-        return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
-      case 'bishop':
-        return rowDiff === colDiff;
-      case 'queen':
-        return rowDiff === 0 || colDiff === 0 || rowDiff === colDiff;
-      case 'king':
-        return rowDiff <= 1 && colDiff <= 1;
-      default:
-        return false;
-    }
-  }
 
   /**
    * Analyze position complexity
@@ -1020,9 +980,10 @@ class GameStateManager {
         pieceCount
       };
     }
-
-    if (!Array.isArray(board)) return { isComplex: false, pieceCount: 0 };
-    
+    if (!Array.isArray(board)) return {
+      isComplex: false,
+      pieceCount: 0
+    };
     let count = 0;
     for (let row = 0; row < 8; row++) {
       if (!Array.isArray(board[row])) continue;
@@ -1030,7 +991,6 @@ class GameStateManager {
         if (board[row][col]) count++;
       }
     }
-    
     return {
       isComplex: count > 20,
       pieceCount: count
@@ -1073,7 +1033,9 @@ class GameStateManager {
       id: `checkpoint_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: Date.now(),
       state: this.serializeGameState(gameState),
-      metadata: { ...this.gameMetadata },
+      metadata: {
+        ...this.gameMetadata
+      },
       stateVersion: this.stateVersion
     };
   }
@@ -1086,7 +1048,6 @@ class GameStateManager {
    */
   compareGameStates(state1, state2) {
     const differences = [];
-    
     if (!state1 || !state2) {
       return {
         identical: false,
@@ -1098,7 +1059,6 @@ class GameStateManager {
     if (state1.currentTurn !== state2.currentTurn) {
       differences.push(`Current turn: ${state1.currentTurn} vs ${state2.currentTurn}`);
     }
-
     if (state1.gameStatus !== state2.gameStatus) {
       differences.push(`Game status: ${state1.gameStatus} vs ${state2.gameStatus}`);
     }
@@ -1109,7 +1069,6 @@ class GameStateManager {
     if (moves1.length !== moves2.length) {
       differences.push(`Move history length: ${moves1.length} vs ${moves2.length}`);
     }
-
     return {
       identical: differences.length === 0,
       differences
@@ -1124,20 +1083,16 @@ class GameStateManager {
    */
   detectStateChanges(oldState, newState) {
     const changes = [];
-    
     if (!oldState || !newState) {
       changes.push('State comparison with null/undefined');
       return changes;
     }
-
     if (oldState.currentTurn !== newState.currentTurn) {
       changes.push(`Turn changed from ${oldState.currentTurn} to ${newState.currentTurn}`);
     }
-
     if (oldState.gameStatus !== newState.gameStatus) {
       changes.push(`Status changed from ${oldState.gameStatus} to ${newState.gameStatus}`);
     }
-
     return changes;
   }
 
@@ -1156,17 +1111,13 @@ class GameStateManager {
     const whiteKing = board[7][4];
     const whiteKingsideRook = board[7][7];
     const whiteQueensideRook = board[7][0];
-
     if (castlingRights.white.kingside) {
-      if (!whiteKing || whiteKing.type !== 'king' || whiteKing.color !== 'white' ||
-          !whiteKingsideRook || whiteKingsideRook.type !== 'rook' || whiteKingsideRook.color !== 'white') {
+      if (!whiteKing || whiteKing.type !== 'king' || whiteKing.color !== 'white' || !whiteKingsideRook || whiteKingsideRook.type !== 'rook' || whiteKingsideRook.color !== 'white') {
         return false;
       }
     }
-
     if (castlingRights.white.queenside) {
-      if (!whiteKing || whiteKing.type !== 'king' || whiteKing.color !== 'white' ||
-          !whiteQueensideRook || whiteQueensideRook.type !== 'rook' || whiteQueensideRook.color !== 'white') {
+      if (!whiteKing || whiteKing.type !== 'king' || whiteKing.color !== 'white' || !whiteQueensideRook || whiteQueensideRook.type !== 'rook' || whiteQueensideRook.color !== 'white') {
         return false;
       }
     }
@@ -1175,21 +1126,16 @@ class GameStateManager {
     const blackKing = board[0][4];
     const blackKingsideRook = board[0][7];
     const blackQueensideRook = board[0][0];
-
     if (castlingRights.black.kingside) {
-      if (!blackKing || blackKing.type !== 'king' || blackKing.color !== 'black' ||
-          !blackKingsideRook || blackKingsideRook.type !== 'rook' || blackKingsideRook.color !== 'black') {
+      if (!blackKing || blackKing.type !== 'king' || blackKing.color !== 'black' || !blackKingsideRook || blackKingsideRook.type !== 'rook' || blackKingsideRook.color !== 'black') {
         return false;
       }
     }
-
     if (castlingRights.black.queenside) {
-      if (!blackKing || blackKing.type !== 'king' || blackKing.color !== 'black' ||
-          !blackQueensideRook || blackQueensideRook.type !== 'rook' || blackQueensideRook.color !== 'black') {
+      if (!blackKing || blackKing.type !== 'king' || blackKing.color !== 'black' || !blackQueensideRook || blackQueensideRook.type !== 'rook' || blackQueensideRook.color !== 'black') {
         return false;
       }
     }
-
     return true;
   }
 
@@ -1198,47 +1144,6 @@ class GameStateManager {
    * @param {Object} move - Move to add
    * @returns {Object} Result
    */
-  addMove(move) {
-    const errors = [];
-
-    if (!move || typeof move !== 'object') {
-      errors.push('Move must be an object');
-    } else {
-      if (!move.from || !move.to) {
-        errors.push('Move must have from and to coordinates');
-      }
-      if (!move.piece) {
-        errors.push('Move must specify piece');
-      }
-    }
-
-    if (errors.length > 0) {
-      return {
-        success: false,
-        message: 'Invalid move',
-        errors
-      };
-    }
-
-    if (!this.moveHistory) {
-      this.moveHistory = [];
-    }
-    
-    const enhancedMove = {
-      ...move,
-      timestamp: Date.now(),
-      moveNumber: this.moveHistory.length + 1
-    };
-    
-    this.moveHistory.push(enhancedMove);
-    this.gameMetadata.totalMoves++;
-    
-    return {
-      success: true,
-      message: 'Move added to history',
-      move: enhancedMove
-    };
-  }
 
   /**
    * Validate current turn
@@ -1246,11 +1151,9 @@ class GameStateManager {
    */
   validateCurrentTurn() {
     const errors = [];
-    
     if (this.currentTurn !== 'white' && this.currentTurn !== 'black') {
       errors.push(`Invalid current turn: ${this.currentTurn}`);
     }
-    
     return {
       success: errors.length === 0,
       message: errors.length === 0 ? 'Current turn is valid' : 'Invalid current turn',
@@ -1264,7 +1167,6 @@ class GameStateManager {
    */
   validateMoveHistory() {
     const errors = [];
-    
     if (!Array.isArray(this.moveHistory)) {
       errors.push('Move history must be an array');
     } else {
@@ -1278,7 +1180,6 @@ class GameStateManager {
         }
       });
     }
-    
     return {
       success: errors.length === 0,
       message: errors.length === 0 ? 'Move history is valid' : 'Invalid move history',
@@ -1292,7 +1193,6 @@ class GameStateManager {
    */
   validateCastlingRights() {
     const errors = [];
-    
     if (!this.castlingRights || typeof this.castlingRights !== 'object') {
       errors.push('Castling rights must be an object');
     } else {
@@ -1303,7 +1203,6 @@ class GameStateManager {
         }
       });
     }
-    
     return {
       success: errors.length === 0,
       message: errors.length === 0 ? 'Castling rights are valid' : 'Invalid castling rights',
@@ -1347,7 +1246,6 @@ class GameStateManager {
     if (toState.fullMoveNumber < fromState.fullMoveNumber) {
       errors.push('Full move number cannot decrease');
     }
-
     return {
       isValid: errors.length === 0,
       errors,
@@ -1376,16 +1274,13 @@ class GameStateManager {
   _estimateSize(obj, visited = new WeakSet()) {
     if (obj === null) return 4;
     if (obj === undefined) return 0;
-
     const type = typeof obj;
     if (type === 'number') return 8;
     if (type === 'string') return obj.length * 2;
     if (type === 'boolean') return 4;
-
     if (type === 'object') {
       if (visited.has(obj)) return 0;
       visited.add(obj);
-
       let size = 16; // Base object overhead
       if (Array.isArray(obj)) {
         for (let i = 0; i < obj.length; i++) {
@@ -1401,7 +1296,6 @@ class GameStateManager {
       }
       return size;
     }
-
     return 0;
   }
 
@@ -1413,7 +1307,6 @@ class GameStateManager {
     // Note: These are rough estimates for debugging/monitoring
     const positionHistorySize = this._estimateSize(this.positionHistory);
     const metadataSize = this._estimateSize(this.gameMetadata);
-    
     return {
       positionHistorySize,
       metadataSize,
@@ -1427,16 +1320,6 @@ class GameStateManager {
    * WARNING: do not call during active play — deduplication removes the repeated
    * position entries required for threefold-repetition detection.
    */
-  optimizeStateStorage() {
-    // Remove duplicate positions from history
-    const uniquePositions = [...new Set(this.positionHistory)];
-    this.positionHistory = uniquePositions;
-
-    // Clean up old metadata if needed
-    if (this.gameMetadata.startTime && Date.now() - this.gameMetadata.startTime > 24 * 60 * 60 * 1000) {
-      delete this.gameMetadata.intermediateStates;
-    }
-  }
 
   /**
    * Restore game state from checkpoint
@@ -1477,5 +1360,4 @@ class GameStateManager {
     }
   }
 }
-
 module.exports = GameStateManager;

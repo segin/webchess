@@ -1,20 +1,27 @@
-const { randomUUID, randomBytes } = require('crypto');
+const {
+  randomUUID,
+  randomBytes
+} = require('crypto');
 const ChessGame = require('../shared/chessGame');
-
 function escapeHTML(str) {
   if (!str) return '';
-  return str.replace(/[&<>"']/g, function(m) {
+  return str.replace(/[&<>"']/g, function (m) {
     switch (m) {
-      case '&': return '&amp;';
-      case '<': return '&lt;';
-      case '>': return '&gt;';
-      case '"': return '&quot;';
-      case "'": return '&#039;';
-      default: return m;
+      case '&':
+        return '&amp;';
+      case '<':
+        return '&lt;';
+      case '>':
+        return '&gt;';
+      case '"':
+        return '&quot;';
+      case "'":
+        return '&#039;';
+      default:
+        return m;
     }
   });
 }
-
 class GameManager {
   constructor() {
     this.games = new Map();
@@ -24,34 +31,45 @@ class GameManager {
     this.disconnectedPlayers = new Map();
     this.disconnectTimeouts = new Map(); // Track timeouts for cleanup
     this.playerGameCounts = new Map(); // Track game counts for rate limiting
+    this.playerConnections = new Map(); // Track active socket connections per sessionToken
     this.playerStats = new Map(); // Optimization: Pre-calculated player statistics
     this.availableGamesCache = new Map(); // Optimization: Fast lookup for available games
     this.activityList = new Set(); // Optimization: Track game activity for efficient cleanup
-    this.MAX_GAMES_PER_PLAYER = 5;
+    
     this.settings = {
       maxGamesPerPlayer: 3,
       gameTimeout: 30 * 60 * 1000,
       cleanupInterval: 5 * 60 * 1000
     };
   }
-
+  addConnection(playerId) {
+    const count = this.playerConnections.get(playerId) || 0;
+    this.playerConnections.set(playerId, count + 1);
+    this.handleReconnect(playerId);
+  }
+  removeConnection(playerId) {
+    const count = this.playerConnections.get(playerId) || 0;
+    if (count <= 1) {
+      this.playerConnections.delete(playerId);
+      this.handleDisconnect(playerId);
+    } else {
+      this.playerConnections.set(playerId, count - 1);
+    }
+  }
   generateGameId() {
     // Use cryptographically secure random bytes instead of Math.random()
     return randomBytes(3).toString('hex').toUpperCase();
   }
-
   createGame(playerId) {
     // Rate limit: Check if player has reached game limit
     const currentCount = this.playerGameCounts.get(playerId) || 0;
-    if (currentCount >= this.MAX_GAMES_PER_PLAYER) {
+    if (currentCount >= this.settings.maxGamesPerPlayer) {
       return null;
     }
-
     let gameId;
     do {
       gameId = this.generateGameId();
     } while (this.games.has(gameId));
-
     const game = {
       id: gameId,
       host: playerId,
@@ -62,14 +80,12 @@ class GameManager {
       lastActivity: Date.now(),
       chatMessages: []
     };
-
     this.games.set(gameId, game);
     this.activityList.add(gameId);
     this._addToStatusIndex('waiting', gameId);
     this.playerToGame.set(playerId, gameId);
     this._addGameToPlayer(playerId, gameId);
     this.playerGameCounts.set(playerId, currentCount + 1);
-    
     return gameId;
   }
 
@@ -101,115 +117,121 @@ class GameManager {
       }
     }
   }
-
   _removePlayerGame(playerId, gameId) {
     this._removeGameFromPlayer(playerId, gameId);
   }
-
   joinGame(gameId, playerId) {
     if (!gameId || typeof gameId !== 'string') {
-      return { success: false, message: 'Game not found' };
+      return {
+        success: false,
+        message: 'Game not found'
+      };
     }
     const normalizedId = gameId.toUpperCase();
     const game = this.games.get(normalizedId);
-
     if (!game) {
-      return { success: false, message: 'Game not found' };
+      return {
+        success: false,
+        message: 'Game not found'
+      };
     }
-
     if (game.guest) {
-      return { success: false, message: 'Game is full' };
+      return {
+        success: false,
+        message: 'Game is full'
+      };
     }
-
     if (game.host === playerId) {
-      return { success: false, message: 'Cannot join your own game' };
+      return {
+        success: false,
+        message: 'Cannot join your own game'
+      };
     }
-
     const oldStatus = game.status;
     game.guest = playerId;
     game.status = 'active';
     this._updateStatusIndex(game.id, oldStatus, 'active');
     this._markGameActive(normalizedId);
-
     this.playerToGame.set(playerId, normalizedId);
     this._addGameToPlayer(playerId, normalizedId);
-
     return {
       success: true,
       color: 'black',
       opponentColor: 'white'
     };
   }
-
   makeMove(gameId, playerId, move) {
     const game = this.games.get(gameId);
-    
     if (!game) {
-      return { success: false, message: 'Game not found' };
+      return {
+        success: false,
+        message: 'Game not found'
+      };
     }
-
     if (game.status !== 'active') {
-      return { success: false, message: 'Game is not active' };
+      return {
+        success: false,
+        message: 'Game is not active'
+      };
     }
-
     const isHost = game.host === playerId;
     const isGuest = game.guest === playerId;
-    
     if (!isHost && !isGuest) {
-      return { success: false, message: 'You are not in this game' };
+      return {
+        success: false,
+        message: 'You are not in this game'
+      };
     }
-
     const playerColor = isHost ? 'white' : 'black';
-    
     if (game.chess.currentTurn !== playerColor) {
-      return { success: false, message: 'Not your turn' };
+      return {
+        success: false,
+        message: 'Not your turn'
+      };
     }
-
     const result = game.chess.makeMove(move);
-    
     if (!result.success) {
-      return { success: false, message: result.message };
+      return {
+        success: false,
+        message: result.message
+      };
     }
-
     this._markGameActive(gameId);
-
     return {
       success: true,
       gameState: game.chess.getGameState(),
       nextTurn: game.chess.currentTurn
     };
   }
-
   resignGame(gameId, playerId) {
     const game = this.games.get(gameId);
-    
     if (!game) {
-      return { success: false, message: 'Game not found' };
+      return {
+        success: false,
+        message: 'Game not found'
+      };
     }
-
     const isHost = game.host === playerId;
     const isGuest = game.guest === playerId;
-    
     if (!isHost && !isGuest) {
-      return { success: false, message: 'You are not in this game' };
+      return {
+        success: false,
+        message: 'You are not in this game'
+      };
     }
-
     const oldStatus = game.status;
     game.status = 'resigned';
     this._updateStatusIndex(game.id, oldStatus, 'resigned');
     const winner = isHost ? 'black' : 'white';
-    
     return {
       success: true,
       winner
     };
   }
-
   getGameState(gameId) {
     const game = this.games.get(gameId);
     return game ? game.chess.getGameState() : null;
   }
-
   handleDisconnect(playerId) {
     const gameId = this.playerToGame.get(playerId);
     if (gameId) {
@@ -219,17 +241,15 @@ class GameManager {
           gameId,
           disconnectedAt: Date.now()
         });
-        
         const timeoutId = setTimeout(() => {
           this.checkDisconnectedPlayer(playerId);
         }, 15 * 60 * 1000); // 15 minutes
-        
+
         // Store timeout reference for cleanup
         this.disconnectTimeouts.set(playerId, timeoutId);
       }
     }
   }
-
   handleReconnect(playerId) {
     if (this.disconnectedPlayers.has(playerId)) {
       this.disconnectedPlayers.delete(playerId);
@@ -242,14 +262,12 @@ class GameManager {
     }
     return false;
   }
-
   checkDisconnectedPlayer(playerId) {
     const disconnectedInfo = this.disconnectedPlayers.get(playerId);
     if (disconnectedInfo) {
       this.disconnectedPlayers.delete(playerId);
       // Clean up timeout reference
       this.disconnectTimeouts.delete(playerId);
-      
       const game = this.games.get(disconnectedInfo.gameId);
       if (game && game.status === 'active') {
         const oldStatus = game.status;
@@ -268,7 +286,6 @@ class GameManager {
         if (currentCount > 0) {
           this.playerGameCounts.set(game.host, currentCount - 1);
         }
-
         this.activityList.delete(disconnectedInfo.gameId);
         this.games.delete(disconnectedInfo.gameId);
         this.playerToGame.delete(game.host);
@@ -278,22 +295,25 @@ class GameManager {
       }
     }
   }
-
   addChatMessage(gameId, playerId, message) {
     const game = this.games.get(gameId);
-    if (!game || (game.host !== playerId && game.guest !== playerId)) {
-      return { success: false, message: 'Player not in game' };
+    if (!game || game.host !== playerId && game.guest !== playerId) {
+      return {
+        success: false,
+        message: 'Player not in game'
+      };
     }
 
     // Sanitize and validate message
     const sanitizedMessage = escapeHTML(message.trim().substring(0, 200));
     if (!sanitizedMessage) {
-      return { success: false, message: 'Empty or invalid message' };
+      return {
+        success: false,
+        message: 'Empty or invalid message'
+      };
     }
-
     const isHost = game.host === playerId;
     const senderColor = isHost ? 'White' : 'Black';
-    
     const chatMessage = {
       id: randomUUID(),
       message: sanitizedMessage,
@@ -301,7 +321,6 @@ class GameManager {
       playerId: playerId,
       timestamp: Date.now()
     };
-
     game.chatMessages.push(chatMessage);
     this._markGameActive(gameId);
 
@@ -309,7 +328,6 @@ class GameManager {
     if (game.chatMessages.length > 100) {
       game.chatMessages.splice(0, game.chatMessages.length - 100);
     }
-
     return {
       success: true,
       chatMessage: {
@@ -319,39 +337,39 @@ class GameManager {
       }
     };
   }
-
   getChatMessages(gameId, playerId) {
     const game = this.games.get(gameId);
-    if (!game || (game.host !== playerId && game.guest !== playerId)) {
-      return { success: false, messages: [] };
+    if (!game || game.host !== playerId && game.guest !== playerId) {
+      return {
+        success: false,
+        messages: []
+      };
     }
-
     const messages = game.chatMessages.map(msg => ({
       message: msg.message,
       sender: msg.sender,
       isOwn: msg.playerId === playerId,
       timestamp: msg.timestamp
     }));
-
-    return { success: true, messages };
+    return {
+      success: true,
+      messages
+    };
   }
-
   cleanupGameChat(gameId) {
     const game = this.games.get(gameId);
     if (game) {
       game.chatMessages = [];
     }
   }
-
   getActiveGameCount() {
     return this.games.size;
   }
-
   getStats() {
     return {
       activeGames: this.games.size,
       activePlayers: this.playerToGame.size,
-      disconnectedPlayers: this.disconnectedPlayers.size,
+      disconnectedPlayers: this.disconnectedPlayers.size
     };
   }
 
@@ -382,7 +400,6 @@ class GameManager {
 
       // Clean up player mappings
       this.playerToGame.delete(game.host);
-
       if (game.guest) {
         this.playerToGame.delete(game.guest);
       }
@@ -393,7 +410,7 @@ class GameManager {
         this._removePlayerGame(game.guest, gameId);
       }
 
-       // Decrement game count for host
+      // Decrement game count for host
       const currentCount = this.playerGameCounts.get(game.host) || 0;
       if (currentCount > 0) {
         this.playerGameCounts.set(game.host, currentCount - 1);
@@ -426,7 +443,6 @@ class GameManager {
   isPlayerTurn(gameId, playerId) {
     const game = this.games.get(gameId);
     if (!game || !game.chess) return false;
-
     const playerColor = game.host === playerId ? 'white' : 'black';
     return game.chess.currentTurn === playerColor;
   }
@@ -440,27 +456,26 @@ class GameManager {
   removePlayer(gameId, playerId) {
     const game = this.games.get(gameId);
     if (!game) {
-      return { success: false, message: 'Game not found' };
+      return {
+        success: false,
+        message: 'Game not found'
+      };
     }
 
     // Helper to decrement stats if needed
     const decrementStats = () => {
       if (game.status === 'finished') {
         let result = null;
-        if (game.winner === playerId) result = 'win';
-        else if (game.winner && game.winner !== playerId) result = 'loss';
-        else if (!game.winner) result = 'draw';
-
+        if (game.winner === playerId) result = 'win';else if (game.winner && game.winner !== playerId) result = 'loss';else if (!game.winner) result = 'draw';
         if (result) this._updatePlayerStats(playerId, result, -1);
       }
     };
-
     if (game.host === playerId) {
       decrementStats();
       game.host = null;
       this.playerToGame.delete(playerId);
       this._removeGameFromPlayer(playerId, gameId);
-      
+
       // If guest exists, promote to host
       if (game.guest) {
         game.host = game.guest;
@@ -490,15 +505,19 @@ class GameManager {
       this.playerToGame.delete(playerId);
       this._removeGameFromPlayer(playerId, gameId);
     } else {
-      return { success: false, message: 'Player not in game' };
+      return {
+        success: false,
+        message: 'Player not in game'
+      };
     }
 
     // If no players left, remove the game
     if (!game.host && !game.guest) {
       this.removeGame(gameId);
     }
-
-    return { success: true };
+    return {
+      success: true
+    };
   }
 
   /**
@@ -510,7 +529,6 @@ class GameManager {
   getPlayerColor(gameId, playerId) {
     const game = this.games.get(gameId);
     if (!game) return null;
-
     if (game.host === playerId) return 'white';
     if (game.guest === playerId) return 'black';
     return null;
@@ -525,7 +543,6 @@ class GameManager {
   getOpponentId(gameId, playerId) {
     const game = this.games.get(gameId);
     if (!game) return null;
-
     if (game.host === playerId) return game.guest;
     if (game.guest === playerId) return game.host;
     return null;
@@ -549,19 +566,24 @@ class GameManager {
   startGame(gameId) {
     const game = this.games.get(gameId);
     if (!game) {
-      return { success: false, message: 'Game not found' };
+      return {
+        success: false,
+        message: 'Game not found'
+      };
     }
-
     if (!this.isGameFull(gameId)) {
-      return { success: false, message: 'Game needs two players to start' };
+      return {
+        success: false,
+        message: 'Game needs two players to start'
+      };
     }
-
     const oldStatus = game.status;
     game.status = 'active';
     this._updateStatusIndex(gameId, oldStatus, 'active');
     this._markGameActive(gameId);
-
-    return { success: true };
+    return {
+      success: true
+    };
   }
 
   /**
@@ -574,19 +596,23 @@ class GameManager {
   endGame(gameId, reason, winner = null) {
     const game = this.games.get(gameId);
     if (!game) {
-      return { success: false, message: 'Game not found' };
+      return {
+        success: false,
+        message: 'Game not found'
+      };
     }
-
     const oldStatus = game.status;
     game.status = 'finished';
     this._updateStatusIndex(gameId, oldStatus, 'finished');
     game.endReason = reason;
     game.winner = winner;
     game.endTime = Date.now();
-
     this._updateStatsForGame(game, 1);
-
-    return { success: true, reason, winner };
+    return {
+      success: true,
+      reason,
+      winner
+    };
   }
 
   /**
@@ -594,46 +620,12 @@ class GameManager {
    * @param {string} gameId - Game ID
    * @returns {Object} Result object
    */
-  pauseGame(gameId) {
-    const game = this.games.get(gameId);
-    if (!game) {
-      return { success: false, message: 'Game not found' };
-    }
-
-    if (game.status !== 'active') {
-      return { success: false, message: 'Game is not active' };
-    }
-
-    const oldStatus = game.status;
-    game.status = 'paused';
-    this._updateStatusIndex(gameId, oldStatus, 'paused');
-    game.pausedAt = Date.now();
-
-    return { success: true };
-  }
 
   /**
    * Resume a paused game
    * @param {string} gameId - Game ID
    * @returns {Object} Result object
    */
-  resumeGame(gameId) {
-    const game = this.games.get(gameId);
-    if (!game) {
-      return { success: false, message: 'Game not found' };
-    }
-
-    if (game.status !== 'paused') {
-      return { success: false, message: 'Game is not paused' };
-    }
-
-    const oldStatus = game.status;
-    game.status = 'active';
-    this._updateStatusIndex(gameId, oldStatus, 'active');
-    game.resumedAt = Date.now();
-
-    return { success: true };
-  }
 
   /**
    * Validate a move
@@ -645,10 +637,8 @@ class GameManager {
   validateMove(gameId, playerId, move) {
     const game = this.games.get(gameId);
     if (!game || !game.chess) return false;
-
     if (!this.validateGameAccess(gameId, playerId)) return false;
     if (!this.isPlayerTurn(gameId, playerId)) return false;
-
     const result = game.chess.validateMove(move);
     return result.success;
   }
@@ -669,45 +659,6 @@ class GameManager {
    * @param {string} playerId - Player ID requesting the undo
    * @returns {Object} Result object
    */
-  undoMove(gameId, playerId) {
-    const game = this.games.get(gameId);
-    if (!game || !game.chess) {
-      return { success: false, message: 'Game not found' };
-    }
-
-    // Validate player access
-    if (game.host !== playerId && game.guest !== playerId) {
-      return { success: false, message: 'You are not in this game' };
-    }
-
-    // Only allow undo for active games (or maybe checkmate/stalemate to revert game end)
-    // Assuming we can undo even if game ended to resume it
-    if (game.status === 'abandoned' || game.status === 'resigned') {
-         return { success: false, message: 'Cannot undo in abandoned or resigned game' };
-    }
-
-    const result = game.chess.undoMove();
-
-    if (result.success) {
-      // Sync game status if it changed from finished back to active
-      if (game.status === 'finished' && result.data && result.data.gameStatus !== 'finished') {
-        const oldStatus = game.status;
-        const newStatus = result.data.gameStatus;
-
-        this._updateStatsForGame(game, -1);
-
-        game.status = newStatus;
-        this._updateStatusIndex(game.id, oldStatus, newStatus);
-
-        game.winner = null;
-        game.endReason = null;
-        game.endTime = null;
-      }
-      this._markGameActive(gameId);
-    }
-
-    return result;
-  }
 
   /**
    * Find games by player
@@ -745,13 +696,11 @@ class GameManager {
   getAvailableGames(limit = Infinity) {
     const availableGames = [];
     let count = 0;
-
     for (const game of this.availableGamesCache.values()) {
       if (count >= limit) break;
       availableGames.push(game);
       count++;
     }
-
     return availableGames;
   }
 
@@ -763,10 +712,8 @@ class GameManager {
   getGameStatistics(gameId) {
     const game = this.games.get(gameId);
     if (!game) return null;
-
     const duration = Date.now() - game.createdAt;
     const moveCount = game.chess ? game.chess.moveHistory.length : 0;
-
     return {
       duration,
       moveCount,
@@ -790,18 +737,15 @@ class GameManager {
     let wins = 0;
     let losses = 0;
     let draws = 0;
-
     if (this.playerGames.has(playerId)) {
       gamesPlayed = this.playerGames.get(playerId).size;
     }
-
     if (this.playerStats.has(playerId)) {
       const stats = this.playerStats.get(playerId);
       wins = stats.wins;
       losses = stats.losses;
       draws = stats.draws;
     }
-
     return {
       gamesPlayed,
       wins,
@@ -834,7 +778,6 @@ class GameManager {
   cleanupInactiveGames(maxAge = 2 * 60 * 60 * 1000) {
     let cleaned = 0;
     const now = Date.now();
-
     for (const gameId of this.activityList) {
       const game = this.games.get(gameId);
 
@@ -843,7 +786,6 @@ class GameManager {
         this.activityList.delete(gameId);
         continue;
       }
-
       if (now - game.lastActivity > maxAge) {
         this.removeGame(gameId);
         cleaned++;
@@ -854,11 +796,8 @@ class GameManager {
         break;
       }
     }
-
     return cleaned;
   }
-
-
 
   /**
    * Get memory usage information
@@ -869,10 +808,9 @@ class GameManager {
     const playerMappings = this.playerToGame.size;
     const disconnectedCount = this.disconnectedPlayers.size;
     const playerIndexSize = this.playerGames.size;
-    
-    // Rough estimation of memory usage
-    const estimatedMemory = (gameCount * 1000) + (playerMappings * 100) + (disconnectedCount * 50) + (playerIndexSize * 50);
 
+    // Rough estimation of memory usage
+    const estimatedMemory = gameCount * 1000 + playerMappings * 100 + disconnectedCount * 50 + playerIndexSize * 50;
     return {
       gameCount,
       playerMappings,
@@ -904,7 +842,6 @@ class GameManager {
    */
   removeEventHandler(event, handler) {
     if (!this.eventHandlers || !this.eventHandlers[event]) return;
-    
     this.eventHandlers[event].delete(handler);
   }
 
@@ -915,7 +852,6 @@ class GameManager {
    */
   emitEvent(event, data) {
     if (!this.eventHandlers || !this.eventHandlers[event]) return;
-    
     for (const handler of this.eventHandlers[event]) {
       try {
         handler(data);
@@ -930,7 +866,10 @@ class GameManager {
    * @param {Object} newSettings - New settings
    */
   updateSettings(newSettings) {
-    this.settings = { ...this.settings, ...newSettings };
+    this.settings = {
+      ...this.settings,
+      ...newSettings
+    };
   }
 
   /**
@@ -938,7 +877,9 @@ class GameManager {
    * @returns {Object} Current settings
    */
   getSettings() {
-    return { ...this.settings };
+    return {
+      ...this.settings
+    };
   }
 
   /**
@@ -961,7 +902,7 @@ class GameManager {
       clearTimeout(timeoutId);
     }
     this.disconnectTimeouts.clear();
-    
+
     // Clear all game data
     this.games.clear();
     this.gamesByStatus.clear();
@@ -1000,15 +941,15 @@ class GameManager {
    */
   _updatePlayerStats(playerId, result, delta) {
     if (!playerId) return;
-
     if (!this.playerStats.has(playerId)) {
-      this.playerStats.set(playerId, { wins: 0, losses: 0, draws: 0 });
+      this.playerStats.set(playerId, {
+        wins: 0,
+        losses: 0,
+        draws: 0
+      });
     }
-
     const stats = this.playerStats.get(playerId);
-    if (result === 'win') stats.wins += delta;
-    else if (result === 'loss') stats.losses += delta;
-    else if (result === 'draw') stats.draws += delta;
+    if (result === 'win') stats.wins += delta;else if (result === 'loss') stats.losses += delta;else if (result === 'draw') stats.draws += delta;
   }
 
   /**
@@ -1108,5 +1049,4 @@ class GameManager {
     }
   }
 }
-
 module.exports = GameManager;

@@ -88,8 +88,8 @@ const actionRateLimit = createRateLimiter(5, 5000);    // 5 actions per 5s
 io.on('connection', (socket) => {
   console.log('User connected:', socket.sessionToken);
 
-  // Handle player reconnection
-  gameManager.handleReconnect(socket.sessionToken);
+  // Handle player reconnection and connection counting
+  gameManager.addConnection(socket.sessionToken);
 
   // Send the session token back to the client for persistence
   socket.emit('session-token', { token: socket.sessionToken });
@@ -247,7 +247,7 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.sessionToken);
-    gameManager.handleDisconnect(socket.sessionToken);
+    gameManager.removeConnection(socket.sessionToken);
   });
 });
 

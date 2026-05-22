@@ -1,5 +1,12 @@
 importScripts('/shared.bundle.js');
 
+self.onerror = function(error) {
+    self.postMessage({
+        type: 'ERROR',
+        error: error.message || error.toString()
+    });
+};
+
 let aiInstance = null;
 let gameInstance = null;
 

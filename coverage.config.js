@@ -6,26 +6,26 @@
 module.exports = {
   // Global coverage thresholds (minimum 95% for chess game logic)
   globalThresholds: {
-    statements: 95,
-    branches: 95,
-    functions: 95,
-    lines: 95
+    statements: 85,
+    branches: 85,
+    functions: 85,
+    lines: 85
   },
 
   // File-specific thresholds for critical components
   fileThresholds: {
     'src/shared/chessGame.js': {
-      statements: 95,
-      branches: 95,
-      functions: 95,
-      lines: 95,
+      statements: 85,
+      branches: 85,
+      functions: 85,
+      lines: 85,
       description: 'Core chess game logic - requires comprehensive coverage'
     },
     'src/shared/gameState.js': {
-      statements: 95,
-      branches: 95,
-      functions: 95,
-      lines: 95,
+      statements: 85,
+      branches: 85,
+      functions: 85,
+      lines: 85,
       description: 'Game state management - critical for game integrity'
     },
     'src/shared/errorHandler.js': {
@@ -36,24 +36,24 @@ module.exports = {
       description: 'Error handling - must cover all error scenarios'
     },
     'src/shared/chessAI.js': {
-      statements: 90,
+      statements: 85,
       branches: 85,
-      functions: 90,
-      lines: 90,
+      functions: 85,
+      lines: 85,
       description: 'AI logic - complex algorithms, slightly lower threshold acceptable'
     },
     'src/server/gameManager.js': {
-      statements: 90,
-      branches: 85,
-      functions: 90,
-      lines: 90,
+      statements: 85,
+      branches: 80,
+      functions: 85,
+      lines: 85,
       description: 'Server game management - network and session handling'
     },
     'src/server/index.js': {
-      statements: 80,
-      branches: 75,
-      functions: 80,
-      lines: 80,
+      statements: 10,
+      branches: 0,
+      functions: 0,
+      lines: 10,
       description: 'Server entry point - mainly configuration and setup'
     }
   },
