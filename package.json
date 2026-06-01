@@ -51,7 +51,7 @@
     "tslib": "^2.8.1"
   },
   "devDependencies": {
-    "baseline-browser-mapping": "^2.10.31",
+    "baseline-browser-mapping": "^2.10.33",
     "esbuild": "^0.28.0",
     "eslint": "^8.57.0",
     "jest": "^30.4.2",
