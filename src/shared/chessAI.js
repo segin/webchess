@@ -203,7 +203,7 @@ class ChessAI {
     if (depth < 0) return this.evaluatePosition(chessGame);
     
     // Use make/undo pattern instead of cloning
-    const result = chessGame.makeMove(move, null, null, { silent: true, skipValidation: true, skipGameEndCheck: true });
+    const result = chessGame.makeMove(move, null, null, { silent: true, skipValidation: true });
     
     if (!result.success) return isMaximizing ? -Infinity : Infinity;
 
@@ -267,12 +267,7 @@ class ChessAI {
 
             // History Heuristic: Update score for quiet moves
             const toPiece = chessGame.board[nextMove.to.row][nextMove.to.col];
-            const isEnPassant = chessGame.enPassantTarget &&
-                                chessGame.enPassantTarget.row === nextMove.to.row &&
-                                chessGame.enPassantTarget.col === nextMove.to.col &&
-                                chessGame.board[nextMove.from.row][nextMove.from.col]?.type === 'pawn';
-
-            if (!toPiece && !isEnPassant) {
+            if (!toPiece) {
                 const fromIdx = nextMove.from.row * 8 + nextMove.from.col;
                 const toIdx = nextMove.to.row * 8 + nextMove.to.col;
                 this.historyTable[fromIdx][toIdx] += depth * depth;
@@ -309,12 +304,7 @@ class ChessAI {
 
             // History Heuristic: Update score for quiet moves
             const toPiece = chessGame.board[nextMove.to.row][nextMove.to.col];
-            const isEnPassant = chessGame.enPassantTarget &&
-                                chessGame.enPassantTarget.row === nextMove.to.row &&
-                                chessGame.enPassantTarget.col === nextMove.to.col &&
-                                chessGame.board[nextMove.from.row][nextMove.from.col]?.type === 'pawn';
-
-            if (!toPiece && !isEnPassant) {
+            if (!toPiece) {
                 const fromIdx = nextMove.from.row * 8 + nextMove.from.col;
                 const toIdx = nextMove.to.row * 8 + nextMove.to.col;
                 this.historyTable[fromIdx][toIdx] += depth * depth;
@@ -369,7 +359,7 @@ class ChessAI {
 
     if (isMaximizing) {
       for (const move of orderedCaptures) {
-        const result = chessGame.makeMove(move, null, null, { silent: true, skipValidation: true, skipGameEndCheck: true });
+        const result = chessGame.makeMove(move, null, null, { silent: true, skipValidation: true });
         
         if (result.success) {
            const score = this.quiescence(chessGame, alpha, beta, false, rootColor);
@@ -382,7 +372,7 @@ class ChessAI {
       return alpha;
     } else {
       for (const move of orderedCaptures) {
-         const result = chessGame.makeMove(move, null, null, { silent: true, skipValidation: true, skipGameEndCheck: true });
+         const result = chessGame.makeMove(move, null, null, { silent: true, skipValidation: true });
          
          if (result.success) {
            const score = this.quiescence(chessGame, alpha, beta, true, rootColor);
@@ -656,16 +646,8 @@ class ChessAI {
     const toPiece = chessGame.board[move.to.row][move.to.col];
 
     // 2. Captures (MVV-LVA)
-    const isEnPassant = chessGame.enPassantTarget &&
-                        chessGame.enPassantTarget.row === move.to.row &&
-                        chessGame.enPassantTarget.col === move.to.col &&
-                        fromPiece && fromPiece.type === 'pawn';
-
     if (toPiece) {
       score = 10 * this.pieceValues[toPiece.type] - this.pieceValues[fromPiece.type] + 1000;
-    } else if (isEnPassant) {
-      // En Passant capture: target is a pawn
-      score = 10 * this.pieceValues['pawn'] - this.pieceValues['pawn'] + 1000;
     }
 
     // 3. Killer Moves
@@ -680,13 +662,10 @@ class ChessAI {
     }
 
     // 5. History Heuristic
-    if (!toPiece && !isEnPassant && this.historyTable) {
+    if (this.historyTable) {
         const fromIdx = move.from.row * 8 + move.from.col;
         const toIdx = move.to.row * 8 + move.to.col;
-
-        // Cap history score to ensure captures and killer moves take precedence
-        const historyScore = Math.min(this.historyTable[fromIdx][toIdx], 700);
-        score += historyScore;
+        score += this.historyTable[fromIdx][toIdx];
     }
 
     return score;
@@ -704,7 +683,17 @@ class ChessAI {
     const newGame = new ChessGame({ isClone: true });
     
     // Copy board state
-    newGame.board = chessGame.board.map(row => [...row]);
+    const newBoard = new Array(8);
+    for (let r = 0; r < 8; r++) {
+      const row = chessGame.board[r];
+      const newRow = new Array(8);
+      for (let c = 0; c < 8; c++) {
+        const piece = row[c];
+        newRow[c] = piece ? { type: piece.type, color: piece.color } : null;
+      }
+      newBoard[r] = newRow;
+    }
+    newGame.board = newBoard;
     
     // Rebuild piece locations cache for the new board
     // Optimize: shallow copy the arrays if they exist on source
