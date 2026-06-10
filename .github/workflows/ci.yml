@@ -20,9 +20,10 @@ jobs:
       with:
         node-version: '22.x'
         cache: 'npm'
+        cache-dependency-path: package.json
     
     - name: Install dependencies
-      run: npm ci
+      run: npm install
     
     - name: Run tests
       run: npm test
@@ -48,9 +49,10 @@ jobs:
       with:
         node-version: '22.x'
         cache: 'npm'
+        cache-dependency-path: package.json
     
     - name: Install dependencies
-      run: npm ci
+      run: npm install
     
     - name: Install ESLint
       run: npm install --save-dev eslint
@@ -77,9 +79,10 @@ jobs:
       with:
         node-version: '22.x'
         cache: 'npm'
+        cache-dependency-path: package.json
     
     - name: Install dependencies
-      run: npm ci
+      run: npm install
     
     - name: Create production build
       run: |
@@ -92,7 +95,7 @@ jobs:
     - name: Install production dependencies
       run: |
         cd build
-        npm ci --production
+        npm install --production
     
     - name: Create deployment package
       run: |
@@ -175,9 +178,10 @@ jobs:
       with:
         node-version: '22.x'
         cache: 'npm'
+        cache-dependency-path: package.json
     
     - name: Install dependencies
-      run: npm ci
+      run: npm install
     
     - name: Install Playwright
       run: |
