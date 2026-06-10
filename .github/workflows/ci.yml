@@ -90,7 +90,6 @@ jobs:
         cp -r src/ build/
         cp -r public/ build/
         cp package.json build/
-        cp package-lock.json build/
     
     - name: Install production dependencies
       run: |
@@ -214,7 +213,10 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: read
+      security-events: write
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v6

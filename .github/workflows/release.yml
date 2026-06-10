@@ -38,7 +38,6 @@ jobs:
         cp -r public/ release/
         cp -r deployment/ release/
         cp package.json release/
-        cp package-lock.json release/
         cp README.md release/
         cp DEPLOYMENT.md release/
         cp DEBIAN_INSTALL.md release/
