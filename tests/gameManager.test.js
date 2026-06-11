@@ -313,10 +313,20 @@ describe('GameManager - Comprehensive Coverage', () => {
       expect(disconnectedInfo.gameId).toBe(gameId);
       expect(disconnectedInfo.disconnectedAt).toBeGreaterThanOrEqual(beforeDisconnect);
     });
-    test('should not track disconnection for inactive games', () => {
+    test('should track waiting games on disconnect and clean them up after the grace period', () => {
       const waitingGameId = gameManager.createGame('waiting_host');
       gameManager.handleDisconnect('waiting_host');
-      expect(gameManager.disconnectedPlayers.has('waiting_host')).toBe(false);
+      expect(gameManager.disconnectedPlayers.has('waiting_host')).toBe(true);
+      gameManager.checkDisconnectedPlayer('waiting_host');
+      expect(gameManager.games.has(waitingGameId)).toBe(false);
+      expect(gameManager.playerGameCounts.get('waiting_host') || 0).toBe(0);
+    });
+    test('should not track disconnection for finished games', () => {
+      const game = gameManager.getGame(gameId);
+      game.status = 'finished';
+      gameManager._updateStatusIndex(gameId, 'active', 'finished');
+      gameManager.handleDisconnect(hostId);
+      expect(gameManager.disconnectedPlayers.has(hostId)).toBe(false);
     });
     test('should clean up abandoned games', () => {
       gameManager.handleDisconnect(hostId);

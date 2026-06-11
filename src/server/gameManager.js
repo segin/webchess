@@ -35,32 +35,45 @@ class GameManager {
     this.playerStats = new Map(); // Optimization: Pre-calculated player statistics
     this.availableGamesCache = new Map(); // Optimization: Fast lookup for available games
     this.activityList = new Set(); // Optimization: Track game activity for efficient cleanup
-    
+
     this.settings = {
       maxGamesPerPlayer: 3,
+      maxTotalGames: 1000,
       gameTimeout: 30 * 60 * 1000,
       cleanupInterval: 5 * 60 * 1000
     };
+
+    // Optional notification hook set by the server: called with
+    // ({ gameId, winner }) when a game is abandoned after the
+    // disconnect grace period expires.
+    this.onGameAbandoned = null;
   }
   addConnection(playerId) {
     const count = this.playerConnections.get(playerId) || 0;
     this.playerConnections.set(playerId, count + 1);
-    this.handleReconnect(playerId);
+    // True when this connection cancels a pending disconnect grace period
+    return this.handleReconnect(playerId);
   }
   removeConnection(playerId) {
     const count = this.playerConnections.get(playerId) || 0;
     if (count <= 1) {
       this.playerConnections.delete(playerId);
       this.handleDisconnect(playerId);
-    } else {
-      this.playerConnections.set(playerId, count - 1);
+      return true; // Player has no remaining connections
     }
+    this.playerConnections.set(playerId, count - 1);
+    return false;
   }
   generateGameId() {
     // Use cryptographically secure random bytes instead of Math.random()
     return randomBytes(3).toString('hex').toUpperCase();
   }
   createGame(playerId) {
+    // Global cap bounds server memory regardless of how many identities
+    // a client mints
+    if (this.games.size >= this.settings.maxTotalGames) {
+      return null;
+    }
     // Rate limit: Check if player has reached game limit
     const currentCount = this.playerGameCounts.get(playerId) || 0;
     if (currentCount >= this.settings.maxGamesPerPlayer) {
@@ -135,6 +148,23 @@ class GameManager {
         message: 'Game not found'
       };
     }
+    // Returning players resume their seat instead of being rejected
+    if (game.guest === playerId) {
+      return {
+        success: true,
+        color: 'black',
+        opponentColor: 'white',
+        rejoined: true
+      };
+    }
+    if (game.host === playerId && game.status === 'active') {
+      return {
+        success: true,
+        color: 'white',
+        opponentColor: 'black',
+        rejoined: true
+      };
+    }
     if (game.guest) {
       return {
         success: false,
@@ -145,6 +175,12 @@ class GameManager {
       return {
         success: false,
         message: 'Cannot join your own game'
+      };
+    }
+    if (game.status !== 'waiting') {
+      return {
+        success: false,
+        message: 'Game is not joinable'
       };
     }
     const oldStatus = game.status;
@@ -193,15 +229,50 @@ class GameManager {
     if (!result.success) {
       return {
         success: false,
-        message: result.message
+        message: result.message,
+        errorCode: result.errorCode || (result.data && result.data.errorCode)
       };
     }
     this._markGameActive(gameId);
+
+    // Propagate engine game-over states to the session so finished games
+    // stop accepting moves/resignations and release the players' slots
+    const engineStatus = game.chess.gameStatus;
+    if (engineStatus !== 'active' && engineStatus !== 'check') {
+      const oldStatus = game.status;
+      game.status = 'finished';
+      game.endReason = engineStatus;
+      // Stats bookkeeping expects the winner as a player ID, not a color
+      game.winner = game.chess.winner === 'white' ? game.host :
+        (game.chess.winner === 'black' ? game.guest : null);
+      game.endTime = Date.now();
+      this._updateStatusIndex(gameId, oldStatus, 'finished');
+      this._updateStatsForGame(game, 1);
+      this._releaseGameSlot(game);
+    }
+
     return {
       success: true,
       gameState: game.chess.getGameState(),
       nextTurn: game.chess.currentTurn
     };
+  }
+
+  /**
+   * Release the host's game-count slot for a game exactly once,
+   * no matter how many end/cleanup paths run for it.
+   * @param {Object} game - Game object
+   * @private
+   */
+  _releaseGameSlot(game) {
+    if (game.slotReleased) return;
+    game.slotReleased = true;
+    const currentCount = this.playerGameCounts.get(game.host) || 0;
+    if (currentCount > 1) {
+      this.playerGameCounts.set(game.host, currentCount - 1);
+    } else {
+      this.playerGameCounts.delete(game.host);
+    }
   }
   resignGame(gameId, playerId) {
     const game = this.games.get(gameId);
@@ -219,10 +290,19 @@ class GameManager {
         message: 'You are not in this game'
       };
     }
+    if (game.status !== 'active' && game.status !== 'waiting') {
+      return {
+        success: false,
+        message: 'Game is already over'
+      };
+    }
+    const wasWaiting = game.status === 'waiting';
     const oldStatus = game.status;
     game.status = 'resigned';
     this._updateStatusIndex(game.id, oldStatus, 'resigned');
-    const winner = isHost ? 'black' : 'white';
+    this._releaseGameSlot(game);
+    // Resigning a game nobody joined just cancels it - there is no winner
+    const winner = wasWaiting ? null : (isHost ? 'black' : 'white');
     return {
       success: true,
       winner
@@ -233,21 +313,27 @@ class GameManager {
     return game ? game.chess.getGameState() : null;
   }
   handleDisconnect(playerId) {
-    const gameId = this.playerToGame.get(playerId);
-    if (gameId) {
+    // Track every game the player is part of, not just the most recent one:
+    // active games get the 15-minute abandonment grace period, and waiting
+    // games (a host who left before anyone joined) are cleaned up too.
+    const gameIds = [...(this.playerGames.get(playerId) || [])].filter(gameId => {
       const game = this.games.get(gameId);
-      if (game && game.status === 'active') {
-        this.disconnectedPlayers.set(playerId, {
-          gameId,
-          disconnectedAt: Date.now()
-        });
-        const timeoutId = setTimeout(() => {
-          this.checkDisconnectedPlayer(playerId);
-        }, 15 * 60 * 1000); // 15 minutes
+      return game && (game.status === 'active' || game.status === 'waiting');
+    });
 
-        // Store timeout reference for cleanup
-        this.disconnectTimeouts.set(playerId, timeoutId);
-      }
+    if (gameIds.length > 0) {
+      this.disconnectedPlayers.set(playerId, {
+        gameIds,
+        // Kept for backward compatibility with older callers/tests
+        gameId: gameIds[0],
+        disconnectedAt: Date.now()
+      });
+      const timeoutId = setTimeout(() => {
+        this.checkDisconnectedPlayer(playerId);
+      }, 15 * 60 * 1000); // 15 minutes
+
+      // Store timeout reference for cleanup
+      this.disconnectTimeouts.set(playerId, timeoutId);
     }
   }
   handleReconnect(playerId) {
@@ -264,36 +350,59 @@ class GameManager {
   }
   checkDisconnectedPlayer(playerId) {
     const disconnectedInfo = this.disconnectedPlayers.get(playerId);
-    if (disconnectedInfo) {
-      this.disconnectedPlayers.delete(playerId);
-      // Clean up timeout reference
-      this.disconnectTimeouts.delete(playerId);
-      const game = this.games.get(disconnectedInfo.gameId);
-      if (game && game.status === 'active') {
-        const oldStatus = game.status;
+    if (!disconnectedInfo) return;
+
+    this.disconnectedPlayers.delete(playerId);
+    // Clean up timeout reference
+    this.disconnectTimeouts.delete(playerId);
+
+    const gameIds = disconnectedInfo.gameIds || [disconnectedInfo.gameId];
+    for (const gameId of gameIds) {
+      const game = this.games.get(gameId);
+      if (!game) continue;
+      // The player may have rejoined a different connection mid-grace-period
+      if (game.host !== playerId && game.guest !== playerId) continue;
+
+      if (game.status === 'active') {
+        // The remaining player wins by abandonment; tell the server so the
+        // opponent is notified instead of being silently stranded
+        const winner = game.host === playerId ? 'black' : 'white';
+        this._removeFromStatusIndex('active', gameId);
         game.status = 'abandoned';
-        this._removeFromStatusIndex(oldStatus, game.id);
-        // Clean up chat messages
-        game.chatMessages = [];
-        // Update index
-        this._removePlayerGame(game.host, disconnectedInfo.gameId);
-        if (game.guest) {
-          this._removePlayerGame(game.guest, disconnectedInfo.gameId);
+        if (typeof this.onGameAbandoned === 'function') {
+          this.onGameAbandoned({ gameId, winner });
         }
-
-        // Decrement game count for host
-        const currentCount = this.playerGameCounts.get(game.host) || 0;
-        if (currentCount > 0) {
-          this.playerGameCounts.set(game.host, currentCount - 1);
-        }
-        this.activityList.delete(disconnectedInfo.gameId);
-        this.games.delete(disconnectedInfo.gameId);
-        this.playerToGame.delete(game.host);
-        if (game.guest) this.playerToGame.delete(game.guest);
-
-        // Update index (redundant call removed from HEAD merge block as it's cleaner)
+        this._releaseGameSlot(game);
+        this._deleteGame(game);
+      } else if (game.status === 'waiting') {
+        // Nobody is waiting on this game anymore - drop it
+        this._releaseGameSlot(game);
+        this._removeFromStatusIndex('waiting', gameId);
+        this._deleteGame(game);
       }
     }
+  }
+
+  /**
+   * Remove a game's storage and player mappings (status index and slot
+   * bookkeeping must already be handled by the caller).
+   * @param {Object} game - Game object
+   * @private
+   */
+  _deleteGame(game) {
+    game.chatMessages = [];
+    this._removePlayerGame(game.host, game.id);
+    if (game.guest) {
+      this._removePlayerGame(game.guest, game.id);
+    }
+    if (this.playerToGame.get(game.host) === game.id) {
+      this.playerToGame.delete(game.host);
+    }
+    if (game.guest && this.playerToGame.get(game.guest) === game.id) {
+      this.playerToGame.delete(game.guest);
+    }
+    this.activityList.delete(game.id);
+    this.games.delete(game.id);
   }
   addChatMessage(gameId, playerId, message) {
     const game = this.games.get(gameId);
@@ -363,7 +472,8 @@ class GameManager {
     }
   }
   getActiveGameCount() {
-    return this.games.size;
+    return (this.gamesByStatus.get('active')?.size || 0) +
+           (this.gamesByStatus.get('waiting')?.size || 0);
   }
   getStats() {
     return {
@@ -398,26 +508,11 @@ class GameManager {
       // Remove from status index
       this._removeFromStatusIndex(game.status, gameId);
 
-      // Clean up player mappings
-      this.playerToGame.delete(game.host);
-      if (game.guest) {
-        this.playerToGame.delete(game.guest);
-      }
+      // Release the host's slot (no-op if an end-of-game path already did)
+      this._releaseGameSlot(game);
 
-      // Update index
-      this._removePlayerGame(game.host, gameId);
-      if (game.guest) {
-        this._removePlayerGame(game.guest, gameId);
-      }
-
-      // Decrement game count for host
-      const currentCount = this.playerGameCounts.get(game.host) || 0;
-      if (currentCount > 0) {
-        this.playerGameCounts.set(game.host, currentCount - 1);
-      }
-      // Remove the game
-      this.activityList.delete(gameId);
-      this.games.delete(gameId);
+      // Remove storage and player mappings
+      this._deleteGame(game);
       return true;
     }
     return false;
@@ -888,6 +983,7 @@ class GameManager {
   resetSettings() {
     this.settings = {
       maxGamesPerPlayer: 3,
+      maxTotalGames: 1000,
       gameTimeout: 30 * 60 * 1000,
       cleanupInterval: 5 * 60 * 1000
     };

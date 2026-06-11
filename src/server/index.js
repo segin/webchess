@@ -18,6 +18,17 @@ io.use((socket, next) => {
   next();
 });
 
+// Baseline security headers (the app may be exposed without the nginx layer)
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'same-origin');
+  res.setHeader('Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; " +
+    "connect-src 'self' ws: wss:; img-src 'self' data:; object-src 'none'; base-uri 'self'");
+  next();
+});
+
 // Serve static files with cache headers
 app.use(express.static(path.join(__dirname, '../../public'), {
   setHeaders: (res, path) => {
@@ -34,15 +45,13 @@ app.use(express.static(path.join(__dirname, '../../public'), {
   }
 }));
 
-// Health check endpoint
+// Health check endpoint (kept minimal: internal runtime details such as
+// memory usage and environment are not disclosed without auth)
 app.get('/health', (req, res) => {
   const health = {
     status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development',
-    version: require('../../package.json').version,
-    memory: process.memoryUsage(),
     activeGames: gameManager.getActiveGameCount ? gameManager.getActiveGameCount() : 0,
   };
   
@@ -85,6 +94,23 @@ const moveRateLimit = createRateLimiter(30, 10000);    // 30 moves per 10s
 const chatRateLimit = createRateLimiter(10, 5000);     // 10 messages per 5s
 const actionRateLimit = createRateLimiter(5, 5000);    // 5 actions per 5s
 
+// Periodically remove games idle past the inactivity window (finished and
+// abandoned-waiting games are otherwise never reclaimed)
+const cleanupTimer = setInterval(() => {
+  gameManager.cleanupInactiveGames();
+}, gameManager.settings.cleanupInterval);
+cleanupTimer.unref();
+
+// When a disconnect grace period expires, award the game and tell the
+// remaining player instead of silently deleting the game
+gameManager.onGameAbandoned = ({ gameId, winner }) => {
+  io.to(gameId).emit('game-end', {
+    status: 'abandoned',
+    winner
+  });
+  gameManager.cleanupGameChat(gameId);
+};
+
 io.on('connection', (socket) => {
   console.log('User connected:', socket.sessionToken);
 
@@ -114,6 +140,18 @@ io.on('connection', (socket) => {
 
     if (result.success) {
       socket.join(gameId);
+
+      if (result.rejoined) {
+        // Returning player: resync them without restarting the game
+        socket.emit('game-joined', {
+          gameId,
+          color: result.color,
+          gameState: gameManager.getGameState(gameId)
+        });
+        socket.to(gameId).emit('opponent-reconnected', { color: result.color });
+        return;
+      }
+
       socket.emit('game-joined', { gameId, color: result.color });
       socket.to(gameId).emit('opponent-joined', { color: result.opponentColor });
 
@@ -176,6 +214,8 @@ io.on('connection', (socket) => {
       setTimeout(() => {
         gameManager.cleanupGameChat(gameId);
       }, 30000); // Clean up after 30 seconds
+    } else {
+      socket.emit('resign-error', { message: result.message });
     }
   });
 
@@ -234,20 +274,46 @@ io.on('connection', (socket) => {
     }
 
     const game = gameManager.games.get(gameId);
-    const isValid = !!(game &&
-                   (game.status === 'active' || game.status === 'waiting') &&
-                   (game.host === socket.sessionToken || game.guest === socket.sessionToken));
+    const isMember = !!(game &&
+                    (game.host === socket.sessionToken || game.guest === socket.sessionToken));
+    const isValid = isMember && (game.status === 'active' || game.status === 'waiting');
 
+    if (!isValid) {
+      // Game status is only disclosed to its participants
+      socket.emit('session-validation', { valid: false, gameId });
+      return;
+    }
+
+    // Re-add the returning socket to the game's room so it receives
+    // move/chat/game-end broadcasts again, and resync its state
+    socket.join(gameId);
+    socket.to(gameId).emit('opponent-reconnected', {
+      color: game.host === socket.sessionToken ? 'white' : 'black'
+    });
     socket.emit('session-validation', {
-      valid: isValid,
+      valid: true,
       gameId: gameId,
-      gameStatus: game ? game.status : null
+      gameStatus: game.status,
+      color: game.host === socket.sessionToken ? 'white' : 'black',
+      gameState: gameManager.getGameState(gameId)
     });
   });
 
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.sessionToken);
-    gameManager.removeConnection(socket.sessionToken);
+    // Notify opponents before the mappings are torn down
+    const gameIds = gameManager.findGamesByPlayer(socket.sessionToken);
+    const fullyDisconnected = gameManager.removeConnection(socket.sessionToken);
+    if (fullyDisconnected) {
+      for (const gameId of gameIds) {
+        const game = gameManager.getGame(gameId);
+        if (game && game.status === 'active') {
+          socket.to(gameId).emit('opponent-disconnected', {
+            color: game.host === socket.sessionToken ? 'white' : 'black'
+          });
+        }
+      }
+    }
   });
 });
 
