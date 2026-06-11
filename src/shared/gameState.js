@@ -329,9 +329,11 @@ class GameStateManager {
     // Update position history for repetition detection
     this.positionHistory.push(enhancedMove.positionAfterMove);
 
-    // Keep position history manageable (last 100 positions should be enough)
+    // Keep position history manageable (last 100 positions should be enough).
+    // Trim in place: ChessGame holds a reference to this array, so it must
+    // never be reassigned.
     if (this.positionHistory.length > 100) {
-      this.positionHistory = this.positionHistory.slice(-100);
+      this.positionHistory.splice(0, this.positionHistory.length - 100);
     }
     return enhancedMove;
   }
@@ -634,9 +636,10 @@ class GameStateManager {
   addPositionToHistory(position) {
     this.positionHistory.push(position);
 
-    // Keep position history manageable
+    // Keep position history manageable. Trim in place: ChessGame holds a
+    // reference to this array, so it must never be reassigned.
     if (this.positionHistory.length > 100) {
-      this.positionHistory = this.positionHistory.slice(-100);
+      this.positionHistory.splice(0, this.positionHistory.length - 100);
     }
   }
 

@@ -8860,7 +8860,12 @@ describe('Special Moves - Comprehensive Testing', () => {
 
         testUtils.validateSuccessResponse(result);
         expect(result.data).toBeDefined();
-        expect(['active', 'check']).toContain(result.data.gameStatus); // May put opponent in check
+        // Queen/rook promotions leave mating material (active/check);
+        // bishop/knight promotions leave K+minor vs K, an insufficient-material draw
+        const expectedStatuses = piece === 'queen' || piece === 'rook'
+          ? ['active', 'check']
+          : ['draw'];
+        expect(expectedStatuses).toContain(result.data.gameStatus);
         expect(result.data.currentTurn).toBe('black');
         expect(game.board[0][col]).toEqual({ type: piece, color: 'white' });
       });
@@ -8905,7 +8910,9 @@ describe('Special Moves - Comprehensive Testing', () => {
       });
 
       testUtils.validateSuccessResponse(result);
-      expect(game.gameStatus).toBe('active');
+      // Capturing the last enemy piece while promoting to a knight leaves
+      // K+N vs K, an insufficient-material draw
+      expect(game.gameStatus).toBe('draw');
       expect(game.currentTurn).toBe('black');
       expect(game.board[0][5]).toEqual({ type: 'knight', color: 'white' });
     });

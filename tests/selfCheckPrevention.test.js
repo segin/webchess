@@ -260,6 +260,9 @@ describe('Move Legality Validation Preventing Self-Check', () => {
       game.board[3][3] = { type: 'bishop', color: 'white' };
       game.board[2][2] = null;
       game.currentTurn = 'white'; // Reset turn
+      // The kingless test position registers as an insufficient-material
+      // draw after the first move; reset status so the next move is judged
+      game.gameStatus = 'active';
 
       // Invalid move breaking diagonal - use a valid bishop move that breaks pin
       const invalidResult = game.makeMove({

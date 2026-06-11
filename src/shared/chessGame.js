@@ -248,6 +248,7 @@ class ChessGame {
         inCheck: this.inCheck,
         checkDetails: this.checkDetails,
         gameStatus: this.gameStatus,
+        winner: this.winner,
         boardScore: this.boardScore
       };
 
@@ -257,11 +258,23 @@ class ChessGame {
       // Update castling rights BEFORE executing the move (so we can check captured pieces)
       this.updateCastlingRights(from, to, originalPiece);
 
+      // Capture the move number the move is played on (it increments after black's move)
+      const moveNumber = this.fullMoveNumber;
+
       // Execute the move (pass preMoveState to be stored in history)
-      this.executeMoveOnBoard(from, to, piece, promotion, preMoveState);
+      const moveData = this.executeMoveOnBoard(from, to, piece, promotion, preMoveState);
 
       // Update game state (pass original piece since board has changed)
       this.updateGameState(from, to, originalPiece, options.silent, targetPiece);
+
+      // Record the move now that turn and en passant state reflect the
+      // post-move position, so the repetition history is accurate.
+      this.stateManager.addMoveToHistory(
+        this.moveHistory,
+        moveData,
+        moveNumber,
+        this.getGameStateForSnapshot()
+      );
 
       // Check for game end conditions
       if (!options.skipGameEndCheck) {
@@ -522,7 +535,9 @@ class ChessGame {
    */
   validateGameState() {
     try {
-      if (this.gameStatus !== 'active') {
+      // 'check' is a continuing state: the player in check must be able to
+      // make a move that resolves it. Only terminal states block moves.
+      if (this.gameStatus !== 'active' && this.gameStatus !== 'check') {
         return this.errorHandler.createError(
           'GAME_NOT_ACTIVE',
           'Game is not active'
@@ -847,19 +862,18 @@ class ChessGame {
       );
     }
 
-    // For single check, validate resolution method
-    if (!isDoubleCheck && attackingPieces.length === 1) {
-      const attacker = attackingPieces[0];
-      const resolutionType = this.getCheckResolutionType(from, to, piece, attacker);
-
-      if (resolutionType === 'invalid') {
-        return this.errorHandler.createError(
-          'CHECK_NOT_RESOLVED',
-          'Move does not resolve check',
-          ['This move does not resolve the check by capturing, blocking, or moving the king'],
-          { checkValid: false }
-        );
-      }
+    // The authoritative test: simulate the move and verify the king is no
+    // longer in check. This correctly handles pinned pieces (a pinned piece
+    // may not capture or block if doing so exposes the king to a different
+    // attacker), en passant evasions (the captured pawn leaves a different
+    // square than the capture destination), and king moves in double check.
+    if (this.wouldBeInCheck(from, to, piece.color)) {
+      return this.errorHandler.createError(
+        'CHECK_NOT_RESOLVED',
+        'Move does not resolve check',
+        ['This move does not resolve the check by capturing, blocking, or moving the king'],
+        { checkValid: false }
+      );
     }
 
     return this.errorHandler.createSuccess('Check resolution is valid', {}, { checkValid: true });
@@ -876,17 +890,27 @@ class ChessGame {
   getCheckResolutionType(from, to, piece, attacker) {
     const kingPos = this.findKing(piece.color);
 
-    // King move - only valid if it gets the king out of check
+    // Any resolution must actually leave the king safe (this also catches
+    // pinned pieces whose capture/block would expose the king).
+    if (this.wouldBeInCheck(from, to, piece.color)) {
+      return 'invalid';
+    }
+
     if (piece.type === 'king') {
-      // Check if the king would still be in check after the move
-      if (this.wouldBeInCheck(from, to, piece.color)) {
-        return 'invalid'; // King move doesn't resolve check
-      }
       return 'king_move';
     }
 
     // Capture attacking piece
     if (to.row === attacker.position.row && to.col === attacker.position.col) {
+      return 'capture_attacker';
+    }
+
+    // En passant capture of a checking pawn: the capturing pawn lands behind
+    // the attacker rather than on its square.
+    if (piece.type === 'pawn' && this.enPassantTarget &&
+      to.row === this.enPassantTarget.row && to.col === this.enPassantTarget.col &&
+      attacker.piece.type === 'pawn' &&
+      attacker.position.row === from.row && attacker.position.col === to.col) {
       return 'capture_attacker';
     }
 
@@ -1210,8 +1234,11 @@ class ChessGame {
     // Score update: Add moving piece at destination (using final piece type/value)
     this.boardScore += this._getPieceValue(finalPiece, to.row, to.col);
 
-    // Record move in history with enhanced tracking
-    const moveData = {
+    // Record move in history with enhanced tracking. The history entry is
+    // added by makeMove AFTER updateGameState runs, so the recorded
+    // position carries the correct side-to-move and en passant target
+    // (required for accurate threefold repetition detection).
+    return {
       from: { row: from.row, col: from.col },
       to: { row: to.row, col: to.col },
       piece: piece.type,
@@ -1223,14 +1250,6 @@ class ChessGame {
       timestamp: Date.now(),
       preMoveState
     };
-
-    // Use state manager to add enhanced move to history
-    this.stateManager.addMoveToHistory(
-      this.moveHistory,
-      moveData,
-      this.fullMoveNumber,
-      this.getGameStateForSnapshot()
-    );
   }
 
   /**
@@ -1571,6 +1590,13 @@ class ChessGame {
       if (this.isCheckmateGivenCheckStatus(currentColor, inCheck)) {
         newStatus = 'checkmate';
         winner = currentColor === 'white' ? 'black' : 'white';
+      } else if (this.halfMoveClock >= 100) {
+        // 50-move rule applies even when the position is check (but not mate)
+        newStatus = 'draw';
+        winner = null;
+      } else if (this.stateManager.checkThreefoldRepetition()) {
+        newStatus = 'draw';
+        winner = null;
       } else {
         // If not checkmate, game continues in check status
         newStatus = 'check';
@@ -1588,6 +1614,10 @@ class ChessGame {
         // Threefold repetition
         newStatus = 'draw';
         winner = null;
+      } else if (this.hasInsufficientMaterial()) {
+        // Neither side can possibly deliver checkmate
+        newStatus = 'draw';
+        winner = null;
       } else {
         // Game continues normally
         newStatus = 'active';
@@ -1602,6 +1632,45 @@ class ChessGame {
     } else {
       console.warn('Failed to update game status:', statusUpdate.message);
     }
+  }
+
+  /**
+   * Detect dead positions where neither side can possibly checkmate:
+   * K vs K, K+B vs K, K+N vs K, and K+B vs K+B with all bishops on the
+   * same square color.
+   * @returns {boolean} True if material is insufficient for mate
+   */
+  hasInsufficientMaterial() {
+    const minorSquareColors = [];
+
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = this.board[row][col];
+        if (!piece || piece.type === 'king') {
+          continue;
+        }
+        if (piece.type === 'pawn' || piece.type === 'rook' || piece.type === 'queen') {
+          return false; // Mating material present
+        }
+        // Knight or bishop
+        minorSquareColors.push({
+          type: piece.type,
+          squareColor: (row + col) % 2
+        });
+        if (minorSquareColors.length > 2) {
+          return false;
+        }
+      }
+    }
+
+    if (minorSquareColors.length <= 1) {
+      return true; // K vs K, or a single minor piece vs bare king
+    }
+
+    // Exactly two minor pieces: only bishops on the same square color is a
+    // dead position (two knights or bishop+knight can still mate with help).
+    return minorSquareColors.every(p => p.type === 'bishop') &&
+      minorSquareColors[0].squareColor === minorSquareColors[1].squareColor;
   }
 
   /**
@@ -3309,8 +3378,9 @@ class ChessGame {
       }
     }
 
-    // Add castling moves
-    if (from.row === (this.currentTurn === 'white' ? 7 : 0) && from.col === 4) {
+    // Add castling moves (keyed to the piece's color, not whose turn it is,
+    // so off-turn legal-move queries still see castling candidates)
+    if (from.row === (piece.color === 'white' ? 7 : 0) && from.col === 4) {
       // Kingside castling
       moves.push({ row: from.row, col: 6 });
       // Queenside castling
@@ -3459,13 +3529,13 @@ class ChessGame {
     const blackKing = this.board[0][4];
 
     if (!whiteKing || whiteKing.type !== 'king' || whiteKing.color !== 'white') {
-      if (this.castlingRights.whiteKingside || this.castlingRights.whiteQueenside) {
+      if (this.castlingRights.white.kingside || this.castlingRights.white.queenside) {
         errors.push('Castling rights inconsistent with board state');
       }
     }
 
     if (!blackKing || blackKing.type !== 'king' || blackKing.color !== 'black') {
-      if (this.castlingRights.blackKingside || this.castlingRights.blackQueenside) {
+      if (this.castlingRights.black.kingside || this.castlingRights.black.queenside) {
         errors.push('Castling rights inconsistent with board state');
       }
     }
@@ -3679,6 +3749,7 @@ class ChessGame {
         this.inCheck = preMoveState.inCheck;
         this.checkDetails = preMoveState.checkDetails;
         this.gameStatus = preMoveState.gameStatus;
+        this.winner = preMoveState.winner !== undefined ? preMoveState.winner : null;
         this.boardScore = preMoveState.boardScore;
       } else {
         // Fallback for moves without preMoveState (legacy/migrated)
@@ -3693,7 +3764,12 @@ class ChessGame {
 
       // 6. Restore Position History
       this.positionHistory.pop();
-      // Also remove from stateManager internal history if needed, but stateManager.positionHistory IS this.positionHistory reference
+      // stateManager.positionHistory IS this.positionHistory (same reference)
+
+      // Keep move metadata in sync with the shortened history
+      if (this.stateManager.gameMetadata.totalMoves > 0) {
+        this.stateManager.gameMetadata.totalMoves--;
+      }
 
       // 7. Update Game Status
       // If we restored gameStatus from preMoveState, we don't need to recalculate

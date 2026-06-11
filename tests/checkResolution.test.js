@@ -477,10 +477,11 @@ describe('Check Resolution Validation', () => {
         to: { row: 4, col: 5 } // Still on same row as rook, so still in check
       });
 
-      // Note: Current implementation incorrectly allows this move
-      // This should fail with KING_IN_CHECK but currently succeeds
-      testUtils.validateSuccessResponse(result);
-      expect(game.isInCheck('white')).toBe(true); // Still in check after move
+      // The move must be rejected: the king stays on the rook's row
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe('CHECK_NOT_RESOLVED');
+      expect(game.board[4][4].type).toBe('king'); // King did not move
+      expect(game.isInCheck('white')).toBe(true); // Still in check
     });
   });
 

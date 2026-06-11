@@ -638,10 +638,12 @@ describe('Coverage Validation Tests - Ensuring 95% Code Coverage', () => {
       // Check if threefold repetition is detected
       expect(game.moveHistory.length).toBe(8);
 
-      // Verify game state consistency
+      // Verify game state consistency: the starting position has now
+      // occurred three times (initially and after each knight shuffle),
+      // so the game is drawn by threefold repetition
       const gameState = game.getGameState();
       expect(gameState.currentTurn).toBe('white'); // Should be white's turn after 8 moves
-      expect(gameState.gameStatus).toBe('active');
+      expect(gameState.gameStatus).toBe('draw');
     });
   });
   describe('Integration Coverage', () => {
