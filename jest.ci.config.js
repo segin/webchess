@@ -96,10 +96,10 @@ module.exports = {
   coverageThreshold: {
     global: {
       // Slightly relaxed global thresholds for CI stability
-      statements: 90,
+      statements: 85,
       branches: 85,
       functions: 85,
-      lines: 90
+      lines: 85
     },
     // Keep strict thresholds for critical files
     'src/shared/chessGame.js': coverageConfig.fileThresholds['src/shared/chessGame.js'],

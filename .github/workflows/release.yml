@@ -21,15 +21,12 @@ jobs:
       with:
         node-version: '20.x'
         cache: 'npm'
-        cache-dependency-path: package.json
     
     - name: Install dependencies
-      run: npm install
+      run: npm ci
     
     - name: Run tests
-      run: |
-        npm run test:comprehensive
-        npm run test:jest
+      run: npm test
     
     - name: Create production build
       run: |

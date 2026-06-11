@@ -66,10 +66,9 @@ jobs:
         with:
           node-version: '22.19.x'
           cache: 'npm'
-          cache-dependency-path: package.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Start WebChess server
         run: |
@@ -111,10 +110,9 @@ jobs:
         with:
           node-version: '22.19.x'
           cache: 'npm'
-          cache-dependency-path: package.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Start server
         run: |

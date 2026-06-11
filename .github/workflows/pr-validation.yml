@@ -25,31 +25,17 @@ jobs:
       with:
         node-version: '22.x'
         cache: 'npm'
-        cache-dependency-path: package.json
     
     - name: Install dependencies
-      run: npm install
+      run: npm ci
     
     - name: Run linting
-      run: npx eslint src/ public/ --ext .js --format github
-      continue-on-error: false
+      run: npx eslint . --format github
     
-    - name: Run comprehensive tests
-      run: npm run test:comprehensive
-    
-    - name: Run Jest tests with coverage
-      run: npm run test:jest -- --coverage --coverageReporters=json-summary
-    
-    - name: Check test coverage
-      run: |
-        COVERAGE=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
-        echo "Test coverage: $COVERAGE%"
-        if (( $(echo "$COVERAGE < 70" | bc -l) )); then
-          echo "❌ Test coverage is below 70%"
-          exit 1
-        else
-          echo "✅ Test coverage is acceptable"
-        fi
+    - name: Run tests with coverage
+      # jest.config.js enforces the coverage thresholds; a drop below them
+      # fails this step directly
+      run: npm run test:coverage
     
     - name: Check for security vulnerabilities
       run: npm audit --audit-level high
