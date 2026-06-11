@@ -55,7 +55,7 @@ jobs:
       run: npm ci
 
     - name: Run ESLint
-      run: npx eslint . --format github
+      run: npx eslint .
 
     - name: Check for security vulnerabilities
       run: npm audit --audit-level high

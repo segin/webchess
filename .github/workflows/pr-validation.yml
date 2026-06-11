@@ -30,7 +30,7 @@ jobs:
       run: npm ci
     
     - name: Run linting
-      run: npx eslint . --format github
+      run: npx eslint .
     
     - name: Run tests with coverage
       # jest.config.js enforces the coverage thresholds; a drop below them
