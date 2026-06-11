@@ -24,10 +24,12 @@ WebChess is a two-player online chess system with real-time multiplayer gameplay
 - **gameManager.js**: Manages game sessions, player connections, and 6-character game IDs
 - Handles multiplayer matchmaking, disconnection timeouts (15 minutes), and game state persistence
 
-### Frontend (`src/client/` and `public/`)
+### Frontend (`public/`)
 - **script.js**: WebChessClient class handling UI, game logic, and Socket.IO communication
 - **index.html**: Main interface with screens for hosting, joining, and playing games
 - **styles.css**: Chess board styling and responsive design
+- **aiWorker.js**: Web Worker running the shared AI for practice mode
+- **shared.bundle.js**: esbuild bundle of `src/shared/` for the browser (`npm run build`)
 - Uses localStorage for session persistence across browser refreshes
 
 ### Shared Logic (`src/shared/`)
@@ -50,13 +52,16 @@ npm start
 npm test
 
 # Watch tests during development
-npm test:watch
+npm run test:watch
+
+# Rebuild the browser bundle after changing src/shared/
+npm run build
 ```
 
 ### Testing
-- Tests are in `tests/` directory using Jest
-- Test files: `chessGame.test.js`, `gameManager.test.js`
-- Coverage configured for all `src/` files except client-side code
+- Tests are in `tests/` directory using Jest (40+ suites, 1,800+ tests)
+- Core suites: `chessGame.test.js`, `gameManager.test.js`, `chessAI.test.js`, `gameState.test.js`
+- Coverage configured for all `src/` files (85% minimum thresholds)
 - Run single test: `npm test -- --testNamePattern="test name"`
 
 ### System Service Management
@@ -76,7 +81,7 @@ npm run daemon:logs
 ## Key Implementation Details
 
 ### Game ID System
-- 6-character alphanumeric game IDs (case-insensitive)
+- 6-character hexadecimal game IDs (case-insensitive, `crypto.randomBytes`)
 - Generated in `gameManager.js` with collision detection
 - Used for host/join multiplayer sessions
 
@@ -93,8 +98,8 @@ npm run daemon:logs
 
 ### Session Persistence
 - localStorage used for maintaining game sessions across browser refreshes
-- Session data: `gameId`, `playerColor`, `isPracticeMode`
-- Automatic reconnection attempts on page reload
+- Session data: `webchess-session` (gameId, color) and `webchess_session_token` (player identity)
+- Automatic session validation and room rejoin on page reload
 
 ## Configuration
 
@@ -113,7 +118,8 @@ npm run daemon:logs
 - `public/`: Static frontend assets served by Express
 - `deployment/`: System service files and installation scripts
 - `tests/`: Jest test files for game logic validation
-- No build process required - uses vanilla JavaScript and Node.js
+- One build step: `npm run build` bundles `src/shared/` into
+  `public/shared.bundle.js` (esbuild); the server itself runs without a build
 
 ## Testing Requirements
 

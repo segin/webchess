@@ -6,25 +6,9 @@ A two-player online chess system with real-time gameplay and practice mode.
 
 [![CI](https://github.com/segin/webchess/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/segin/webchess/actions/workflows/ci.yml)
 
-### Individual Version Status
-
-| Version | Status | Support Level | Coverage |
-|---------|--------|---------------|----------|
-| Node.js 16.x | [![Node.js 16.x Test](https://github.com/segin/webchess/workflows/Node.js%2016.x%20Test/badge.svg)](https://github.com/segin/webchess/actions/workflows/node16-test.yml) | 🧪 Experimental | Compatibility tracking |
-| Node.js 18.x | [![Node.js 18.x Test](https://github.com/segin/webchess/workflows/Node.js%2018.x%20Test/badge.svg)](https://github.com/segin/webchess/actions/workflows/node18-test.yml) | 🧪 Experimental | Compatibility tracking |
-| Node.js 20.x | [![Node.js 20.x Test](https://github.com/segin/webchess/workflows/Node.js%2020.x%20Test/badge.svg)](https://github.com/segin/webchess/actions/workflows/node20-test.yml) | 🧪 Experimental | Compatibility tracking |
-| Node.js 22.x | [![Node.js 22.x Test](https://github.com/segin/webchess/workflows/Node.js%2022.x%20Test/badge.svg)](https://github.com/segin/webchess/actions/workflows/node22-test.yml) | ✅ Fully Supported | Full test suite + coverage |
-| Node.js 23.x | [![Node.js 23.x Test](https://github.com/segin/webchess/workflows/Node.js%2023.x%20Test/badge.svg)](https://github.com/segin/webchess/actions/workflows/node23-test.yml) | ✅ Fully Supported | Full test suite + coverage |
-| Node.js 24.x | [![Node.js 24.x Test](https://github.com/segin/webchess/workflows/Node.js%2024.x%20Test/badge.svg)](https://github.com/segin/webchess/actions/workflows/node24-test.yml) | ✅ Fully Supported | Full test suite + coverage |
-| Node.js 25.x | [![Node.js 25.x Test](https://github.com/segin/webchess/workflows/Node.js%2025.x%20Test/badge.svg)](https://github.com/segin/webchess/actions/workflows/node25-test.yml) | ✅ Fully Supported | Full test suite + coverage |
-
-### Support Policy
-
-- **🧪 Experimental**: Tested for compatibility tracking, failures don't block CI
-- **✅ Fully Supported**: Required to pass for CI success, includes full test coverage
-- **📊 Coverage**: Each version uploads separate coverage reports to Codecov with version-specific flags
-
-> **Note**: This comprehensive testing matrix helps track exactly when older Node.js versions break, allowing for proactive documentation updates and support decisions.
+The CI pipeline runs the full test suite on Node.js 18.x, 20.x, 22.x, and 24.x.
+All matrix versions are required to pass. Node.js 18.14 or newer is required
+(Express 5 and Jest 30 do not support older versions).
 
 ## Features
 
@@ -170,11 +154,10 @@ For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 WebChess includes a comprehensive CI/CD pipeline with GitHub Actions:
 
 ### 🔄 Continuous Integration
-- **Automated Testing**: 130+ unit, integration, and browser tests
-- **Multi-Version Support**: Tests on Node.js 16.x, 18.x, 20.x, 22.x, 23.x, 24.x, 25.x
-- **Legacy Compatibility**: Node.js 16.x, 18.x, 20.x tested experimentally (failures don't block CI)
-- **Code Quality**: ESLint linting and security audits
-- **Coverage Reports**: Minimum 70% test coverage requirement
+- **Automated Testing**: 1,800+ unit and integration tests
+- **Multi-Version Support**: Blocking test matrix on Node.js 18.x, 20.x, 22.x, 24.x
+- **Code Quality**: ESLint linting (blocking) and security audits
+- **Coverage Reports**: Minimum 85% test coverage enforced by Jest
 
 ### 🚀 Continuous Deployment
 - **Staging**: Auto-deploy `develop` branch to staging environment
@@ -198,7 +181,7 @@ See [.github/README.md](.github/README.md) for detailed CI/CD documentation.
 
 ## Requirements
 
-- Node.js 18.x or higher (tested on 16.x, 18.x, 20.x, 22.x, 23.x, 24.x, 25.x)
+- Node.js 18.14 or higher (tested on 18.x, 20.x, 22.x, 24.x)
 - Modern web browser with WebSocket support
 - systemd (for daemon installation)
 - nginx (optional, for reverse proxy)
