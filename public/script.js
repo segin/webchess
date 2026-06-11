@@ -9,11 +9,14 @@ class WebChessClient {
     this.validMoves = [];
     this.isPracticeMode = false;
     this.practiceMode = 'self'; // 'self', 'ai-white', 'ai-black', 'ai-vs-ai'
-    this.aiDifficulty = 'medium';
-    this.aiEngine = null;
+    this.players = null; // { white: {type, difficulty?}, black: {type, difficulty?} }
+    this.chess = null; // Local ChessGame engine (practice mode only)
+    this.whiteAIWorker = null;
+    this.blackAIWorker = null;
     this.aiPaused = false;
     this.aiMoveDelay = 1000; // 1 second delay for AI moves
     this.pendingPromotionMove = null;
+    this.awaitingResume = false;
 
     // Make this instance globally accessible for testing
     window.webChessClient = this;
@@ -22,6 +25,7 @@ class WebChessClient {
     this.setupSocketListeners();
     this.loadSessionFromStorage();
   }
+
   initializeSocket() {
     try {
       const token = localStorage.getItem('webchess_session_token');
@@ -39,6 +43,7 @@ class WebChessClient {
       this.socket = null;
     }
   }
+
   initializeEventListeners() {
     // Main menu buttons
     document.getElementById('resume-btn').addEventListener('click', () => this.resumeGame());
@@ -56,7 +61,6 @@ class WebChessClient {
       if (e.key === 'Enter') this.joinGame();
     });
 
-    // Practice screen
     // Practice screen
     document.getElementById('start-practice-btn').addEventListener('click', () => this.startPracticeGame());
     document.getElementById('cancel-practice-btn').addEventListener('click', () => this.showMainMenu());
@@ -93,46 +97,60 @@ class WebChessClient {
 
     // Promotion modal
     document.querySelectorAll('.promotion-piece').forEach(piece => {
-      piece.addEventListener('click', e => this.selectPromotion(e.target.dataset.piece));
+      piece.addEventListener('click', e => this.selectPromotion(e.currentTarget.dataset.piece));
     });
   }
+
   setupSocketListeners() {
     if (!this.socket) return;
     this.socket.on('game-created', data => {
       this.currentGameId = data.gameId;
       this.playerColor = 'white';
+      this.isPracticeMode = false;
       this.saveSessionToStorage();
       this.showHostScreen(data.gameId);
     });
     this.socket.on('game-joined', data => {
       this.currentGameId = data.gameId;
-      this.playerColor = data.color;
+      if (data.color) this.playerColor = data.color;
+      this.isPracticeMode = false;
       this.saveSessionToStorage();
+
+      // Sent on rejoin too: if a game state is included, resync the board fully
+      if (data.gameState) {
+        this.gameState = this.normalizeGameState(data.gameState);
+        this.showGameScreen();
+        this.updateGameBoard();
+        if (this.socket) this.socket.emit('get-chat-history', {
+          gameId: this.currentGameId
+        });
+      }
     });
     this.socket.on('opponent-joined', data => {
       this.showGameScreen();
 
       // Request chat history when opponent joins
       if (!this.isPracticeMode && this.socket) {
-        if (this.socket) this.socket.emit('get-chat-history', {
+        this.socket.emit('get-chat-history', {
           gameId: this.currentGameId
         });
       }
     });
     this.socket.on('game-start', data => {
-      this.gameState = data.gameState;
+      this.gameState = this.normalizeGameState(data.gameState);
       this.showGameScreen();
       this.updateGameBoard();
 
       // Request chat history for the game
-      if (!this.isPracticeMode) {
-        if (this.socket) this.socket.emit('get-chat-history', {
+      if (!this.isPracticeMode && this.socket) {
+        this.socket.emit('get-chat-history', {
           gameId: this.currentGameId
         });
       }
     });
     this.socket.on('move-made', data => {
-      this.gameState = data.gameState;
+      this.gameState = this.normalizeGameState(data.gameState);
+      this.clearSelection();
       this.updateGameBoard();
       this.updateGameStatus();
       this.addMoveToHistory(data.move);
@@ -145,6 +163,10 @@ class WebChessClient {
     this.socket.on('join-error', data => {
       this.showJoinError(data.message);
     });
+    this.socket.on('host-error', data => {
+      this.showStatusMessage(data.message || 'Unable to host game', '#ff4444');
+      this.showMainMenu();
+    });
     this.socket.on('move-error', data => {
       this.showMoveError(data.message);
     });
@@ -154,11 +176,20 @@ class WebChessClient {
     this.socket.on('disconnect', () => {
       this.updateConnectionStatus('disconnected');
     });
-    this.socket.on('reconnect', () => {
-      this.updateConnectionStatus('connected');
-      if (this.currentGameId) {
-        this.rejoinGame();
-      }
+    // Socket.IO v4: 'reconnect' fires on the Manager, not the Socket
+    if (this.socket.io && typeof this.socket.io.on === 'function') {
+      this.socket.io.on('reconnect', () => {
+        this.updateConnectionStatus('connected');
+        if (this.currentGameId && !this.isPracticeMode) {
+          this.validateSession();
+        }
+      });
+    }
+    this.socket.on('opponent-disconnected', () => {
+      this.showStatusMessage('Opponent disconnected. Waiting for them to reconnect...', '#ff9800');
+    });
+    this.socket.on('opponent-reconnected', () => {
+      this.showStatusMessage('Opponent reconnected.', '#4caf50');
     });
     this.socket.on('chat-message', data => {
       this.addChatMessage(data.message, data.sender, data.isOwn);
@@ -179,120 +210,153 @@ class WebChessClient {
     });
     this.socket.on('session-validation', data => {
       if (!data.valid) {
-        // Session is invalid, clear it
+        // Session is invalid: clear it and never leave the UI hanging
+        const wasAwaitingResume = this.awaitingResume;
+        this.awaitingResume = false;
         this.clearGameSession();
+        if (wasAwaitingResume) {
+          this.showMainMenu();
+        }
+        return;
+      }
+
+      // Session is valid: resync local state from the server
+      if (data.gameId) this.currentGameId = data.gameId;
+      if (data.color) this.playerColor = data.color;
+      if (data.gameState) this.gameState = this.normalizeGameState(data.gameState);
+      this.isPracticeMode = false;
+      this.saveSessionToStorage();
+      const gameScreen = document.getElementById('game-screen');
+      const gameScreenVisible = gameScreen && !gameScreen.classList.contains('hidden');
+      if (this.awaitingResume || gameScreenVisible) {
+        // Restore the game screen (resume click, mid-game reconnect)
+        this.awaitingResume = false;
+        this.showGameScreen();
+        this.updateGameBoard();
+        if (this.socket) this.socket.emit('get-chat-history', {
+          gameId: this.currentGameId
+        });
       } else {
-        // Session is valid, show resume button
+        // Validated in the background (e.g. page load): offer resume
         this.updateResumeButton();
       }
     });
   }
-  startPracticeMode() {
-    this.showScreen('practice-screen');
+
+  normalizeGameState(gameState) {
+    if (!gameState) return gameState;
+    if (!gameState.status && gameState.gameStatus) {
+      gameState.status = gameState.gameStatus;
+    }
+    if (!Array.isArray(gameState.moveHistory)) {
+      gameState.moveHistory = [];
+    }
+    return gameState;
   }
 
-  // ... (startPracticeGame and makeAIMove remain mostly the same, ensuring they set this.players) ...
+  // --- Session persistence (multiplayer only; practice games are not persisted) ---
 
   saveSessionToStorage() {
+    if (this.isPracticeMode || !this.currentGameId) return;
     const session = {
       gameId: this.currentGameId,
       color: this.playerColor,
-      isPracticeMode: this.isPracticeMode
+      isPracticeMode: false
     };
-
-    // Save additional practice mode data
-    if (this.isPracticeMode && this.gameState) {
-      session.practiceData = {
-        // mode: this.practiceMode, // Deprecated, use players config
-        players: this.players,
-        gameState: {
-          board: this.chess.board,
-          currentTurn: this.chess.currentTurn,
-          gameStatus: this.chess.gameStatus,
-          castlingRights: this.chess.castlingRights,
-          enPassantTarget: this.chess.enPassantTarget,
-          moveHistory: this.chess.moveHistory,
-          // Important for some rules
-          halfMoveClock: this.chess.halfMoveClock,
-          fullMoveNumber: this.chess.fullMoveNumber
-        }
-      };
+    try {
+      localStorage.setItem('webchess-session', JSON.stringify(session));
+    } catch (error) {
+      console.warn('Unable to persist session:', error);
     }
-    localStorage.setItem('webchess-session', JSON.stringify(session));
   }
+
   loadSessionFromStorage() {
-    const session = localStorage.getItem('webchess-session');
-    if (session) {
-      const data = JSON.parse(session);
+    let data = null;
+    try {
+      const raw = localStorage.getItem('webchess-session');
+      if (!raw) return;
+      data = JSON.parse(raw);
+    } catch (error) {
+      console.warn('Discarding corrupt session data:', error);
+      this.clearSessionStorage();
+      return;
+    }
+    try {
+      if (!data || !data.gameId || data.isPracticeMode || data.gameId === 'practice') {
+        // Practice sessions are no longer persisted; drop stale entries
+        this.clearSessionStorage();
+        return;
+      }
       this.currentGameId = data.gameId;
-      this.playerColor = data.color;
-      this.isPracticeMode = data.isPracticeMode || false;
-      if (this.isPracticeMode && data.practiceData) {
-        this.players = data.practiceData.players;
-        this.savedGameState = data.practiceData.gameState; // Store temporarily until resume
-      }
-      if (this.currentGameId && !this.isPracticeMode) {
-        this.validateSession();
-      }
+      this.playerColor = data.color || null;
+      this.isPracticeMode = false;
+      this.updateResumeButton();
+      this.validateSession();
+    } catch (error) {
+      console.warn('Unable to restore session:', error);
+      this.clearSessionStorage();
+      this.currentGameId = null;
+      this.playerColor = null;
     }
   }
+
+  clearSessionStorage() {
+    try {
+      localStorage.removeItem('webchess-session');
+    } catch (error) {
+      console.warn('Unable to clear session storage:', error);
+    }
+  }
+
+  validateSession(requestResume = false) {
+    if (!this.socket || !this.currentGameId || this.isPracticeMode) return;
+    if (requestResume) this.awaitingResume = true;
+    this.socket.emit('validate-session', {
+      gameId: this.currentGameId
+    });
+  }
+
+  rejoinGame() {
+    this.validateSession(true);
+  }
+
+  // --- Resume / session lifecycle ---
+
+  resumeGame() {
+    if (!this.currentGameId) return;
+    if (this.isPracticeMode) {
+      this.resumePracticeGame();
+    } else {
+      this.rejoinGame();
+    }
+  }
+
   resumePracticeGame() {
-    if (!this.savedGameState || !this.players) return;
-
-    // Reconstruct ChessGame instance
-    this.chess = new ChessGame();
-    Object.assign(this.chess, this.savedGameState);
-    // Deep copy/correct reference reconstruction might be needed if ChessGame methods rely on specific prototypes or internal linking
-    // For now, assuming direct property assignment works for the logic we have.
-    // However, board contains objects that might be just data now. `ChessGame` logic usually handles data objects fine.
-
-    this.gameState = {
-      board: this.chess.board,
-      currentTurn: this.chess.currentTurn,
-      status: this.chess.gameStatus
-    };
-
-    // Initialize AI
-    if (this.players.white.type === 'ai') this.whiteAI = new ChessAI(this.players.white.difficulty);
-    if (this.players.black.type === 'ai') this.blackAI = new ChessAI(this.players.black.difficulty);
-    this.showScreen('game-screen');
-    this.updateGameInfo();
+    // Practice games only live in memory; resume re-displays the current engine state
+    if (!this.isPracticeMode || !this.chess) {
+      this.clearGameSession();
+      this.showMainMenu();
+      return;
+    }
+    this.gameState = this.normalizeGameState(this.chess.getGameState());
+    this.showGameScreen();
     this.updateGameBoard();
 
-    // Continue AI if needed
-    if (this.chess.gameStatus === 'active' && this.players[this.chess.currentTurn].type === 'ai') {
+    // Continue AI play if needed
+    if (this.chess.gameStatus === 'active' && this.players &&
+        this.players[this.chess.currentTurn] && this.players[this.chess.currentTurn].type === 'ai') {
       setTimeout(() => this.makeAIMove(), 500);
     }
   }
-  hostGame() {
-    this.resignFromPreviousGame();
-    if (!this.socket) return;
-    this.socket.emit('host-game');
-  }
-  resumeGame() {
-    if (this.currentGameId) {
-      if (this.isPracticeMode) {
-        this.resumePracticeGame();
-      } else {
-        this.rejoinGame();
-      }
-    }
-  }
-  showResumeButton() {
-    // Show if there's actually something to resume (multiplayer or practice)
-    if (this.currentGameId) {
-      this.updateResumeButton();
-    }
-  }
+
   updateResumeButton() {
     const resumeSection = document.getElementById('resume-section');
     const resumeInfo = document.getElementById('resume-info');
-
-    // Show resume button for both multiplayer and practice sessions
-    const hasValidSession = this.currentGameId && (this.currentGameId !== 'practice' || this.isPracticeMode);
-    if (hasValidSession) {
+    const hasMultiplayerSession = this.currentGameId && !this.isPracticeMode && this.currentGameId !== 'practice';
+    const hasPracticeSession = this.isPracticeMode && !!this.chess;
+    if (hasMultiplayerSession || hasPracticeSession) {
       resumeSection.classList.remove('hidden');
-      if (this.isPracticeMode) {
+      if (hasPracticeSession) {
         resumeInfo.textContent = 'Resume practice game';
       } else {
         resumeInfo.textContent = `Resume game: ${this.currentGameId}`;
@@ -301,6 +365,7 @@ class WebChessClient {
       resumeSection.classList.add('hidden');
     }
   }
+
   resignFromPreviousGame() {
     if (this.currentGameId && !this.isPracticeMode) {
       // Send resignation for previous game
@@ -310,11 +375,8 @@ class WebChessClient {
       this.clearGameSession();
     }
   }
-  clearGameSession() {
-    this.currentGameId = null;
-    this.playerColor = null;
-    this.gameState = null;
-    this.isPracticeMode = false;
+
+  terminateAIWorkers() {
     if (this.whiteAIWorker) {
       this.whiteAIWorker.terminate();
       this.whiteAIWorker = null;
@@ -323,16 +385,41 @@ class WebChessClient {
       this.blackAIWorker.terminate();
       this.blackAIWorker = null;
     }
+  }
+
+  clearGameSession() {
+    this.currentGameId = null;
+    this.playerColor = null;
+    this.gameState = null;
+    this.isPracticeMode = false;
+    this.practiceMode = 'self';
+    this.players = null;
+    this.chess = null;
+    this.selectedSquare = null;
+    this.validMoves = [];
+    this.pendingPromotionMove = null;
+    this.terminateAIWorkers();
     this.clearSessionStorage();
     this.updateResumeButton();
   }
+
+  // --- Menus / game setup ---
+
+  hostGame() {
+    this.resignFromPreviousGame();
+    if (!this.socket) return;
+    this.socket.emit('host-game');
+  }
+
   showJoinScreen() {
     this.showScreen('join-screen');
     document.getElementById('game-id-input').focus();
   }
+
   showPracticeScreen() {
     this.showScreen('practice-screen');
   }
+
   joinGame() {
     const gameId = document.getElementById('game-id-input').value.trim().toUpperCase();
     if (gameId.length === 6) {
@@ -344,7 +431,11 @@ class WebChessClient {
       this.showJoinError('Please enter a 6-character game ID');
     }
   }
+
   startPracticeGame() {
+    // Abandon any previous multiplayer session and AI workers
+    this.resignFromPreviousGame();
+    this.terminateAIWorkers();
     const whiteType = document.getElementById('whitePlayerType').value;
     const blackType = document.getElementById('blackPlayerType').value;
 
@@ -363,23 +454,34 @@ class WebChessClient {
       black: getPlayerConfig(blackType)
     };
     this.isPracticeMode = true;
-    this.gameId = 'practice';
-    this.playerColor = 'white'; // Viewpoint defaults to white, but can be irrelevant in AIvAI
+    this.currentGameId = 'practice';
 
-    // If Human vs AI (classic), set playerColor to the human side
-    if (this.players.white.type === 'human' && this.players.black.type === 'ai') {
+    // Keep practiceMode/playerColor bookkeeping in sync with the selected mode
+    const whiteHuman = this.players.white.type === 'human';
+    const blackHuman = this.players.black.type === 'human';
+    if (whiteHuman && blackHuman) {
+      this.practiceMode = 'self';
+      this.playerColor = 'both';
+    } else if (whiteHuman) {
+      this.practiceMode = 'ai-white';
       this.playerColor = 'white';
-    } else if (this.players.white.type === 'ai' && this.players.black.type === 'human') {
+    } else if (blackHuman) {
+      this.practiceMode = 'ai-black';
       this.playerColor = 'black';
     } else {
-      this.playerColor = 'white'; // Default view
+      this.practiceMode = 'ai-vs-ai';
+      this.playerColor = 'spectator';
     }
 
-    // Initialize AI instances if needed
-    // Note: In a real app we might want separate AI instances or just one configurable one
-    // minimal-chess-ai is stateless mostly, but ChessAI class has state (transposition table)
-    // Let's create two instances if needed to keep their memories separate (better for testing)
-    // or just one and reconfigure. Separate is safer.
+    // Reset AI pause state
+    this.aiPaused = false;
+    const pauseBtn = document.getElementById('pause-ai-btn');
+    if (pauseBtn) {
+      pauseBtn.textContent = 'Pause';
+      pauseBtn.setAttribute('aria-pressed', 'false');
+    }
+
+    // Spin up a Web Worker per AI side
     if (this.players.white.type === 'ai') {
       this.whiteAIWorker = new Worker('aiWorker.js');
       this.whiteAIWorker.postMessage({
@@ -401,22 +503,21 @@ class WebChessClient {
       this.blackAIWorker.onmessage = this.handleAIWorkerMessage.bind(this);
     }
     this.chess = new ChessGame();
-    document.getElementById('startScreen').style.display = 'none';
-    document.getElementById('gameScreen').style.display = 'block';
-    document.getElementById('currentGameId').textContent = 'Practice Mode';
-    this.gameState = {
-      board: this.chess.board,
-      currentTurn: this.chess.currentTurn,
-      status: this.chess.gameStatus
-    };
+    this.gameState = this.normalizeGameState(this.chess.getGameState());
+    this.selectedSquare = null;
+    this.validMoves = [];
+    this.pendingPromotionMove = null;
+    this.showGameScreen();
     this.updateGameBoard();
-    this.updateGameStatus();
 
     // Trigger first move if White is AI
     if (this.players.white.type === 'ai') {
       setTimeout(() => this.makeAIMove(), 500);
     }
   }
+
+  // --- AI (Web Worker pipeline) ---
+
   handleAIWorkerMessage(e) {
     const {
       type,
@@ -424,26 +525,26 @@ class WebChessClient {
       error
     } = e.data;
     if (type === 'ERROR') {
-      console.error("AI Worker Error:", error);
+      console.error('AI Worker Error:', error);
       return;
     }
     if (type === 'MOVE_CALCULATED') {
-      const move = data.move;
+      if (!this.isPracticeMode || !this.chess) return;
+      const move = data && data.move;
       if (move) {
-        this.makeMove(move.from, move.to, move.promotion);
-
-        // If next player is also AI, trigger next move
-        if (this.chess.gameStatus === 'active' && this.players[this.chess.currentTurn].type === 'ai') {
-          setTimeout(() => this.makeAIMove(), 500);
-        }
+        // makeMove applies the move and schedules the next AI move if needed
+        this.makeMove(move.from, move.to, move.promotion || null);
       }
     }
   }
-  makeAIMove() {
-    if (!this.isPracticeMode || this.chess.gameStatus !== 'active') return;
+
+  makeAIMove(force = false) {
+    if (!this.isPracticeMode || !this.chess || this.chess.gameStatus !== 'active') return;
+    if (this.aiPaused && !force) return;
     const turn = this.chess.currentTurn;
-    if (this.players[turn].type !== 'ai') return;
+    if (!this.players || !this.players[turn] || this.players[turn].type !== 'ai') return;
     const worker = turn === 'white' ? this.whiteAIWorker : this.blackAIWorker;
+    if (!worker) return;
 
     // Get FEN position to send to worker
     const fen = this.chess.stateManager.getFENPosition(this.chess.board, this.chess.currentTurn, this.chess.castlingRights, this.chess.enPassantTarget);
@@ -454,206 +555,213 @@ class WebChessClient {
       }
     });
   }
+
+  toggleAIPause() {
+    this.aiPaused = !this.aiPaused;
+    const btn = document.getElementById('pause-ai-btn');
+    if (btn) {
+      btn.textContent = this.aiPaused ? 'Resume' : 'Pause';
+      btn.setAttribute('aria-pressed', String(this.aiPaused));
+    }
+    if (!this.aiPaused) {
+      this.makeAIMove();
+    }
+  }
+
+  stepAI() {
+    if (this.isPracticeMode && this.practiceMode === 'ai-vs-ai' && this.chess && this.chess.gameStatus === 'active') {
+      this.makeAIMove(true);
+    }
+  }
+
+  // --- Move flow ---
+
+  attemptMove(from, to) {
+    if (!this.gameState || !this.gameState.board) return;
+    const piece = this.gameState.board[from.row][from.col];
+    const isPromotion = piece && piece.type === 'pawn' && (piece.color === 'white' && to.row === 0 || piece.color === 'black' && to.row === 7);
+    if (isPromotion) {
+      // Ask the player which piece to promote to before sending/applying the move
+      this.pendingPromotionMove = {
+        from,
+        to
+      };
+      this.showPromotionModal();
+      return;
+    }
+    this.makeMove(from, to);
+  }
+
   makeMove(from, to, promotion = null) {
     if (this.isPracticeMode) {
+      if (!this.chess) return;
       const moveResult = this.chess.makeMove({
         from,
         to,
         promotion
       });
-      if (moveResult.success) {
-        this.gameState = {
-          board: this.chess.board,
-          currentTurn: this.chess.currentTurn,
-          status: this.chess.gameStatus
-        };
-        this.updateGameBoard();
-        this.updateGameStatus();
-        if (this.chess.gameStatus !== 'active' && this.chess.gameStatus !== 'check') {
-          this.showGameEndScreen(this.chess.gameStatus, this.chess.winner);
-        }
+      if (!moveResult || !moveResult.success) {
+        this.showInvalidMoveMessage();
+        return;
+      }
+      this.gameState = this.normalizeGameState(this.chess.getGameState());
+      this.updateGameBoard();
+      this.updateGameStatus();
+      const history = this.gameState.moveHistory;
+      this.addMoveToHistory(history.length ? history[history.length - 1] : {
+        from,
+        to,
+        promotion
+      });
+      if (this.chess.gameStatus !== 'active' && this.chess.gameStatus !== 'check') {
+        this.showGameEndScreen(this.chess.gameStatus, this.chess.winner);
+        this.clearGameSession();
+        return;
+      }
 
-        // If against AI (and I just moved as human), trigger AI response
-        if (this.chess.gameStatus === 'active' && this.players[this.chess.currentTurn].type === 'ai') {
-          this.makeAIMove();
-        }
+      // If the next player is an AI, trigger its move
+      if (this.players && this.players[this.chess.currentTurn] && this.players[this.chess.currentTurn].type === 'ai') {
+        setTimeout(() => this.makeAIMove(), this.aiMoveDelay);
       }
       return;
     }
 
-    // Multiplayer logic... (unchanged)
-    this.socket.emit('make-move', {
-      gameId: this.gameId,
+    // Multiplayer: the server is authoritative; state comes back via 'move-made'
+    if (!this.socket) return;
+    const move = {
       from,
-      to,
-      promotion
+      to
+    };
+    if (promotion) move.promotion = promotion;
+    this.socket.emit('make-move', {
+      gameId: this.currentGameId,
+      move: move
     });
   }
-  createInitialGameState() {
-    return {
-      board: this.createInitialBoard(),
-      currentTurn: 'white',
-      status: 'active',
-      winner: null,
-      moveHistory: [],
-      inCheck: false,
-      castlingRights: {
-        whiteKingSide: true,
-        whiteQueenSide: true,
-        blackKingSide: true,
-        blackQueenSide: true
-      },
-      enPassantTarget: null,
-      // { row, col } of the square where en passant can be captured
-      fiftyMoveRule: 0,
-      // Counter for 50-move rule
-      positionHistory: [],
-      // For threefold repetition
-      competitiveRules: {
-        fiftyMoveRule: true,
-        threefoldRepetition: true,
-        insufficientMaterial: true
-      }
-    };
-  }
-  createInitialBoard() {
-    const board = Array(8).fill(null).map(() => Array(8).fill(null));
 
-    // Pawns
-    for (let i = 0; i < 8; i++) {
-      board[1][i] = {
-        type: 'pawn',
-        color: 'black'
-      };
-      board[6][i] = {
-        type: 'pawn',
-        color: 'white'
-      };
-    }
+  // --- Screens ---
 
-    // Rooks
-    board[0][0] = {
-      type: 'rook',
-      color: 'black'
-    };
-    board[0][7] = {
-      type: 'rook',
-      color: 'black'
-    };
-    board[7][0] = {
-      type: 'rook',
-      color: 'white'
-    };
-    board[7][7] = {
-      type: 'rook',
-      color: 'white'
-    };
-
-    // Knights
-    board[0][1] = {
-      type: 'knight',
-      color: 'black'
-    };
-    board[0][6] = {
-      type: 'knight',
-      color: 'black'
-    };
-    board[7][1] = {
-      type: 'knight',
-      color: 'white'
-    };
-    board[7][6] = {
-      type: 'knight',
-      color: 'white'
-    };
-
-    // Bishops
-    board[0][2] = {
-      type: 'bishop',
-      color: 'black'
-    };
-    board[0][5] = {
-      type: 'bishop',
-      color: 'black'
-    };
-    board[7][2] = {
-      type: 'bishop',
-      color: 'white'
-    };
-    board[7][5] = {
-      type: 'bishop',
-      color: 'white'
-    };
-
-    // Queens
-    board[0][3] = {
-      type: 'queen',
-      color: 'black'
-    };
-    board[7][3] = {
-      type: 'queen',
-      color: 'white'
-    };
-
-    // Kings
-    board[0][4] = {
-      type: 'king',
-      color: 'black'
-    };
-    board[7][4] = {
-      type: 'king',
-      color: 'white'
-    };
-    return board;
-  }
   showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(screen => {
       screen.classList.add('hidden');
     });
     document.getElementById(screenId).classList.remove('hidden');
   }
+
   showMainMenu() {
     // Don't clear session data when just showing main menu
     // Only clear when explicitly leaving/ending a game
     this.clearChat();
     document.getElementById('game-end-screen').classList.add('hidden');
+    document.getElementById('promotion-modal').classList.add('hidden');
     this.showScreen('main-menu');
     this.updateResumeButton();
   }
+
   showHostScreen(gameId) {
     document.getElementById('game-id-display').textContent = gameId;
     this.showScreen('host-screen');
   }
+
   showGameScreen() {
     this.showScreen('game-screen');
     this.updateGameInfo();
     this.createChessBoard();
-    this.clearMoveHistory();
+    this.renderMoveHistory();
   }
+
   showGameEndScreen(status, winner) {
     const title = document.getElementById('game-end-title');
     const message = document.getElementById('game-end-message');
-    if (status === 'checkmate') {
-      title.textContent = 'Checkmate!';
-      message.textContent = `${winner === this.playerColor ? 'You win!' : 'You lose!'}`;
-    } else if (status === 'stalemate') {
-      title.textContent = 'Stalemate!';
-      message.textContent = 'The game is a draw.';
-    } else if (status === 'resigned') {
-      title.textContent = 'Game Over';
-      message.textContent = `${winner === this.playerColor ? 'Your opponent resigned. You win!' : 'You resigned.'}`;
+    const capitalize = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+    const playsOneSide = this.playerColor === 'white' || this.playerColor === 'black';
+    const winnerText = winner ? `${capitalize(winner)} wins!` : '';
+    switch (status) {
+      case 'checkmate':
+        title.textContent = 'Checkmate!';
+        if (winner && playsOneSide) {
+          message.textContent = winner === this.playerColor ? 'You win!' : 'You lose!';
+        } else {
+          message.textContent = winnerText || 'Game over.';
+        }
+        break;
+      case 'stalemate':
+        title.textContent = 'Stalemate!';
+        message.textContent = 'The game is a draw.';
+        break;
+      case 'draw':
+        title.textContent = 'Draw!';
+        message.textContent = 'The game ended in a draw.';
+        break;
+      case 'resigned':
+        title.textContent = 'Game Over';
+        if (winner && playsOneSide) {
+          message.textContent = winner === this.playerColor ? 'Your opponent resigned. You win!' : 'You resigned.';
+        } else if (winner) {
+          message.textContent = `${capitalize(winner)} wins by resignation.`;
+        } else {
+          message.textContent = 'The game ended by resignation.';
+        }
+        break;
+      case 'abandoned':
+        title.textContent = 'Game Abandoned';
+        if (winner && playsOneSide) {
+          message.textContent = winner === this.playerColor ? 'Your opponent abandoned the game. You win!' : 'You abandoned the game.';
+        } else if (winner) {
+          message.textContent = winnerText;
+        } else {
+          message.textContent = 'The game was abandoned.';
+        }
+        break;
+      default:
+        title.textContent = 'Game Over';
+        message.textContent = winner ? winnerText : 'The game has ended.';
+        break;
     }
     document.getElementById('game-end-screen').classList.remove('hidden');
   }
+
   showJoinError(message) {
     const errorDiv = document.getElementById('join-error');
     errorDiv.textContent = message;
     errorDiv.classList.remove('hidden');
     setTimeout(() => errorDiv.classList.add('hidden'), 5000);
   }
+
   showMoveError(message) {
     console.error('Move error:', message);
+    this.showStatusMessage(message || 'Invalid move', '#ff4444');
   }
+
+  showStatusMessage(text, background = '#2196f3') {
+    try {
+      const announcer = document.getElementById('game-status-announcer');
+      if (announcer) announcer.textContent = text;
+      const message = document.createElement('div');
+      message.style.cssText = `
+        position: fixed;
+        top: 20%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: ${background};
+        color: white;
+        padding: 10px 20px;
+        border-radius: 5px;
+        z-index: 10000;
+        font-weight: bold;
+      `;
+      message.textContent = text;
+      document.body.appendChild(message);
+      setTimeout(() => {
+        if (document.body.contains(message)) {
+          document.body.removeChild(message);
+        }
+      }, 3000);
+    } catch (error) {
+      console.warn('Error showing status message:', error);
+    }
+  }
+
   updateGameInfo() {
     if (this.currentGameId && this.currentGameId !== 'practice') {
       document.getElementById('game-id-small').textContent = `Game ID: ${this.currentGameId}`;
@@ -671,7 +779,7 @@ class WebChessClient {
 
     // Show/hide AI controls
     const aiControls = document.getElementById('ai-controls');
-    if (this.practiceMode === 'ai-vs-ai') {
+    if (this.isPracticeMode && this.practiceMode === 'ai-vs-ai') {
       aiControls.classList.remove('hidden');
     } else {
       aiControls.classList.add('hidden');
@@ -689,6 +797,7 @@ class WebChessClient {
     // Update mobile chat visibility
     this.updateMobileChatVisibility();
   }
+
   getModeDisplayText() {
     switch (this.practiceMode) {
       case 'self':
@@ -703,11 +812,21 @@ class WebChessClient {
         return 'Unknown';
     }
   }
+
+  // --- Board rendering ---
+
   createChessBoard() {
     const board = document.getElementById('chess-board');
     board.innerHTML = '';
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
+
+    // Render black's perspective (a1 top-right) when the player is black.
+    // dataset.row/col always store logical board coordinates, so click
+    // handling needs no extra mapping.
+    const flipped = this.playerColor === 'black';
+    for (let displayRow = 0; displayRow < 8; displayRow++) {
+      for (let displayCol = 0; displayCol < 8; displayCol++) {
+        const row = flipped ? 7 - displayRow : displayRow;
+        const col = flipped ? 7 - displayCol : displayCol;
         const square = document.createElement('div');
         square.className = 'chess-square';
         square.classList.add((row + col) % 2 === 0 ? 'light' : 'dark');
@@ -718,8 +837,9 @@ class WebChessClient {
       }
     }
   }
+
   updateGameBoard() {
-    if (!this.gameState) return;
+    if (!this.gameState || !this.gameState.board) return;
     const squares = document.querySelectorAll('.chess-square');
     squares.forEach(square => {
       const row = parseInt(square.dataset.row);
@@ -736,6 +856,7 @@ class WebChessClient {
     });
     this.updateGameStatus();
   }
+
   getPieceUnicode(piece) {
     const pieces = {
       white: {
@@ -757,18 +878,18 @@ class WebChessClient {
     };
     return pieces[piece.color][piece.type];
   }
+
   handleSquareClick(event) {
+    if (!this.gameState || !this.gameState.board) return;
     const square = event.currentTarget;
     const row = parseInt(square.dataset.row);
     const col = parseInt(square.dataset.col);
 
     // Don't allow clicks in AI vs AI mode or when it's not the player's turn
     if (this.isPracticeMode && this.practiceMode === 'ai-vs-ai') {
-      console.log('Click blocked: AI vs AI mode');
       return;
     }
     if (!this.canPlayerMove()) {
-      console.log(`Click blocked: canPlayerMove=false, mode=${this.practiceMode}, currentTurn=${this.gameState.currentTurn}`);
       return;
     }
     if (this.selectedSquare) {
@@ -777,30 +898,24 @@ class WebChessClient {
         return;
       }
       if (this.isValidMove(row, col)) {
-        this.makeMove(this.selectedSquare, {
+        const from = this.selectedSquare;
+        this.clearSelection();
+        this.attemptMove(from, {
           row,
           col
         });
-        this.clearSelection();
         return;
       }
     }
     const piece = this.gameState.board[row][col];
-    if (piece) {
-      let canSelect = false;
-      if (this.isPracticeMode) {
-        // Practice mode: use the practice-specific logic
-        canSelect = this.canPlayerMovePiece(piece);
-      } else {
-        // Multiplayer mode: can select if it's the player's piece color
-        canSelect = piece.color === this.playerColor;
-      }
-      if (canSelect) {
-        this.selectSquare(row, col);
-      }
+    if (piece && this.canPlayerMovePiece(piece)) {
+      this.selectSquare(row, col);
     }
   }
+
   canPlayerMove() {
+    if (!this.gameState) return false;
+
     // Multiplayer mode
     if (!this.isPracticeMode) {
       return this.gameState.currentTurn === this.playerColor;
@@ -813,7 +928,10 @@ class WebChessClient {
     // Human vs AI (or specific side)
     return this.gameState.currentTurn === this.playerColor;
   }
+
   canPlayerMovePiece(piece) {
+    if (!this.gameState) return false;
+
     // Multiplayer mode
     if (!this.isPracticeMode) {
       return piece.color === this.playerColor;
@@ -821,12 +939,11 @@ class WebChessClient {
 
     // Practice mode logic
     if (this.playerColor === 'spectator') return false;
-    if (this.playerColor === 'both') return true; // Can move any piece if it's their turn (canPlayerMove checks turn)
-
+    if (this.playerColor === 'both') return piece.color === this.gameState.currentTurn;
     return piece.color === this.playerColor;
   }
+
   selectSquare(row, col) {
-    console.log(`Selecting square ${row},${col}`);
     this.clearSelection();
     this.selectedSquare = {
       row,
@@ -835,12 +952,10 @@ class WebChessClient {
     const square = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
     if (square) {
       square.classList.add('selected');
-      console.log('Added selected class to square');
-    } else {
-      console.error(`Could not find square element for ${row},${col}`);
     }
     this.highlightValidMoves(row, col);
   }
+
   clearSelection() {
     document.querySelectorAll('.chess-square').forEach(square => {
       square.classList.remove('selected', 'valid-move', 'capture-move');
@@ -848,99 +963,342 @@ class WebChessClient {
     this.selectedSquare = null;
     this.validMoves = [];
   }
+
   highlightValidMoves(row, col) {
     this.validMoves = this.getValidMoves(row, col);
-    console.log(`Valid moves for ${row},${col}:`, this.validMoves);
     this.validMoves.forEach(move => {
       const square = document.querySelector(`[data-row="${move.row}"][data-col="${move.col}"]`);
       if (square) {
         const isCapture = this.gameState.board[move.row][move.col] !== null;
         square.classList.add(isCapture ? 'capture-move' : 'valid-move');
-        console.log(`Highlighted square ${move.row},${move.col} as ${isCapture ? 'capture' : 'valid'} move`);
       }
     });
   }
+
   getValidMoves(row, col) {
-    if (!this.chess) return [];
+    if (!this.gameState || !this.gameState.board) return [];
     const piece = this.gameState.board[row][col];
     if (!piece || piece.color !== this.gameState.currentTurn) return [];
-    const allLegalMoves = this.chess.getAllLegalMoves(piece.color);
-    return allLegalMoves.filter(move => move.from.row === row && move.from.col === col).map(move => ({
-      row: move.to.row,
-      col: move.to.col
-    }));
-  }
-  makePracticeMove(move) {
-    // Validate the move before executing
-    if (!this.isValidMoveObject(move)) {
-      this.showInvalidMoveMessage();
-      return;
+
+    // Practice mode: ask the local engine for exact legal moves
+    if (this.isPracticeMode && this.chess) {
+      const allLegalMoves = this.chess.getAllLegalMoves(piece.color);
+      return allLegalMoves.filter(move => move.from.row === row && move.from.col === col).map(move => ({
+        row: move.to.row,
+        col: move.to.col
+      }));
     }
 
-    // Check for pawn promotion before making the move
+    // Multiplayer: approximate legality locally for highlighting; the server
+    // remains authoritative and rejects anything illegal.
+    const moves = [];
+    for (let toRow = 0; toRow < 8; toRow++) {
+      for (let toCol = 0; toCol < 8; toCol++) {
+        const move = {
+          from: {
+            row,
+            col
+          },
+          to: {
+            row: toRow,
+            col: toCol
+          }
+        };
+        if (this.isValidMoveObject(move)) {
+          moves.push({
+            row: toRow,
+            col: toCol
+          });
+        }
+      }
+    }
+    return moves;
+  }
+
+  isValidMove(row, col) {
+    return this.validMoves.some(move => move.row === row && move.col === col);
+  }
+
+  // --- Client-side move validation (used for highlighting in multiplayer) ---
+
+  isValidMoveObject(move) {
+    if (!move || !move.from || !move.to) return false;
+    if (!this.gameState || !this.gameState.board) return false;
     const piece = this.gameState.board[move.from.row][move.from.col];
-    const isPromotion = piece && piece.type === 'pawn' && (piece.color === 'white' && move.to.row === 0 || piece.color === 'black' && move.to.row === 7);
-    if (isPromotion) {
-      // Store the pending promotion move and show modal
-      this.pendingPromotionMove = move;
-      this.showPromotionModal();
-      return;
-    }
+    if (!piece || piece.color !== this.gameState.currentTurn) return false;
 
-    // Execute the move
-    this.executeMove(move);
+    // Can't capture a king
+    const targetSquare = this.gameState.board[move.to.row][move.to.col];
+    if (targetSquare && targetSquare.type === 'king') return false;
+    if (!this.isValidPieceMove(move, piece)) return false;
+    if (this.wouldLeaveKingInCheck(move)) return false;
+    return true;
   }
-  makeAIMove() {
-    if (!this.shouldAIMove() || !this.gameState || this.gameState.status !== 'active') {
-      console.log('AI should not move:', this.shouldAIMove(), this.gameState?.status);
-      return;
-    }
-    console.log('AI attempting to move for', this.gameState.currentTurn);
-    const aiMove = this.aiEngine.getBestMove(this.gameState);
-    console.log('AI selected move:', aiMove);
-    if (aiMove) {
-      // Check for AI pawn promotion before validation
-      const piece = this.gameState.board[aiMove.from.row][aiMove.from.col];
-      const isPromotion = piece && piece.type === 'pawn' && (piece.color === 'white' && aiMove.to.row === 0 || piece.color === 'black' && aiMove.to.row === 7);
-      if (isPromotion) {
-        // AI always promotes to queen (best choice)
-        aiMove.promotion = 'queen';
-      }
 
-      // Validate the AI move using the same checks as player moves
-      if (!this.isValidMoveObject(aiMove)) {
-        console.error('AI generated invalid move:', aiMove);
-        console.log('AI move details:', {
-          from: aiMove.from,
-          to: aiMove.to,
-          piece: this.gameState.board[aiMove.from.row][aiMove.from.col],
-          target: this.gameState.board[aiMove.to.row][aiMove.to.col],
-          currentTurn: this.gameState.currentTurn,
-          inCheck: this.gameState.inCheck
-        });
-        console.log('AI move validation failed, skipping move');
-        return;
-      }
+  isValidPieceMove(move, piece) {
+    if (!move || !move.from || !move.to) return false;
+    const dx = Math.abs(move.to.col - move.from.col);
+    const dy = Math.abs(move.to.row - move.from.row);
+    const target = this.gameState.board[move.to.row][move.to.col];
 
-      // Execute the move (with promotion if needed)
-      if (isPromotion) {
-        this.executeAIPawnPromotion(aiMove);
-      } else {
-        this.executeMove(aiMove);
-      }
-    } else {
-      // AI found no valid moves - check if game should end
-      console.log('AI found no valid moves, checking if game should end');
-      const hasLegalMoves = this.hasLegalMoves(this.gameState.currentTurn);
-      console.log('Main game hasLegalMoves check:', hasLegalMoves);
-      if (!hasLegalMoves) {
-        console.log('Triggering updateCheckStatus to handle checkmate/stalemate');
-        this.updateCheckStatus();
-      } else {
-        console.warn('AI found no moves but main game thinks there are legal moves - validation mismatch!');
-      }
+    // Can't capture own piece
+    if (target && target.color === piece.color) return false;
+    switch (piece.type) {
+      case 'pawn':
+        return this.isValidPawnMove(move, piece);
+      case 'rook':
+        return (dx === 0 || dy === 0) && this.isPathClear(move);
+      case 'bishop':
+        return dx === dy && this.isPathClear(move);
+      case 'queen':
+        return (dx === 0 || dy === 0 || dx === dy) && this.isPathClear(move);
+      case 'knight':
+        return dx === 2 && dy === 1 || dx === 1 && dy === 2;
+      case 'king':
+        if (dx === 0 && dy === 0) return false;
+        // Normal king move (one square in any direction)
+        if (dx <= 1 && dy <= 1) return true;
+        // Castling move
+        if (dy === 0 && dx === 2) {
+          return this.isValidCastlingMove(move.from.row, move.from.col, move.to.row, move.to.col);
+        }
+        return false;
+      default:
+        return false;
     }
   }
+
+  isValidPawnMove(move, piece) {
+    if (!move || !move.from || !move.to) return false;
+    const direction = piece.color === 'white' ? -1 : 1;
+    const startRow = piece.color === 'white' ? 6 : 1;
+    const dy = move.to.row - move.from.row;
+    const dx = Math.abs(move.to.col - move.from.col);
+    const target = this.gameState.board[move.to.row][move.to.col];
+
+    // Forward move
+    if (dx === 0) {
+      if (target) return false; // Blocked
+      if (dy === direction) return true; // One square forward
+      if (dy === 2 * direction && move.from.row === startRow) {
+        // Two squares from start; intermediate square must be empty
+        const midRow = move.from.row + direction;
+        return !this.gameState.board[midRow][move.from.col];
+      }
+      return false;
+    }
+
+    // Diagonal capture
+    if (dx === 1 && dy === direction) {
+      if (target && target.color !== piece.color) return true;
+
+      // En passant capture
+      if (this.gameState.enPassantTarget &&
+          move.to.row === this.gameState.enPassantTarget.row &&
+          move.to.col === this.gameState.enPassantTarget.col) {
+        return true;
+      }
+      return false;
+    }
+    return false;
+  }
+
+  isPathClear(move) {
+    const dx = Math.sign(move.to.col - move.from.col);
+    const dy = Math.sign(move.to.row - move.from.row);
+    let row = move.from.row + dy;
+    let col = move.from.col + dx;
+    while (row !== move.to.row || col !== move.to.col) {
+      if (this.gameState.board[row][col]) return false;
+      row += dy;
+      col += dx;
+    }
+    return true;
+  }
+
+  hasCastlingRight(color, side) {
+    const rights = this.gameState && this.gameState.castlingRights;
+    if (!rights) return false;
+
+    // Nested shape: { white: { kingside, queenside }, black: { ... } }
+    if (rights[color] && typeof rights[color] === 'object') {
+      return !!rights[color][side];
+    }
+
+    // Flat legacy shape: { whiteKingSide, whiteQueenSide, ... }
+    const key = color + (side === 'kingside' ? 'KingSide' : 'QueenSide');
+    return !!rights[key];
+  }
+
+  isValidCastlingMove(fromRow, fromCol, toRow, toCol) {
+    const piece = this.gameState.board[fromRow][fromCol];
+    if (!piece || piece.type !== 'king') return false;
+
+    // King must be on starting square
+    const startRow = piece.color === 'white' ? 7 : 0;
+    if (fromRow !== startRow || fromCol !== 4 || toRow !== startRow) return false;
+    const isKingSide = toCol > fromCol;
+    if (!this.hasCastlingRight(piece.color, isKingSide ? 'kingside' : 'queenside')) return false;
+
+    // King can't castle out of check
+    if (this.isKingInCheck(piece.color)) return false;
+    const rookCol = isKingSide ? 7 : 0;
+    const direction = isKingSide ? 1 : -1;
+    const rook = this.gameState.board[startRow][rookCol];
+    if (!rook || rook.type !== 'rook' || rook.color !== piece.color) return false;
+
+    // Squares between king and rook must be empty
+    const startCol = Math.min(fromCol, rookCol) + 1;
+    const endCol = Math.max(fromCol, rookCol) - 1;
+    for (let col = startCol; col <= endCol; col++) {
+      if (this.gameState.board[startRow][col] !== null) return false;
+    }
+
+    // King can't pass through or land on an attacked square
+    for (let col = fromCol + direction; ; col += direction) {
+      if (this.wouldKingBeInCheck(piece.color, startRow, col, fromRow, fromCol)) return false;
+      if (col === toCol) break;
+    }
+    return true;
+  }
+
+  wouldKingBeInCheck(color, row, col, kingFromRow, kingFromCol) {
+    // Temporarily move the king to the position and test for check
+    const originalPiece = this.gameState.board[row][col];
+    const king = this.gameState.board[kingFromRow][kingFromCol];
+    this.gameState.board[kingFromRow][kingFromCol] = null;
+    this.gameState.board[row][col] = king;
+    const inCheck = this.isKingInCheck(color);
+    this.gameState.board[row][col] = originalPiece;
+    this.gameState.board[kingFromRow][kingFromCol] = king;
+    return inCheck;
+  }
+
+  wouldLeaveKingInCheck(move) {
+    // Make a temporary move to test
+    const originalPiece = this.gameState.board[move.to.row][move.to.col];
+    const movingPiece = this.gameState.board[move.from.row][move.from.col];
+    this.gameState.board[move.to.row][move.to.col] = movingPiece;
+    this.gameState.board[move.from.row][move.from.col] = null;
+    const inCheck = this.isKingInCheck(movingPiece.color);
+
+    // Restore the board
+    this.gameState.board[move.from.row][move.from.col] = movingPiece;
+    this.gameState.board[move.to.row][move.to.col] = originalPiece;
+    return inCheck;
+  }
+
+  isKingInCheck(color) {
+    const kingPos = this.findKing(color);
+    if (!kingPos) return false;
+    const opponentColor = color === 'white' ? 'black' : 'white';
+
+    // Check if any opponent piece can attack the king
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = this.gameState.board[row][col];
+        if (piece && piece.color === opponentColor) {
+          const move = {
+            from: {
+              row,
+              col
+            },
+            to: kingPos
+          };
+          if (piece.type === 'king') {
+            // Avoid castling recursion: only adjacent squares threaten
+            const dx = Math.abs(kingPos.col - col);
+            const dy = Math.abs(kingPos.row - row);
+            if (dx <= 1 && dy <= 1 && (dx || dy)) return true;
+          } else if (this.isValidPieceMove(move, piece)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  findKing(color) {
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = this.gameState.board[row][col];
+        if (piece && piece.type === 'king' && piece.color === color) {
+          return {
+            row,
+            col
+          };
+        }
+      }
+    }
+    return null;
+  }
+
+  // --- Move history ---
+
+  addMoveToHistory(move) {
+    const moveList = document.getElementById('move-list');
+    if (!moveList || !move) return;
+    const moveItem = document.createElement('div');
+    moveItem.className = 'move-item';
+    moveItem.textContent = this.formatMove(move);
+    moveList.appendChild(moveItem);
+    moveList.scrollTop = moveList.scrollHeight;
+  }
+
+  clearMoveHistory() {
+    const moveList = document.getElementById('move-list');
+    if (moveList) {
+      moveList.innerHTML = '';
+    }
+  }
+
+  renderMoveHistory() {
+    this.clearMoveHistory();
+    const history = this.gameState && Array.isArray(this.gameState.moveHistory) ? this.gameState.moveHistory : [];
+    history.forEach(move => this.addMoveToHistory(move));
+  }
+
+  formatMove(move) {
+    if (!move || !move.from || !move.to) return '';
+    let pieceType = move.piece || null;
+    if (!pieceType && this.gameState && this.gameState.board) {
+      const pieceAtDest = this.gameState.board[move.to.row][move.to.col];
+      if (pieceAtDest) pieceType = pieceAtDest.type;
+    }
+    if (!pieceType) return this.formatSimpleMove(move);
+
+    // Castling
+    if (pieceType === 'king' && Math.abs(move.to.col - move.from.col) === 2) {
+      return move.to.col > move.from.col ? 'O-O' : 'O-O-O';
+    }
+    const pieceSymbols = {
+      pawn: '',
+      knight: 'N',
+      bishop: 'B',
+      rook: 'R',
+      queen: 'Q',
+      king: 'K'
+    };
+    const pieceSymbol = pieceSymbols[pieceType] !== undefined ? pieceSymbols[pieceType] : '';
+    const toSquare = String.fromCharCode(97 + move.to.col) + (8 - move.to.row);
+    const isCapture = !!move.captured || pieceType === 'pawn' && move.from.col !== move.to.col;
+    const captureSymbol = isCapture ? 'x' : '';
+
+    // For pawn captures, include the file
+    const fromFile = pieceType === 'pawn' && isCapture ? String.fromCharCode(97 + move.from.col) : '';
+    const promotionSymbol = move.promotion ? `=${move.promotion.toUpperCase()[0]}` : '';
+    return `${pieceSymbol}${fromFile}${captureSymbol}${toSquare}${promotionSymbol}`;
+  }
+
+  formatSimpleMove(move) {
+    const fromSquare = String.fromCharCode(97 + move.from.col) + (8 - move.from.row);
+    const toSquare = String.fromCharCode(97 + move.to.col) + (8 - move.to.row);
+    return `${fromSquare}-${toSquare}`;
+  }
+
+  // --- Status / connection ---
+
   updateGameStatus() {
     const turnIndicator = document.getElementById('turn-indicator');
     const checkIndicator = document.getElementById('check-indicator');
@@ -953,12 +1311,14 @@ class WebChessClient {
       }
     }
   }
+
   updateConnectionStatus(status) {
     const indicator = document.getElementById('connection-indicator');
     const text = document.querySelector('.indicator-text');
     indicator.className = `connection-indicator ${status}`;
     text.textContent = status.charAt(0).toUpperCase() + status.slice(1);
   }
+
   resignGame() {
     if (confirm('Are you sure you want to resign?')) {
       if (this.isPracticeMode) {
@@ -972,6 +1332,7 @@ class WebChessClient {
       }
     }
   }
+
   leaveGame() {
     if (confirm('Are you sure you want to leave the game?')) {
       if (!this.isPracticeMode) {
@@ -980,22 +1341,25 @@ class WebChessClient {
       this.showMainMenu();
     }
   }
+
+  // --- Promotion ---
+
   showPromotionModal() {
     const modal = document.getElementById('promotion-modal');
     const piece = this.gameState.board[this.pendingPromotionMove.from.row][this.pendingPromotionMove.from.col];
 
     // Update the promotion pieces to show the correct color
     const promotionPieces = document.querySelectorAll('.promotion-piece');
-    const pieces = piece.color === 'white' ? {
-      queen: '♕',
-      rook: '♖',
-      bishop: '♗',
-      knight: '♘'
-    } : {
+    const pieces = piece && piece.color === 'black' ? {
       queen: '♛',
       rook: '♜',
       bishop: '♝',
       knight: '♞'
+    } : {
+      queen: '♕',
+      rook: '♖',
+      bishop: '♗',
+      knight: '♘'
     };
     promotionPieces.forEach(btn => {
       const pieceType = btn.dataset.piece;
@@ -1003,32 +1367,22 @@ class WebChessClient {
     });
     modal.classList.remove('hidden');
   }
+
   selectPromotion(pieceType) {
     document.getElementById('promotion-modal').classList.add('hidden');
     if (!this.pendingPromotionMove) return;
-
-    // Execute the promotion move
-    const move = this.pendingPromotionMove;
-
-    // Execute the basic move
-    this.executeMove(move);
-
-    // Replace the pawn with the selected piece
-    const promotedPiece = this.gameState.board[move.to.row][move.to.col];
-    this.gameState.board[move.to.row][move.to.col] = {
-      type: pieceType,
-      color: promotedPiece.color
-    };
-    this.updateGameBoard();
-
-    // Check if AI should make next move
-    if (this.shouldAIMove() && this.gameState.status === 'active') {
-      setTimeout(() => this.makeAIMove(), this.aiMoveDelay);
-    }
+    const {
+      from,
+      to
+    } = this.pendingPromotionMove;
     this.pendingPromotionMove = null;
+
+    // Send/apply the move with the chosen promotion piece; the engine or
+    // server produces the resulting state (no manual board mutation here).
+    this.makeMove(from, to, pieceType);
   }
 
-  // Check validation methods
+  // --- Notifications ---
 
   showInvalidMoveMessage() {
     // Show temporary message for invalid moves
@@ -1045,12 +1399,15 @@ class WebChessClient {
       z-index: 10000;
       font-weight: bold;
     `;
-    message.textContent = this.gameState.inCheck ? 'Must move out of check!' : 'Invalid move!';
+    message.textContent = this.gameState && this.gameState.inCheck ? 'Must move out of check!' : 'Invalid move!';
     document.body.appendChild(message);
     setTimeout(() => {
-      document.body.removeChild(message);
+      if (document.body.contains(message)) {
+        document.body.removeChild(message);
+      }
     }, 2000);
   }
+
   showCheckNotification(color) {
     // Show simple pop-up notification for check
     try {
@@ -1087,6 +1444,7 @@ class WebChessClient {
       console.warn('Error showing check notification:', error);
     }
   }
+
   showCheckmateNotification(winner, loser) {
     // Show simple pop-up notification for checkmate
     try {
@@ -1127,6 +1485,9 @@ class WebChessClient {
       console.warn('Error showing checkmate notification:', error);
     }
   }
+
+  // --- Chat ---
+
   sendChatMessage() {
     const chatInput = document.getElementById('chat-input');
     const message = chatInput.value.trim();
@@ -1143,6 +1504,7 @@ class WebChessClient {
       chatInput.value = '';
     }
   }
+
   addChatMessage(message, sender, isOwn = false) {
     const chatMessages = document.getElementById('chat-messages');
     const messageElement = document.createElement('div');
@@ -1165,6 +1527,7 @@ class WebChessClient {
       chatMessages.removeChild(chatMessages.firstChild);
     }
   }
+
   clearChat() {
     const chatMessages = document.getElementById('chat-messages');
     chatMessages.innerHTML = '';
@@ -1180,10 +1543,12 @@ class WebChessClient {
       this.syncMobileChatMessages();
     }
   }
+
   closeMobileChat() {
     const overlay = document.getElementById('mobile-chat-overlay');
     overlay.classList.remove('show');
   }
+
   sendMobileChatMessage() {
     const input = document.getElementById('mobile-chat-input');
     const message = input.value.trim();
@@ -1198,6 +1563,7 @@ class WebChessClient {
       input.value = '';
     }
   }
+
   addMobileChatMessage(message, sender, isOwn = false) {
     const chatMessages = document.getElementById('mobile-chat-messages');
     const messageDiv = document.createElement('div');
@@ -1218,6 +1584,7 @@ class WebChessClient {
       chatMessages.removeChild(chatMessages.firstChild);
     }
   }
+
   syncMobileChatMessages() {
     const desktopMessages = document.getElementById('chat-messages');
     const mobileMessages = document.getElementById('mobile-chat-messages');
@@ -1245,6 +1612,7 @@ class WebChessClient {
       document.exitFullscreen();
     }
   }
+
   updateMobileChatVisibility() {
     const toggleBtn = document.getElementById('mobile-chat-toggle');
 
@@ -1256,8 +1624,11 @@ class WebChessClient {
       this.closeMobileChat();
     }
   }
+
+  // --- Debugging ---
+
   debugDumpGameState() {
-    if (!this.gameState) {
+    if (!this.gameState || !this.gameState.board) {
       console.log('No game state available');
       alert('No game state available');
       return;
@@ -1288,14 +1659,16 @@ class WebChessClient {
         'black': '♟'
       }
     };
+    const moveHistory = Array.isArray(this.gameState.moveHistory) ? this.gameState.moveHistory : [];
+    const validMoves = Array.isArray(this.validMoves) ? this.validMoves : [];
     let markdown = '## Current Game State\n\n';
     markdown += `**Turn:** ${this.gameState.currentTurn}\n`;
-    markdown += `**Status:** ${this.gameState.status}\n`;
+    markdown += `**Status:** ${this.gameState.status || this.gameState.gameStatus || 'unknown'}\n`;
     markdown += `**Player Color:** ${this.playerColor}\n`;
     markdown += `**Practice Mode:** ${this.isPracticeMode ? this.practiceMode : 'false'}\n`;
     markdown += `**Selected Square:** ${this.selectedSquare ? `${String.fromCharCode(97 + this.selectedSquare.col)}${8 - this.selectedSquare.row}` : 'none'}\n`;
-    markdown += `**Valid Moves:** ${this.validMoves.length}\n`;
-    markdown += `**In Check:** ${this.gameState.inCheck}\n\n`;
+    markdown += `**Valid Moves:** ${validMoves.length}\n`;
+    markdown += `**In Check:** ${!!this.gameState.inCheck}\n\n`;
     markdown += '| | a | b | c | d | e | f | g | h |\n';
     markdown += '|---|---|---|---|---|---|---|---|---|\n';
     for (let row = 0; row < 8; row++) {
@@ -1311,22 +1684,24 @@ class WebChessClient {
       }
       markdown += rowStr + '\n';
     }
-    markdown += '\n**Move History:** ' + this.gameState.moveHistory.length + ' moves\n';
-    if (this.gameState.moveHistory.length > 0) {
-      const lastMove = this.gameState.moveHistory[this.gameState.moveHistory.length - 1];
+    markdown += '\n**Move History:** ' + moveHistory.length + ' moves\n';
+    if (moveHistory.length > 0) {
+      const lastMove = moveHistory[moveHistory.length - 1];
       markdown += `**Last Move:** ${this.formatMove(lastMove)}\n`;
     }
     console.log(markdown);
 
     // Copy to clipboard
-    navigator.clipboard.writeText(markdown).then(() => {
-      alert('Game state copied to clipboard!\n\nAlso check the browser console for the full output.');
-    }).catch(() => {
-      // Fallback: show in alert (truncated)
-      const shortMarkdown = markdown.substring(0, 500) + (markdown.length > 500 ? '...\n\n[Full output in console]' : '');
-      alert('Game state (check console for full version):\n\n' + shortMarkdown);
-    });
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(markdown).then(() => {
+        alert('Game state copied to clipboard!\n\nAlso check the browser console for the full output.');
+      }).catch(() => {
+        // Fallback: show in alert (truncated)
+        const shortMarkdown = markdown.substring(0, 500) + (markdown.length > 500 ? '...\n\n[Full output in console]' : '');
+        alert('Game state (check console for full version):\n\n' + shortMarkdown);
+      });
+    } else {
+      alert('Game state dumped to the browser console.');
+    }
   }
 }
-
-// Simple ChessAI implementation for client-side use

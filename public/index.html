@@ -47,7 +47,6 @@
                     <button id="host-btn" class="btn btn-primary" aria-label="Host a new chess game">Host Game</button>
                     <button id="join-btn" class="btn btn-primary" aria-label="Join an existing chess game">Join Game</button>
                     <button id="practice-btn" class="btn btn-secondary" aria-label="Start practice mode">Practice</button>
-                    <button id="run-tests-btn" class="btn btn-warning" aria-label="Run test suite">🧪 Run Tests</button>
                 </nav>
             </div>
 
@@ -281,18 +280,6 @@
         
         // Initialize loading status
         updateLoadingStatus('Loading scripts...');
-        
-        // Test runner functionality - load only when needed
-        document.addEventListener('DOMContentLoaded', () => {
-            const testBtn = document.getElementById('run-tests-btn');
-            if (testBtn) {
-                testBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    // Open test runner in new window/tab
-                    window.open('/test-runner.html', '_blank');
-                });
-            }
-        });
     </script>
 </body>
 </html>
