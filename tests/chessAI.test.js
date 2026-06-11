@@ -276,8 +276,8 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       expect(mediumAI.maxDepth).toBeLessThan(hardAI.maxDepth);
     });
 
-    test.skip('hard AI should make more calculated moves than easy AI', () => {
-      // SKIPPED: Hard AI can take minutes to evaluate positions
+    test('hard AI should make more calculated moves than easy AI', () => {
+      // Previously skipped for runtime; passes since the check-status search fix: Hard AI can take minutes to evaluate positions
       const easyAI = new ChessAI('easy');
       const hardAI = new ChessAI('hard');
       
@@ -297,7 +297,7 @@ describe('ChessAI - Comprehensive Test Suite', () => {
     });
 
     test('medium AI should balance calculation and speed', () => {
-      // SKIPPED: Medium AI can still take too long due to move generation complexity
+      // Previously skipped for runtime; passes since the check-status search fix: Medium AI can still take too long due to move generation complexity
       const mediumAI = new ChessAI('medium');
       
       const startTime = Date.now();
@@ -308,8 +308,8 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       expect(endTime - startTime).toBeLessThan(3000);
     });
 
-    test.skip('AI should handle tactical positions appropriately by difficulty', () => {
-      // SKIPPED: Hard AI evaluation of tactical positions can timeout
+    test('AI should handle tactical positions appropriately by difficulty', () => {
+      // Previously skipped for runtime; passes since the check-status search fix: Hard AI evaluation of tactical positions can timeout
       game.board = Array(8).fill(null).map(() => Array(8).fill(null));
       game.board[0][0] = { type: 'king', color: 'black' };
       game.board[7][7] = { type: 'king', color: 'white' };
@@ -410,8 +410,8 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       expect(hardAI.maxDepth).toBe(4);
     });
 
-    test.skip('should handle recursive minimax calls safely', () => {
-      // SKIPPED: Complex positions with medium AI can cause timeouts
+    test('should handle recursive minimax calls safely', () => {
+      // Previously skipped for runtime; passes since the check-status search fix: Complex positions with medium AI can cause timeouts
       const testAI = new ChessAI('medium');
       
       const complexMoves = [
@@ -470,8 +470,8 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       expect(typeof isReasonableOpening).toBe('boolean');
     });
 
-    test.skip('should recognize and avoid simple tactics', () => {
-      // SKIPPED: Hard AI tactical evaluation can timeout
+    test('should recognize and avoid simple tactics', () => {
+      // Previously skipped for runtime; passes since the check-status search fix: Hard AI tactical evaluation can timeout
       const testAI = new ChessAI('hard');
       
       const testGame = new ChessGame();
@@ -629,8 +629,8 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       }
     });
 
-    test.skip('should handle a complete game scenario', () => {
-      // SKIPPED: This test can run indefinitely due to AI complexity
+    test('should handle a complete game scenario', () => {
+      // Previously skipped for runtime; passes since the check-status search fix: This test can run indefinitely due to AI complexity
       // The AI's move generation checks all 64 squares for each piece
       // which creates exponential complexity with minimax recursion
       const testGame = new ChessGame();
@@ -672,8 +672,8 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       });
     });
 
-    test.skip('should handle alternating AI vs AI games', () => {
-      // SKIPPED: AI vs AI games can run indefinitely
+    test('should handle alternating AI vs AI games', () => {
+      // Previously skipped for runtime; passes since the check-status search fix: AI vs AI games can run indefinitely
       // Each AI call triggers expensive move generation (64 squares × pieces)
       // Combined with minimax recursion, this creates exponential complexity
       const testGame = new ChessGame();
@@ -737,8 +737,8 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       expect(endTime - startTime).toBeLessThan(5000); // 5 seconds max
     });
 
-    test.skip('should handle memory efficiently during search', () => {
-      // SKIPPED: Hard AI with multiple moves can cause timeouts
+    test('should handle memory efficiently during search', () => {
+      // Previously skipped for runtime; passes since the check-status search fix: Hard AI with multiple moves can cause timeouts
       // The move generation algorithm is O(n²) per piece, making this test too slow
       const testAI = new ChessAI('hard');
       const initialMemory = process.memoryUsage().heapUsed;
@@ -758,8 +758,8 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       expect(memoryIncrease).toBeLessThan(400 * 1024 * 1024);
     });
 
-    test.skip('should scale performance appropriately with difficulty', () => {
-      // SKIPPED: Hard AI can take minutes to complete
+    test('should scale performance appropriately with difficulty', () => {
+      // Previously skipped for runtime; passes since the check-status search fix: Hard AI can take minutes to complete
       // The exponential complexity of move generation makes this test impractical
       const easyAI = new ChessAI('easy');
       const hardAI = new ChessAI('hard');
@@ -781,8 +781,8 @@ describe('ChessAI - Comprehensive Test Suite', () => {
       expect(hardTime).toBeGreaterThanOrEqual(easyTime * 0.5);
     });
 
-    test.skip('should handle concurrent AI instances efficiently', () => {
-      // SKIPPED: Multiple medium AI instances can cause severe timeouts
+    test('should handle concurrent AI instances efficiently', () => {
+      // Previously skipped for runtime; passes since the check-status search fix: Multiple medium AI instances can cause severe timeouts
       // Each instance performs expensive move generation independently
       const aiInstances = [];
       for (let i = 0; i < 5; i++) {

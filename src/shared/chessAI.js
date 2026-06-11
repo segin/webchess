@@ -89,10 +89,10 @@ class ChessAI {
     
     // Castling
     let castlingRights = 0;
-    if (chessGame.castlingRights.white.kingSide) castlingRights |= 1;
-    if (chessGame.castlingRights.white.queenSide) castlingRights |= 2;
-    if (chessGame.castlingRights.black.kingSide) castlingRights |= 4;
-    if (chessGame.castlingRights.black.queenSide) castlingRights |= 8;
+    if (chessGame.castlingRights.white.kingside) castlingRights |= 1;
+    if (chessGame.castlingRights.white.queenside) castlingRights |= 2;
+    if (chessGame.castlingRights.black.kingside) castlingRights |= 4;
+    if (chessGame.castlingRights.black.queenside) castlingRights |= 8;
     hash ^= this.zobristTable.castling[castlingRights];
     
     // En Passant
@@ -224,8 +224,11 @@ class ChessAI {
       }
     }
     
-    if (depth === 0 || chessGame.gameStatus !== 'active') {
-      if (chessGame.gameStatus !== 'active') {
+    // 'check' is a continuing state, not game over — the search must look
+    // past checking moves or it can never see forced mates or evasions.
+    const isGameOver = chessGame.gameStatus !== 'active' && chessGame.gameStatus !== 'check';
+    if (depth === 0 || isGameOver) {
+      if (isGameOver) {
         const score = this.evaluatePosition(chessGame);
         chessGame.undoMove({ skipCacheRebuild: true, skipGameEndCheck: true });
         return score;
@@ -266,8 +269,14 @@ class ChessAI {
             this.storeKillerMove(nextMove, depth);
 
             // History Heuristic: Update score for quiet moves
+            // (en passant is a capture even though the target square is empty)
             const toPiece = chessGame.board[nextMove.to.row][nextMove.to.col];
-            if (!toPiece) {
+            const isEnPassant = chessGame.enPassantTarget &&
+                                chessGame.enPassantTarget.row === nextMove.to.row &&
+                                chessGame.enPassantTarget.col === nextMove.to.col &&
+                                chessGame.board[nextMove.from.row][nextMove.from.col]?.type === 'pawn';
+
+            if (!toPiece && !isEnPassant) {
                 const fromIdx = nextMove.from.row * 8 + nextMove.from.col;
                 const toIdx = nextMove.to.row * 8 + nextMove.to.col;
                 this.historyTable[fromIdx][toIdx] += depth * depth;
@@ -276,7 +285,7 @@ class ChessAI {
             break;
         }
       }
-      
+
       // Store in Transposition Table
       const flag = maxScore <= originalAlpha ? 'upperbound' : (maxScore >= beta ? 'lowerbound' : 'exact');
       this.transpositionTable.set(hash, {
@@ -303,8 +312,14 @@ class ChessAI {
             this.storeKillerMove(nextMove, depth);
 
             // History Heuristic: Update score for quiet moves
+            // (en passant is a capture even though the target square is empty)
             const toPiece = chessGame.board[nextMove.to.row][nextMove.to.col];
-            if (!toPiece) {
+            const isEnPassant = chessGame.enPassantTarget &&
+                                chessGame.enPassantTarget.row === nextMove.to.row &&
+                                chessGame.enPassantTarget.col === nextMove.to.col &&
+                                chessGame.board[nextMove.from.row][nextMove.from.col]?.type === 'pawn';
+
+            if (!toPiece && !isEnPassant) {
                 const fromIdx = nextMove.from.row * 8 + nextMove.from.col;
                 const toIdx = nextMove.to.row * 8 + nextMove.to.col;
                 this.historyTable[fromIdx][toIdx] += depth * depth;
@@ -313,7 +328,7 @@ class ChessAI {
             break;
         }
       }
-      
+
       // Store in Transposition Table
       const flag = minScore <= originalAlpha ? 'upperbound' : (minScore >= beta ? 'lowerbound' : 'exact');
       this.transpositionTable.set(hash, {
@@ -391,7 +406,7 @@ class ChessAI {
       return chessGame.winner === 'white' ? 10000 : -10000;
     }
     
-    if (chessGame.gameStatus === 'stalemate') {
+    if (chessGame.gameStatus === 'stalemate' || chessGame.gameStatus === 'draw') {
       return 0;
     }
     
@@ -479,6 +494,12 @@ class ChessAI {
         to: { row: toRow, col: toCol }
       };
 
+      // Tag pawn moves onto the last rank so move ordering sees the
+      // promotion (execution would otherwise silently default to queen)
+      if (piece.type === 'pawn' && (toRow === 0 || toRow === 7)) {
+        move.promotion = 'queen';
+      }
+
       // Lightweight validation: Only check if move puts own king in check
       // This skips format, turn, piece, and other redundant checks performed by validateMove
       if (!chessGame.wouldBeInCheck(move.from, move.to, piece.color, piece)) {
@@ -508,10 +529,10 @@ class ChessAI {
             }
         }
 
-        // Captures
+        // Captures (guard r1: a pawn on its last rank has no capture row)
         const captureCols = [col - 1, col + 1];
         for (const c of captureCols) {
-            if (c >= 0 && c <= 7) {
+            if (r1 >= 0 && r1 <= 7 && c >= 0 && c <= 7) {
                 const target = chessGame.board[r1][c]; // r1 is capture row (same as forward 1)
                 if (target && target.color !== piece.color) {
                     tryAddMove(r1, c);
@@ -646,8 +667,16 @@ class ChessAI {
     const toPiece = chessGame.board[move.to.row][move.to.col];
 
     // 2. Captures (MVV-LVA)
+    const isEnPassant = chessGame.enPassantTarget &&
+                        chessGame.enPassantTarget.row === move.to.row &&
+                        chessGame.enPassantTarget.col === move.to.col &&
+                        fromPiece && fromPiece.type === 'pawn';
+
     if (toPiece) {
       score = 10 * this.pieceValues[toPiece.type] - this.pieceValues[fromPiece.type] + 1000;
+    } else if (isEnPassant) {
+      // En passant capture: target is a pawn
+      score = 10 * this.pieceValues['pawn'] - this.pieceValues['pawn'] + 1000;
     }
 
     // 3. Killer Moves
@@ -661,11 +690,13 @@ class ChessAI {
       score += this.pieceValues[move.promotion] + 500;
     }
 
-    // 5. History Heuristic
-    if (this.historyTable) {
+    // 5. History Heuristic (quiet moves only)
+    if (!toPiece && !isEnPassant && this.historyTable) {
         const fromIdx = move.from.row * 8 + move.from.col;
         const toIdx = move.to.row * 8 + move.to.col;
-        score += this.historyTable[fromIdx][toIdx];
+
+        // Cap history score so captures and killer moves take precedence
+        score += Math.min(this.historyTable[fromIdx][toIdx], 700);
     }
 
     return score;
