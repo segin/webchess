@@ -531,10 +531,8 @@ class ExternalDependencyMocker {
    * @returns {Object} Mock file system implementation
    */
   mockFileSystem(options = {}) {
-    const {
-      files = {},
-      throwErrors = false
-    } = options;
+    const { files = {} } = options;
+    let throwErrors = options.throwErrors ?? false;
 
     const mockFS = {
       readFile: jest.fn((path, encoding, callback) => {

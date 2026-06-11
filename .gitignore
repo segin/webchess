@@ -111,5 +111,3 @@ devTemp.js
 tests_backup_*/
 lighthouse-report.html
 
-# Lockfile intentionally not used (see .npmrc package-lock=false)
-package-lock.json

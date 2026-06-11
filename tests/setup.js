@@ -161,7 +161,7 @@ beforeEach(() => {
     // Game state consistency warnings
     /Game state consistency warnings after move/,
     /Castling rights may be inconsistent with piece positions/,
-    /Current position does not match last recorded position/,,
+    /Current position does not match last recorded position/,
     
     // All error codes
     /MALFORMED_MOVE/,

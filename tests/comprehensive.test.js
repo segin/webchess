@@ -259,7 +259,7 @@ describe('WebChess Comprehensive Test Suite', () => {
 
   describe('Performance Tests', () => {
     test('should complete move validation within acceptable time limits', () => {
-      const game = new ChessGame();
+      let game = new ChessGame();
       const startTime = Date.now();
       
       // Perform multiple move validations
@@ -288,7 +288,7 @@ describe('WebChess Comprehensive Test Suite', () => {
     });
 
     test('should handle memory efficiently during long games', () => {
-      const game = new ChessGame();
+      let game = new ChessGame();
       const initialMemory = process.memoryUsage().heapUsed;
       
       // Simulate a long game
