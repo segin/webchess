@@ -39,7 +39,12 @@ jobs:
         cache: 'npm'
 
     - name: Install dependencies
-      run: npm ci
+      # Probe versions may bundle npm 9 (e.g. Node 19), which skips
+      # platform-native optional deps recorded with the npm 10+ libc
+      # selector in the lockfile. Fall back to npm install there so the
+      # probe measures the app on that Node version, not npm 9's
+      # lockfile parsing.
+      run: ${{ matrix.experimental && 'npm install' || 'npm ci' }}
 
     - name: Run tests with coverage
       run: npm run test:coverage
