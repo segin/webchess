@@ -41,10 +41,11 @@ jobs:
     - name: Install dependencies
       # Probe versions may bundle npm 9 (e.g. Node 19), which skips
       # platform-native optional deps recorded with the npm 10+ libc
-      # selector in the lockfile. Fall back to npm install there so the
-      # probe measures the app on that Node version, not npm 9's
-      # lockfile parsing.
-      run: ${{ matrix.experimental && 'npm install' || 'npm ci' }}
+      # selector in the lockfile - even via npm install, which still
+      # resolves from an existing lockfile. Probes resolve fresh from
+      # package.json (throwaway checkout) so they measure the app on
+      # that Node version, not the bundled npm's lockfile parsing.
+      run: ${{ matrix.experimental && 'rm -f package-lock.json && npm install' || 'npm ci' }}
 
     - name: Run tests with coverage
       run: npm run test:coverage
