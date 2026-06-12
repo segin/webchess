@@ -8,12 +8,25 @@ on:
 
 jobs:
   test:
-    name: Test (Node ${{ matrix.node-version }})
+    name: Test (Node ${{ matrix.node-version }}${{ matrix.experimental && ', compatibility probe' || '' }})
     runs-on: ubuntu-latest
+    # Experimental (odd/interim) versions are low-water-mark probes: their
+    # results are visible per run but do not block CI.
+    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
         node-version: ['18.x', '20.x', '22.x', '24.x']
+        experimental: [false]
+        include:
+          - node-version: '19.x'
+            experimental: true
+          - node-version: '21.x'
+            experimental: true
+          - node-version: '23.x'
+            experimental: true
+          - node-version: '25.x'
+            experimental: true
 
     steps:
     - name: Checkout code

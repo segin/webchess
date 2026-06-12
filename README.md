@@ -6,9 +6,16 @@ A two-player online chess system with real-time gameplay and practice mode.
 
 [![CI](https://github.com/segin/webchess/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/segin/webchess/actions/workflows/ci.yml)
 
-The CI pipeline runs the full test suite on Node.js 18.x, 20.x, 22.x, and 24.x.
-All matrix versions are required to pass. Node.js 18.14 or newer is required
-(Express 5 and Jest 30 do not support older versions).
+The CI pipeline runs the full test suite on Node.js 18.x through 25.x in a
+single matrix:
+
+- **18.x, 20.x, 22.x, 24.x (LTS)** — required to pass
+- **19.x, 21.x, 23.x, 25.x (interim)** — non-blocking compatibility probes
+  that track the low water mark; check the matrix in any CI run to see
+  exactly which versions currently work
+
+Node.js 18.14 or newer is required (Express 5 and Jest 30 do not support
+older versions; Node 14–17 cannot start the test runner at all).
 
 ## Features
 
@@ -155,7 +162,8 @@ WebChess includes a comprehensive CI/CD pipeline with GitHub Actions:
 
 ### 🔄 Continuous Integration
 - **Automated Testing**: 1,800+ unit and integration tests
-- **Multi-Version Support**: Blocking test matrix on Node.js 18.x, 20.x, 22.x, 24.x
+- **Multi-Version Support**: Test matrix on Node.js 18.x-25.x (LTS versions
+  blocking, interim versions as non-blocking compatibility probes)
 - **Code Quality**: ESLint linting (blocking) and security audits
 - **Coverage Reports**: Minimum 85% test coverage enforced by Jest
 
