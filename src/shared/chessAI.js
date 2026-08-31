@@ -39,8 +39,7 @@ class ChessAI {
     };
     
     const pieces = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
-    const colors = ['white', 'black'];
-    
+
     // Initialize piece keys
     pieces.forEach(piece => {
       zobrist.pieces[piece] = { white: [], black: [] };

@@ -850,7 +850,7 @@ class ChessGame {
       return this.errorHandler.createSuccess('No check to resolve', {}, { checkValid: true }); // No check to resolve
     }
 
-    const { attackingPieces, isDoubleCheck } = this.checkDetails;
+    const { isDoubleCheck } = this.checkDetails;
 
     // In double check, only king moves are allowed
     if (isDoubleCheck && piece.type !== 'king') {
@@ -1541,8 +1541,7 @@ class ChessGame {
       this.halfMoveClock++;
     }
 
-    // Switch turns with validation
-    const previousTurn = this.currentTurn;
+    // Switch turns (turn ownership was validated at the top of this method)
     this.currentTurn = this.currentTurn === 'white' ? 'black' : 'white';
 
     // Update full move number (increments after black's move)
@@ -1974,7 +1973,6 @@ class ChessGame {
     }
 
     const kingPos = analysis.analysis.kingPosition;
-    const opponentColor = color === 'white' ? 'black' : 'white';
 
     // Check for corner stalemate patterns
     if (this.isKingInCorner(kingPos)) {

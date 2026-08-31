@@ -994,7 +994,7 @@ class GameManager {
    */
   cleanup() {
     // Clear all disconnect timeouts
-    for (const [playerId, timeoutId] of this.disconnectTimeouts) {
+    for (const timeoutId of this.disconnectTimeouts.values()) {
       clearTimeout(timeoutId);
     }
     this.disconnectTimeouts.clear();

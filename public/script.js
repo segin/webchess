@@ -1705,3 +1705,14 @@ class WebChessClient {
     }
   }
 }
+
+// public/index.html bootstraps the app with `typeof WebChessClient === 'function'`
+// followed by `new WebChessClient()`. As a top-level class declaration in a classic
+// script, WebChessClient lives in the global *lexical* scope and is reachable from
+// that inline script, but it is never a property of the global object -- which is why
+// nothing inside this file appears to reference it. Publish it explicitly so the
+// contract with index.html is visible in the code instead of implicit in the parser's
+// scoping rules. This is purely additive: the lexical binding index.html already
+// resolves is untouched. globalThis (not window) mirrors src/shared/browser-entry.js
+// so the file stays loadable outside the main thread.
+globalThis.WebChessClient = WebChessClient;
