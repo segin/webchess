@@ -1,13 +1,10 @@
 const ChessGame = require('../src/shared/chessGame');
-const GameStateManager = require('../src/shared/gameState');
 
 describe('Comprehensive Boundary Conditions Tests', () => {
   let game;
-  let gameState;
 
   beforeEach(() => {
     game = new ChessGame();
-    gameState = new GameStateManager();
   });
 
   describe('Board Boundary Conditions', () => {

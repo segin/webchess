@@ -1,4 +1,3 @@
-const ChessGame = require('../src/shared/chessGame');
 const GameStateManager = require('../src/shared/gameState');
 const GameManager = require('../src/server/gameManager');
 describe('Comprehensive Security Tests', () => {
@@ -176,6 +175,17 @@ describe('Comprehensive Security Tests', () => {
           }
         }
       };
+
+      // Actually feed the malicious state to the state manager: snapshotting and
+      // a serialize/deserialize round trip are the paths attacker-supplied state
+      // would really travel
+      const snapshot = gameState.getStateSnapshot(maliciousState);
+      expect(snapshot).toBeDefined();
+      const roundTripped = gameState.deserializeGameState(gameState.serializeGameState(maliciousState));
+      expect(roundTripped).toBeDefined();
+      expect(roundTripped.polluted).toBeUndefined();
+      expect(Object.prototype.polluted).toBeUndefined();
+      expect({}.polluted).toBeUndefined();
 
       // Test prototype pollution through game state by using malicious input in makeMove
       const maliciousMove = {

@@ -12,8 +12,6 @@
  * - Tests piece movement edge cases using current error handling
  */
 
-const ChessGame = require('../src/shared/chessGame');
-
 describe('Comprehensive Piece Movement Patterns', () => {
   let game;
 
@@ -407,20 +405,30 @@ describe('Comprehensive Piece Movement Patterns', () => {
     });
 
     test('should stay on same color squares', () => {
-      // Bishop on light square should only move to light squares
-      // Bishop on dark square should only move to dark squares
-      const lightSquareBishop = { row: 4, col: 4 }; // Light square (4+4=8, even)
-      const darkSquareBishop = { row: 4, col: 3 };  // Dark square (4+3=7, odd)
-      
-      // Test light square bishop
-      const lightSquareMoves = [
-        { row: 3, col: 3 }, { row: 5, col: 5 }, { row: 2, col: 6 }, { row: 6, col: 2 }
-      ];
-      
-      lightSquareMoves.forEach(to => {
-        const sum = to.row + to.col;
-        expect(sum % 2).toBe(0); // Should be even (light square)
-      });
+      // A bishop can only ever reach squares of its own color. Assert that
+      // invariant against the engine rather than against arithmetic on
+      // hand-picked coordinates: sweep all 64 destinations and require every
+      // move the engine accepts to land on a light square.
+      const origin = { row: 4, col: 4 }; // light square (4+4=8, even)
+      let accepted = 0;
+
+      for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+          if (row === origin.row && col === origin.col) continue;
+
+          const freshGame = testUtils.createFreshGame();
+          freshGame.board[origin.row][origin.col] = { type: 'bishop', color: 'white' };
+
+          const result = freshGame.makeMove({ from: origin, to: { row, col } });
+          if (result.success) {
+            accepted++;
+            expect((row + col) % 2).toBe(0);
+          }
+        }
+      }
+
+      // Without this the sweep above would pass vacuously if nothing moved
+      expect(accepted).toBeGreaterThan(0);
     });
   });
 

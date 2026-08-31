@@ -1,5 +1,4 @@
 const GameManager = require('../../src/server/gameManager');
-const ChessGame = require('../../src/shared/chessGame');
 
 // Mock ChessGame if needed, or use real one
 // We can use the real one as it is required by GameManager

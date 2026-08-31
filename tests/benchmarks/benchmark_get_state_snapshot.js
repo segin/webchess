@@ -1,5 +1,4 @@
 
-const GameStateManager = require('../../src/shared/gameState');
 const ChessGame = require('../../src/shared/chessGame');
 const { performance } = require('perf_hooks');
 

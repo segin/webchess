@@ -4,8 +4,6 @@
  * Serves as smoke tests for fundamental game operations
  */
 
-const ChessGame = require('../src/shared/chessGame');
-
 describe('Basic Chess Game Functionality', () => {
   let game;
 

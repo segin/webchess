@@ -10,8 +10,6 @@
  * - Uses current error handling for check-related edge cases
  */
 
-const ChessGame = require('../src/shared/chessGame');
-
 describe('Enhanced Check Detection System', () => {
   let game;
 

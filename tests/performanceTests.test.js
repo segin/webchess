@@ -1,14 +1,10 @@
 const ChessGame = require('../src/shared/chessGame');
-const GameStateManager = require('../src/shared/gameState');
-const { testUtils } = require('./utils/errorSuppression');
 
 describe('Performance Tests - Comprehensive Coverage', () => {
   let game;
-  let stateManager;
 
   beforeEach(() => {
     game = new ChessGame();
-    stateManager = new GameStateManager();
     
     // Suppress console output from error handler during performance testing
     const originalConsoleLog = console.log;

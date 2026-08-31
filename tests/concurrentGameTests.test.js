@@ -1,5 +1,4 @@
 const GameManager = require('../src/server/gameManager');
-const ChessGame = require('../src/shared/chessGame');
 const ChessAI = require('../src/shared/chessAI');
 
 describe('Concurrent Game Testing - Resource Management', () => {
@@ -171,8 +170,8 @@ describe('Concurrent Game Testing - Resource Management', () => {
                 { from: { row: 6, col: 5 }, to: { row: 4, col: 5 } }  // f4
               ];
               const moveIndex = (round + gameIndex) % humanMoves.length;
-              const result = gameManager.makeMove(data.gameId, data.humanId, humanMoves[moveIndex]);
               // Don't assert success as moves may not always be valid
+              gameManager.makeMove(data.gameId, data.humanId, humanMoves[moveIndex]);
             } else {
               // AI move (use predefined responses)
               const aiMoves = [
@@ -183,8 +182,8 @@ describe('Concurrent Game Testing - Resource Management', () => {
                 { from: { row: 1, col: 5 }, to: { row: 3, col: 5 } }  // f5
               ];
               const moveIndex = (round + gameIndex) % aiMoves.length;
-              const result = gameManager.makeMove(data.gameId, data.aiId, aiMoves[moveIndex]);
               // Don't assert success as moves may not always be valid
+              gameManager.makeMove(data.gameId, data.aiId, aiMoves[moveIndex]);
             }
           }
         }
@@ -268,8 +267,10 @@ describe('Concurrent Game Testing - Resource Management', () => {
           const gameState = gameManager.getGameState(gameId);
           if (gameState && gameState.gameStatus === 'active') {
             const currentPlayer = gameState.currentTurn === 'white' ? hostId : guestId;
+            // 1. e4 e5 2. Nf3 is a legal opening from the starting position, and
+            // each game here is freshly created, so every move must be accepted.
             const result = gameManager.makeMove(gameId, currentPlayer, testMoves[moveNum]);
-            // Don't assert success as moves may not always be valid due to game state
+            expect(result.success).toBe(true);
           }
         }
       }
@@ -443,8 +444,10 @@ describe('Concurrent Game Testing - Resource Management', () => {
           if (gameState && gameState.gameStatus === 'active') {
             const currentPlayer = gameState.currentTurn === 'white' ? data.hostId : data.guestId;
             const moveIndex = moveNum % testMoves.length;
-            const result = gameManager.makeMove(data.gameId, currentPlayer, testMoves[moveIndex]);
-            // Don't assert success as moves may not always be valid
+            // Don't assert success: later moves in this list are not always legal
+            // (e.g. f2-f4 is blocked once the knight sits on f3), and this test
+            // measures throughput rather than move legality.
+            gameManager.makeMove(data.gameId, currentPlayer, testMoves[moveIndex]);
           }
         });
         
@@ -518,7 +521,6 @@ describe('Concurrent Game Testing - Resource Management', () => {
       const longRunningGames = 5;
       const shortLivedGames = 15;
       const longGameData = [];
-      const shortGameData = [];
 
       // Create long-running games
       for (let i = 0; i < longRunningGames; i++) {
@@ -541,8 +543,9 @@ describe('Concurrent Game Testing - Resource Management', () => {
         
         // Make a quick move
         const quickMove = { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } }; // e4
+        // The host is white and the game is brand new, so e4 must be accepted.
         const result = gameManager.makeMove(gameId, hostId, quickMove);
-        // Don't assert success as move may not always be valid
+        expect(result.success).toBe(true);
         
         // Immediately disconnect
         gameManager.handleDisconnect(hostId);
@@ -567,8 +570,10 @@ describe('Concurrent Game Testing - Resource Management', () => {
           if (gameState && gameState.gameStatus === 'active') {
             const currentPlayer = gameState.currentTurn === 'white' ? data.hostId : data.guestId;
             const moveIndex = moveNum % continuationMoves.length;
+            // 1. e4 e5 2. Nf3 Nc6 3. d4 is legal from the starting position and
+            // these games have not moved yet, so every move must be accepted.
             const result = gameManager.makeMove(data.gameId, currentPlayer, continuationMoves[moveIndex]);
-            // Don't assert success as moves may not always be valid
+            expect(result.success).toBe(true);
           }
         });
       }

@@ -281,11 +281,12 @@ describe('Legacy Test Migration - Game Logic', () => {
 });
 
 describe('Legacy Test Migration - AI Functionality', () => {
-  let ai;
   let game;
 
   beforeEach(() => {
-    ai = new ChessAI('easy'); // Use easy AI to prevent timeout
+    // No test below reads the instance; the construction is kept so every test
+    // in this suite still exercises the AI constructor (easy prevents timeouts)
+    new ChessAI('easy');
     game = new ChessGame();
   });
 
@@ -329,7 +330,7 @@ describe('Legacy Test Migration - AI Functionality', () => {
   describe('Move Generation Logic', () => {
     test('should generate moves compatible with current API structure', () => {
       // Test basic move generation logic using current game state
-      const gameState = game.getGameState();
+      game.getGameState();
       const mockBoard = Array(8).fill(null).map(() => Array(8).fill(null));
       mockBoard[0][0] = { type: 'rook', color: 'black' };
       

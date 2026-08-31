@@ -1,15 +1,12 @@
 const ChessGame = require('../src/shared/chessGame');
-const GameStateManager = require('../src/shared/gameState');
 const ChessErrorHandler = require('../src/shared/errorHandler');
 
 describe('Under-Tested Areas - Comprehensive Coverage Expansion', () => {
   let game;
-  let stateManager;
   let errorHandler;
 
   beforeEach(() => {
     game = new ChessGame();
-    stateManager = new GameStateManager();
     errorHandler = new ChessErrorHandler();
   });
 

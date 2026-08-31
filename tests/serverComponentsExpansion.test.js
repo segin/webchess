@@ -1,5 +1,4 @@
 const GameManager = require('../src/server/gameManager');
-const ChessGame = require('../src/shared/chessGame');
 describe('Server Components - Under-Tested Functions Coverage', () => {
   let gameManager;
   beforeEach(() => {
@@ -50,8 +49,8 @@ describe('Server Components - Under-Tested Functions Coverage', () => {
     });
     test('should test getActiveGameCount function', () => {
       const initialCount = gameManager.getActiveGameCount();
-      const gameId1 = gameManager.createGame('player1');
-      const gameId2 = gameManager.createGame('player2');
+      gameManager.createGame('player1');
+      gameManager.createGame('player2');
       expect(gameManager.getActiveGameCount()).toBe(initialCount + 2);
     });
   });
@@ -269,8 +268,8 @@ describe('Server Components - Under-Tested Functions Coverage', () => {
   });
   describe('Game Search and Filtering', () => {
     test('should test findGamesByPlayer function', () => {
-      const gameId1 = gameManager.createGame('player1');
-      const gameId2 = gameManager.createGame('player1');
+      gameManager.createGame('player1');
+      gameManager.createGame('player1');
       gameManager.createGame('player2');
       const playerGames = gameManager.findGamesByPlayer('player1');
       expect(Array.isArray(playerGames)).toBe(true);
@@ -278,7 +277,7 @@ describe('Server Components - Under-Tested Functions Coverage', () => {
     });
     test('should test getGamesByStatus function', () => {
       const gameId1 = gameManager.createGame('player1');
-      const gameId2 = gameManager.createGame('player2');
+      gameManager.createGame('player2');
       gameManager.joinGame(gameId1, 'player3');
       gameManager.startGame(gameId1);
       const activeGames = gameManager.getGamesByStatus('active');

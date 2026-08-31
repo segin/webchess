@@ -15,10 +15,9 @@ function findGamesByPlayerSlow(gameManager, playerId) {
 const runBenchmark = () => {
     const gameManager = new GameManager();
     const totalGames = 10000;
-    const playersPerGame = 2;
-    const totalPlayers = totalGames * playersPerGame; // Worst case, unique players everywhere
 
-    // We will reuse a smaller set of players to simulate players having multiple games
+    // Each game has 2 players, so the worst case is 2 * totalGames unique players.
+    // We instead reuse a smaller set to simulate players having multiple games.
     const uniquePlayerCount = 2000;
 
     console.log(`Populating ${totalGames} games with ~${uniquePlayerCount} unique players...`);

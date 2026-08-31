@@ -487,15 +487,6 @@ describe('Comprehensive Browser Compatibility Tests', () => {
       const mouseEvents = ['click', 'mousedown', 'mouseup', 'mousemove'];
       
       mouseEvents.forEach(eventType => {
-        const mockEvent = {
-          type: eventType,
-          clientX: 100,
-          clientY: 100,
-          button: 0,
-          preventDefault: jest.fn(),
-          stopPropagation: jest.fn()
-        };
-        
         // Should handle mouse events without errors
         expect(() => {
           // Core game functionality should work regardless of input method
@@ -512,17 +503,6 @@ describe('Comprehensive Browser Compatibility Tests', () => {
       const touchEvents = ['touchstart', 'touchmove', 'touchend'];
       
       touchEvents.forEach(eventType => {
-        const mockEvent = {
-          type: eventType,
-          touches: [{
-            clientX: 100,
-            clientY: 100,
-            identifier: 0
-          }],
-          preventDefault: jest.fn(),
-          stopPropagation: jest.fn()
-        };
-        
         // Should handle touch events without errors
         expect(() => {
           // Core game functionality should work with touch input
@@ -539,15 +519,6 @@ describe('Comprehensive Browser Compatibility Tests', () => {
       const keyboardEvents = ['keydown', 'keyup', 'keypress'];
       
       keyboardEvents.forEach(eventType => {
-        const mockEvent = {
-          type: eventType,
-          key: 'Enter',
-          keyCode: 13,
-          which: 13,
-          preventDefault: jest.fn(),
-          stopPropagation: jest.fn()
-        };
-        
         // Should handle keyboard events without errors
         expect(() => {
           // Core game functionality should work with keyboard input
@@ -564,16 +535,6 @@ describe('Comprehensive Browser Compatibility Tests', () => {
       const pointerEvents = ['pointerdown', 'pointermove', 'pointerup'];
       
       pointerEvents.forEach(eventType => {
-        const mockEvent = {
-          type: eventType,
-          pointerId: 1,
-          clientX: 100,
-          clientY: 100,
-          pointerType: 'mouse',
-          preventDefault: jest.fn(),
-          stopPropagation: jest.fn()
-        };
-        
         // Should handle pointer events without errors
         expect(() => {
           // Core game functionality should work with pointer input

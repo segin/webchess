@@ -306,8 +306,10 @@ class TestInfrastructureValidator {
     this.log('Validating test execution (quick check)...', 'info');
     
     try {
-      // Run a quick test to check if Jest can execute
-      const result = execSync('npm test -- --testNamePattern="should initialize" --passWithNoTests', {
+      // Run a quick test to check if Jest can execute.
+      // The call itself is the check: it throws if Jest cannot run, so the
+      // output is intentionally discarded rather than bound.
+      execSync('npm test -- --testNamePattern="should initialize" --passWithNoTests', {
         encoding: 'utf8',
         timeout: 30000,
         stdio: 'pipe'

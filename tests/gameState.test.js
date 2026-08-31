@@ -1651,8 +1651,10 @@ describe('GameState Serialization and Deserialization Coverage', () => {
       expect(currentState.stateConsistency).toBeDefined();
     });
     const finalState = game.getGameState();
+    expect(finalState.moveHistory.length).toBe(initialState.moveHistory.length + moves.length);
     expect(finalState.moveHistory.length).toBe(4);
     expect(finalState.fullMoveNumber).toBe(3); // After 4 half-moves
+    expect(finalState.fullMoveNumber).toBeGreaterThan(initialState.fullMoveNumber);
   });
 });
 describe('GameState Error Recovery Coverage', () => {
@@ -2077,8 +2079,10 @@ describe('Memory Management and Optimization', () => {
       stateManager.addPositionToHistory(`position_${i}`);
     }
     const originalLength = stateManager.positionHistory.length;
+    expect(originalLength).toBeGreaterThan(50);
     stateManager.cleanupOldStates(50);
     expect(stateManager.positionHistory.length).toBeLessThanOrEqual(50);
+    expect(stateManager.positionHistory.length).toBeLessThan(originalLength);
   });
   test('should get memory usage information', () => {
     const usage = stateManager.getMemoryUsage();

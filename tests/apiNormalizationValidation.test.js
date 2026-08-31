@@ -10,8 +10,6 @@
  * Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6
  */
 
-const fs = require('fs');
-const path = require('path');
 const ChessGame = require('../src/shared/chessGame');
 const ChessErrorHandler = require('../src/shared/errorHandler');
 
@@ -431,6 +429,11 @@ describe('API Normalization Validation', () => {
         expect(currentState.currentTurn).toBe(index % 2 === 0 ? 'black' : 'white');
         expect(currentState.gameStatus).toBe('active');
       });
+
+      // Final state should differ from the initial state only by the moves made
+      const finalState = game.getGameState();
+      expect(finalState.moveHistory).toHaveLength(initialState.moveHistory.length + moves.length);
+      expect(finalState.gameStatus).toBe(initialState.gameStatus);
     });
 
     test('should validate error states do not corrupt game state', () => {

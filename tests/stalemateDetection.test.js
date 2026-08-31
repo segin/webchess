@@ -10,8 +10,6 @@
  * - Uses standardized test utilities for consistency
  */
 
-const ChessGame = require('../src/shared/chessGame');
-
 describe('Stalemate Detection System', () => {
   let game;
 

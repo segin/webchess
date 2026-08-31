@@ -4,7 +4,6 @@
  */
 
 const TestUtils = require('./testUtils');
-const { TestPositions, TestSequences, TestData } = require('../helpers/testData');
 
 /**
  * Game State Comparison Utilities

@@ -1769,8 +1769,6 @@ describe('ChessGame - Core Functionality', () => {
 
     test('should handle validateMove with isValid property check', () => {
       // Test the specific validation path that checks for isValid property
-      const move = { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } };
-      
       if (typeof game.getKingLegalMoves === 'function') {
         // Mock the validateMove to return isValid instead of success
         const originalValidateMove = game.validateMove;
@@ -3492,8 +3490,6 @@ describe('ChessGame Ultimate Coverage - Final 4% to 95%', () => {
   describe('Advanced Validation Scenarios - Remaining Lines', () => {
     test('should handle validateMove with isValid property check', () => {
       // Test the specific validation path that checks for isValid property
-      const move = { from: { row: 6, col: 4 }, to: { row: 4, col: 4 } };
-      
       // Mock the validateMove to return isValid instead of success
       const originalValidateMove = game.validateMove;
       game.validateMove = jest.fn().mockReturnValue({ isValid: true });

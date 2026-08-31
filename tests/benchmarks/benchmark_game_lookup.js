@@ -50,12 +50,6 @@ const runBenchmark = () => {
     console.log(`Total time for ${iterations} iterations x ${statuses.length} statuses: ${timeInMs.toFixed(2)}ms`);
     console.log(`Average time per call: ${avgTime.toFixed(4)}ms`);
 
-    // Verify counts to be sure
-    for (const status of statuses) {
-        const count = gameManager.getGamesByStatus(status).size;
-        // console.log(`Count for ${status}: ${count}`);
-    }
-
     return avgTime;
 };
 

@@ -153,10 +153,8 @@ describe('Comprehensive Integration Tests - Complete Game Flow', () => {
       const gameState = game.getGameState();
       const serialized = JSON.stringify(gameState);
       
-      // Create new game and restore state
-      const newGame = new ChessGame();
       const deserialized = JSON.parse(serialized);
-      
+
       // Verify serialization preserved all important data using current property names
       expect(deserialized.moveHistory).toHaveLength(3);
       expect(deserialized.currentTurn).toBe('black');

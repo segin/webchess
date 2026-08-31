@@ -1,4 +1,3 @@
-const ChessGame = require('../src/shared/chessGame');
 const GameStateManager = require('../src/shared/gameState');
 const GameManager = require('../src/server/gameManager');
 describe('Comprehensive Invalid Input Handling Tests', () => {

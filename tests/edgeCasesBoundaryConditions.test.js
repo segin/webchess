@@ -367,9 +367,9 @@ describe('Edge Cases and Boundary Conditions - Comprehensive Testing', () => {
       // Test rapid move attempts (some valid, some invalid)
       for (let i = 0; i < 100; i++) {
         // Try a simple pawn move
-        const result = game.makeMove({ 
-          from: { row: 6, col: 4 }, 
-          to: { row: 4, col: 4 } 
+        game.makeMove({
+          from: { row: 6, col: 4 },
+          to: { row: 4, col: 4 }
         });
         // Don't reset - just test the validation speed
         // Most moves after the first will fail, which is fine for performance testing

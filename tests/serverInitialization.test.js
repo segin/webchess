@@ -4,7 +4,6 @@
  * Requirements: 3.1, 3.4, 3.5
  */
 
-const request = require('supertest');
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -17,7 +16,6 @@ jest.mock('../src/server/gameManager');
 describe('Server Initialization Tests', () => {
   let app;
   let server;
-  let io;
   let originalEnv;
 
   beforeEach(() => {
@@ -30,7 +28,7 @@ describe('Server Initialization Tests', () => {
     // Create fresh Express app for each test
     app = express();
     server = http.createServer(app);
-    io = socketIo(server);
+    socketIo(server);
   });
 
   afterEach(() => {

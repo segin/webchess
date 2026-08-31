@@ -10,6 +10,9 @@ console.log(`Running benchmark for castling rights cloning (${iterations} iterat
 // JSON strategy
 const startJson = process.hrtime();
 for (let i = 0; i < iterations; i++) {
+  // The binding keeps the clone alive so the engine cannot elide the work
+  // this benchmark exists to measure.
+  // eslint-disable-next-line no-unused-vars
   const clone = JSON.parse(JSON.stringify(castlingRights));
 }
 const endJson = process.hrtime(startJson);
@@ -18,6 +21,9 @@ const jsonTime = (endJson[0] * 1000 + endJson[1] / 1e6);
 // Spread strategy
 const startSpread = process.hrtime();
 for (let i = 0; i < iterations; i++) {
+  // The binding keeps the clone alive so the engine cannot elide the work
+  // this benchmark exists to measure.
+  // eslint-disable-next-line no-unused-vars
   const clone = {
     white: { ...castlingRights.white },
     black: { ...castlingRights.black }

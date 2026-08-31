@@ -1,9 +1,3 @@
-const request = require('supertest');
-const http = require('http');
-const socketIo = require('socket.io');
-const express = require('express');
-const path = require('path');
-
 // Mock dependencies
 jest.mock('express', () => {
   const mockApp = {

@@ -376,7 +376,7 @@ class TestDataValidator {
     expect(typeof testData).toBe('object');
     
     if (testData.VALID_MOVES) {
-      for (const [pieceType, moves] of Object.entries(testData.VALID_MOVES)) {
+      for (const [, moves] of Object.entries(testData.VALID_MOVES)) {
         expect(Array.isArray(moves)).toBe(true);
         for (const move of moves) {
           InputValidator.validateMoveInput(move, true);
@@ -385,14 +385,14 @@ class TestDataValidator {
     }
     
     if (testData.INVALID_MOVES) {
-      for (const [category, moves] of Object.entries(testData.INVALID_MOVES)) {
+      for (const [, moves] of Object.entries(testData.INVALID_MOVES)) {
         expect(Array.isArray(moves)).toBe(true);
         // Note: We don't validate invalid moves as valid since they're intentionally invalid
       }
     }
     
     if (testData.ERROR_CODES) {
-      for (const [category, code] of Object.entries(testData.ERROR_CODES)) {
+      for (const [, code] of Object.entries(testData.ERROR_CODES)) {
         expect(typeof code).toBe('string');
         expect(code.length).toBeGreaterThan(0);
       }

@@ -325,7 +325,7 @@ class EventTester {
    * Clean up all event listeners
    */
   cleanup() {
-    for (const [key, { cleanup }] of this.eventListeners) {
+    for (const [, { cleanup }] of this.eventListeners) {
       try {
         cleanup();
       } catch (error) {

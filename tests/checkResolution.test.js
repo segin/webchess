@@ -10,8 +10,6 @@
  * - Uses current error codes for resolution edge cases
  */
 
-const ChessGame = require('../src/shared/chessGame');
-
 describe('Check Resolution Validation', () => {
   let game;
 

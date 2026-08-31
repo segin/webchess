@@ -5,9 +5,6 @@
  */
 
 const ChessGame = require('../src/shared/chessGame');
-const ChessAI = require('../src/shared/chessAI');
-const GameStateManager = require('../src/shared/gameState');
-const ChessErrorHandler = require('../src/shared/errorHandler');
 
 describe('WebChess Comprehensive Test Suite', () => {
   

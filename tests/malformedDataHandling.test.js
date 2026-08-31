@@ -1,13 +1,13 @@
-const ChessGame = require('../src/shared/chessGame');
 const GameStateManager = require('../src/shared/gameState');
 
 describe('Comprehensive Malformed Data Handling Tests', () => {
   let game;
-  let gameState;
 
   beforeEach(() => {
     game = testUtils.createFreshGame();
-    gameState = new GameStateManager();
+    // Constructed for its own sake: no test in this suite reads the instance,
+    // but the construction keeps the state manager exercised alongside the game.
+    new GameStateManager();
   });
 
   describe('Corrupted Game State Handling', () => {
@@ -288,9 +288,6 @@ describe('Comprehensive Malformed Data Handling Tests', () => {
 
   describe('Data Corruption Recovery', () => {
     test('should recover from partially corrupted game state', () => {
-      // Start with valid state
-      const originalBoard = JSON.parse(JSON.stringify(game.board));
-      
       // Corrupt part of the state
       game.board[0] = null;
       

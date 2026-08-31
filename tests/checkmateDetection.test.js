@@ -2,25 +2,9 @@ const ChessGame = require('../src/shared/chessGame');
 
 describe('Comprehensive Checkmate Detection System', () => {
   let game;
-  let mockClient;
 
   beforeEach(() => {
     game = new ChessGame();
-    
-    // Mock client for notification testing
-    mockClient = {
-      gameState: {
-        inCheck: false,
-        status: 'active',
-        currentTurn: 'white',
-        winner: null
-      },
-      showCheckNotification: jest.fn(),
-      showCheckmateNotification: jest.fn(),
-      showGameEndScreen: jest.fn(),
-      isKingInCheck: jest.fn(),
-      hasLegalMoves: jest.fn()
-    };
   });
 
   describe('Basic Checkmate Scenarios', () => {

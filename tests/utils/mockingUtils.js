@@ -104,10 +104,10 @@ class WebSocketMocker {
    * @returns {Object} Mock Socket.IO server object
    */
   createMockSocketIOServer(options = {}) {
-    const {
-      port = 3000,
-      host = 'localhost'
-    } = options;
+    // Accepted for parity with the real socket.io server options; the mock
+    // has no transport, so these are documented but intentionally unused.
+    // eslint-disable-next-line no-unused-vars
+    const { port = 3000, host = 'localhost' } = options;
 
     const sockets = new Map();
     const rooms = new Map();
@@ -127,7 +127,7 @@ class WebSocketMocker {
       to: jest.fn((room) => ({
         emit: jest.fn((event, ...args) => {
           // Emit to all sockets in room
-          for (const [socketId, socket] of sockets) {
+          for (const [, socket] of sockets) {
             if (socket.rooms.has(room)) {
               socket.emit(event, ...args);
             }
@@ -139,7 +139,7 @@ class WebSocketMocker {
       
       // Global emit
       emit: jest.fn((event, ...args) => {
-        for (const [socketId, socket] of sockets) {
+        for (const [, socket] of sockets) {
           socket.emit(event, ...args);
         }
       }),
@@ -157,7 +157,7 @@ class WebSocketMocker {
       
       close: jest.fn((callback) => {
         // Disconnect all sockets
-        for (const [socketId, socket] of sockets) {
+        for (const [, socket] of sockets) {
           socket.disconnect(true);
         }
         sockets.clear();
@@ -183,7 +183,7 @@ class WebSocketMocker {
       
       _getSocketsInRoom: (room) => {
         const socketsInRoom = [];
-        for (const [socketId, socket] of sockets) {
+        for (const [, socket] of sockets) {
           if (socket.rooms.has(room)) {
             socketsInRoom.push(socket);
           }

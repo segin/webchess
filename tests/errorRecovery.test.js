@@ -3,7 +3,6 @@
  * Tests error recovery mechanisms and system stability under error conditions
  */
 
-const ChessGame = require('../src/shared/chessGame');
 const ChessErrorHandler = require('../src/shared/errorHandler');
 
 describe('Error Recovery and System Stability', () => {
