@@ -31,10 +31,10 @@ jobs:
       run: npm ci
     
     - name: Run tests
-      run: |
-        npm run test:comprehensive
-        npm run test:jest
-    
+      # `test:comprehensive` and `test:jest` are both aliases for plain `jest`,
+      # so this single call is the whole suite - don't add a second invocation.
+      run: npm test
+
     - name: Get Dependabot metadata
       id: dependabot-metadata
       uses: dependabot/fetch-metadata@v3
