@@ -9,7 +9,10 @@ jobs:
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
-    
+    # Publishing the release needs write access to repository contents.
+    permissions:
+      contents: write
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v7
@@ -105,7 +108,11 @@ jobs:
   docker-build:
     name: Build Docker Image
     runs-on: ubuntu-latest
-    
+    # Pushing to ghcr.io needs package write access.
+    permissions:
+      contents: read
+      packages: write
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v7

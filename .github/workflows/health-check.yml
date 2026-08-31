@@ -11,6 +11,11 @@ jobs:
   health-check:
     name: Application Health Check
     runs-on: ubuntu-latest
+    # The failure path opens an issue; without this the notification itself
+    # fails, and only ever on the runs where it is needed.
+    permissions:
+      contents: read
+      issues: write
 
     steps:
       - name: Checkout code
