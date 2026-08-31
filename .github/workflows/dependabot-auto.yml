@@ -9,7 +9,12 @@ jobs:
     name: Auto-merge Dependabot PRs
     runs-on: ubuntu-latest
     if: github.actor == 'dependabot[bot]'
-    
+    # Dependabot-triggered runs get a read-only token by default, so the
+    # merge call needs these granted explicitly.
+    permissions:
+      contents: write
+      pull-requests: write
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v7
@@ -38,8 +43,12 @@ jobs:
     
     - name: Auto-merge patch and minor updates
       if: steps.dependabot-metadata.outputs.update-type == 'version-update:semver-patch' || steps.dependabot-metadata.outputs.update-type == 'version-update:semver-minor'
+      # Merge directly rather than with --auto: the repository has auto-merge
+      # disabled and main has no required checks, so --auto cannot queue and
+      # would have nothing to wait on. The test step above is the gate - this
+      # step only runs if it passed.
       run: |
-        gh pr merge --auto --squash "${{ github.event.pull_request.html_url }}"
+        gh pr merge --squash --delete-branch "${{ github.event.pull_request.html_url }}"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
