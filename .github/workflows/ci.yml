@@ -51,7 +51,13 @@ jobs:
       # resolves from an existing lockfile. Probes resolve fresh from
       # package.json (throwaway checkout) so they measure the app on
       # that Node version, not the bundled npm's lockfile parsing.
-      run: ${{ matrix.experimental && 'rm -f package-lock.json && npm install' || 'npm ci' }}
+      #
+      # The matrix intentionally installs on Node versions outside some
+      # dev-tools' declared engine ranges (ESLint 10 supports only
+      # ^20.19 / ^22.13 / >=24; the odd probes are off-range for most
+      # of the toolchain), so npm's EBADENGINE warnings here are
+      # expected noise. Log errors only - the test run is the signal.
+      run: ${{ matrix.experimental && 'rm -f package-lock.json && npm install --loglevel=error' || 'npm ci --loglevel=error' }}
 
     - name: Run tests with coverage
       run: npm run test:coverage
