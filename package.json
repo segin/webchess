@@ -50,7 +50,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
-    "baseline-browser-mapping": "^2.11.26",
+    "baseline-browser-mapping": "^2.11.27",
     "esbuild": "^0.28.0",
     "eslint": "^10.11.0",
     "jest": "^30.5.2",
