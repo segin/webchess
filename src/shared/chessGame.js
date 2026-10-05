@@ -634,7 +634,7 @@ class ChessGame {
    * @returns {Object} Validation result
    */
   validateMovementPattern(from, to, piece) {
-    let isValidMovement = false;
+    let isValidMovement;
 
     switch (piece.type) {
       case 'pawn':
@@ -1582,7 +1582,7 @@ class ChessGame {
     // Update check status in game state
     this.inCheck = inCheck;
 
-    let newStatus = 'active';
+    let newStatus;
     let winner = null;
 
     if (inCheck) {
@@ -2607,7 +2607,7 @@ class ChessGame {
     }
 
     // Check piece-specific movement patterns
-    let canAttack = false;
+    let canAttack;
 
     switch (piece.type) {
       case 'pawn':
@@ -2896,9 +2896,9 @@ class ChessGame {
     const colDiff = piecePos.col - kingPos.col;
 
     // Determine if piece is on a line with the king
-    let direction = null;
-    let rowStep = 0;
-    let colStep = 0;
+    let direction;
+    let rowStep;
+    let colStep;
 
     if (rowDiff === 0 && colDiff !== 0) {
       // Same rank (horizontal)
