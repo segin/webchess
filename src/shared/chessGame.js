@@ -471,7 +471,8 @@ class ChessGame {
         errors.push('Promotion must be a string if provided');
       }
 
-      if (move.promotion && !['queen', 'rook', 'bishop', 'knight'].includes(move.promotion)) {
+      const p = move.promotion;
+      if (p && p !== 'queen' && p !== 'rook' && p !== 'bishop' && p !== 'knight') {
         errors.push('Promotion must be one of: queen, rook, bishop, knight');
       }
 
