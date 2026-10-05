@@ -131,8 +131,6 @@ class ChessAI {
     for(let i=0; i < this.maxDepth + 1; i++) this.killerMoves.push([null, null]);
 
     let bestMove = null;
-    let alpha = -Infinity;
-    let beta = Infinity;
     
     // Iterative Deepening
     // Start at depth 1 and increase up to maxDepth
@@ -154,8 +152,8 @@ class ChessAI {
         
         let iterationBestMove = null;
         let iterationBestScore = color === 'white' ? -Infinity : Infinity;
-        alpha = -Infinity;
-        beta = Infinity;
+        let alpha = -Infinity;
+        let beta = Infinity;
         
         // Root move ordering using TT (which persists across iterations)
         const rootMoves = this.orderMoves(chessGame, moves, bestMove, currentDepth);

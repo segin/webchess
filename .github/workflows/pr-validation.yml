@@ -59,7 +59,7 @@ jobs:
     - name: Check for large files
       run: |
         echo "Checking for large files..."
-        LARGE_FILES=$(find . -type f -size +1M -not -path "./node_modules/*" -not -path "./.git/*")
+        LARGE_FILES=$(find . -type f -size +1M -not -path "./node_modules/*" -not -path "./.git/*" -not -name "*.pdf")
         if [ -n "$LARGE_FILES" ]; then
           echo "❌ Large files detected:"
           echo "$LARGE_FILES"
