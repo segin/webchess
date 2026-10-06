@@ -3280,12 +3280,7 @@ class ChessGame {
    */
   generateKnightMoves(from, piece) {
     const moves = [];
-    const knightMoves = [
-      [-2, -1], [-2, 1], [-1, -2], [-1, 2],
-      [1, -2], [1, 2], [2, -1], [2, 1]
-    ];
-
-    for (const [rowOffset, colOffset] of knightMoves) {
+    for (const [rowOffset, colOffset] of KNIGHT_MOVES) {
       const to = { row: from.row + rowOffset, col: from.col + colOffset };
       if (this.isValidSquare(to)) {
         const target = this.board[to.row][to.col];
