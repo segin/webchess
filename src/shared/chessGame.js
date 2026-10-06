@@ -3829,8 +3829,6 @@ class ChessGame {
   }
 
   getGameState() {
-    const gameStateSnapshot = this.getGameStateForSnapshot();
-
     return {
       // Core game state
       board: this.board,
@@ -3862,7 +3860,7 @@ class ChessGame {
 
       // State validation - only perform expensive consistency check in debug mode
       stateConsistency: this.debugMode
-        ? this.stateManager.validateGameStateConsistency(gameStateSnapshot)
+        ? this.stateManager.validateGameStateConsistency(this.getGameStateForSnapshot())
         : {
             success: true,
             errors: [],
