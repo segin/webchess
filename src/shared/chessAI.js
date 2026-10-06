@@ -20,6 +20,19 @@ const KING_OFFSETS = [
   [1, -1], [1, 0], [1, 1]
 ];
 
+const ROOK_DIRECTIONS = [
+  [0, 1], [0, -1], [1, 0], [-1, 0]
+];
+
+const BISHOP_DIRECTIONS = [
+  [1, 1], [1, -1], [-1, 1], [-1, -1]
+];
+
+const QUEEN_DIRECTIONS = [
+  ...ROOK_DIRECTIONS,
+  ...BISHOP_DIRECTIONS
+];
+
 class ChessAI {
   constructor(difficulty = 'medium') {
     this.difficulty = difficulty;
@@ -572,13 +585,9 @@ class ChessAI {
       case 'bishop':
       case 'rook':
       case 'queen': {
-        const directions = [];
-        if (piece.type !== 'bishop') { // Rook or Queen
-          directions.push([0, 1], [0, -1], [1, 0], [-1, 0]);
-        }
-        if (piece.type !== 'rook') { // Bishop or Queen
-          directions.push([1, 1], [1, -1], [-1, 1], [-1, -1]);
-        }
+        const directions = piece.type === 'rook' ? ROOK_DIRECTIONS :
+                           piece.type === 'bishop' ? BISHOP_DIRECTIONS :
+                           QUEEN_DIRECTIONS;
 
         for (const [dr, dc] of directions) {
           for (let i = 1; i < 8; i++) {
