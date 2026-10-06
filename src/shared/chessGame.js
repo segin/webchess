@@ -471,7 +471,8 @@ class ChessGame {
         errors.push('Promotion must be a string if provided');
       }
 
-      if (move.promotion && !['queen', 'rook', 'bishop', 'knight'].includes(move.promotion)) {
+      const p = move.promotion;
+      if (p && p !== 'queen' && p !== 'rook' && p !== 'bishop' && p !== 'knight') {
         errors.push('Promotion must be one of: queen, rook, bishop, knight');
       }
 
@@ -633,7 +634,7 @@ class ChessGame {
    * @returns {Object} Validation result
    */
   validateMovementPattern(from, to, piece) {
-    let isValidMovement = false;
+    let isValidMovement;
 
     switch (piece.type) {
       case 'pawn':
@@ -1581,7 +1582,7 @@ class ChessGame {
     // Update check status in game state
     this.inCheck = inCheck;
 
-    let newStatus = 'active';
+    let newStatus;
     let winner = null;
 
     if (inCheck) {
@@ -2606,7 +2607,7 @@ class ChessGame {
     }
 
     // Check piece-specific movement patterns
-    let canAttack = false;
+    let canAttack;
 
     switch (piece.type) {
       case 'pawn':
@@ -2713,12 +2714,7 @@ class ChessGame {
     };
 
     // 1. Check Knight attacks
-    const knightMoves = [
-      [-2, -1], [-2, 1], [-1, -2], [-1, 2],
-      [1, -2], [1, 2], [2, -1], [2, 1]
-    ];
-
-    for (const [rowOffset, colOffset] of knightMoves) {
+    for (const [rowOffset, colOffset] of KNIGHT_MOVES) {
       const r = row + rowOffset;
       const c = col + colOffset;
       if (r >= 0 && r < 8 && c >= 0 && c < 8) {
@@ -2748,8 +2744,7 @@ class ChessGame {
     }
 
     // 3. Check Sliding Pieces (Orthogonal)
-    const orthogonalDirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-    for (const [dr, dc] of orthogonalDirs) {
+    for (const [dr, dc] of ORTHOGONAL_DIRS) {
       for (let i = 1; i < 8; i++) {
         const r = row + i * dr;
         const c = col + i * dc;
@@ -2766,8 +2761,7 @@ class ChessGame {
     }
 
     // 4. Check Sliding Pieces (Diagonal)
-    const diagonalDirs = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
-    for (const [dr, dc] of diagonalDirs) {
+    for (const [dr, dc] of DIAGONAL_DIRS) {
       for (let i = 1; i < 8; i++) {
         const r = row + i * dr;
         const c = col + i * dc;
@@ -2784,12 +2778,7 @@ class ChessGame {
     }
 
     // 5. Check King attacks (adjacent)
-    const kingMoves = [
-      [-1, -1], [-1, 0], [-1, 1],
-      [0, -1],           [0, 1],
-      [1, -1], [1, 0], [1, 1]
-    ];
-    for (const [dr, dc] of kingMoves) {
+    for (const [dr, dc] of KING_MOVES) {
       const r = row + dr;
       const c = col + dc;
       if (r >= 0 && r < 8 && c >= 0 && c < 8) {
@@ -2895,9 +2884,9 @@ class ChessGame {
     const colDiff = piecePos.col - kingPos.col;
 
     // Determine if piece is on a line with the king
-    let direction = null;
-    let rowStep = 0;
-    let colStep = 0;
+    let direction;
+    let rowStep;
+    let colStep;
 
     if (rowDiff === 0 && colDiff !== 0) {
       // Same rank (horizontal)
@@ -3828,8 +3817,6 @@ class ChessGame {
   }
 
   getGameState() {
-    const gameStateSnapshot = this.getGameStateForSnapshot();
-
     return {
       // Core game state
       board: this.board,
@@ -3861,7 +3848,7 @@ class ChessGame {
 
       // State validation - only perform expensive consistency check in debug mode
       stateConsistency: this.debugMode
-        ? this.stateManager.validateGameStateConsistency(gameStateSnapshot)
+        ? this.stateManager.validateGameStateConsistency(this.getGameStateForSnapshot())
         : {
             success: true,
             errors: [],

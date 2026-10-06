@@ -45,21 +45,16 @@
     "npm": ">=9.0.0"
   },
   "dependencies": {
-    "braces": "^3.0.3",
-    "cross-spawn": "^7.0.6",
-    "decode-uri-component": "^0.5.0",
-    "engine.io": "^6.6.11",
     "express": "^5.2.1",
-    "qs": "^6.16.0",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.4"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "baseline-browser-mapping": "^2.11.22",
+    "@eslint/js": "^10.0.1",
+    "baseline-browser-mapping": "^2.11.27",
     "esbuild": "^0.28.0",
-    "eslint": "^10.10.0",
-    "jest": "^30.5.1",
+    "eslint": "^10.11.0",
+    "jest": "^30.5.2",
     "nodemon": "^3.1.14",
-    "supertest": "^7.2.2"
+    "supertest": "^7.3.0"
   }
 }

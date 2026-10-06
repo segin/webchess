@@ -538,7 +538,6 @@ class ExternalDependencyMocker {
       readFile: jest.fn((path, encoding, callback) => {
         if (typeof encoding === 'function') {
           callback = encoding;
-          encoding = 'utf8';
         }
 
         setTimeout(() => {
@@ -553,7 +552,6 @@ class ExternalDependencyMocker {
       writeFile: jest.fn((path, data, encoding, callback) => {
         if (typeof encoding === 'function') {
           callback = encoding;
-          encoding = 'utf8';
         }
 
         setTimeout(() => {

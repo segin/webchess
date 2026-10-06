@@ -9,6 +9,17 @@ const {
   KING_MIDGAME_PST
 } = require('./evaluationConstants');
 
+const KNIGHT_OFFSETS = [
+  [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+  [1, -2], [1, 2], [2, -1], [2, 1]
+];
+
+const KING_OFFSETS = [
+  [-1, -1], [-1, 0], [-1, 1],
+  [0, -1],           [0, 1],
+  [1, -1], [1, 0], [1, 1]
+];
+
 class ChessAI {
   constructor(difficulty = 'medium') {
     this.difficulty = difficulty;
@@ -131,8 +142,6 @@ class ChessAI {
     for(let i=0; i < this.maxDepth + 1; i++) this.killerMoves.push([null, null]);
 
     let bestMove = null;
-    let alpha = -Infinity;
-    let beta = Infinity;
     
     // Iterative Deepening
     // Start at depth 1 and increase up to maxDepth
@@ -154,8 +163,8 @@ class ChessAI {
         
         let iterationBestMove = null;
         let iterationBestScore = color === 'white' ? -Infinity : Infinity;
-        alpha = -Infinity;
-        beta = Infinity;
+        let alpha = -Infinity;
+        let beta = Infinity;
         
         // Root move ordering using TT (which persists across iterations)
         const rootMoves = this.orderMoves(chessGame, moves, bestMove, currentDepth);
@@ -547,11 +556,7 @@ class ChessAI {
       }
 
       case 'knight': {
-        const offsets = [
-          [-2, -1], [-2, 1], [-1, -2], [-1, 2],
-          [1, -2], [1, 2], [2, -1], [2, 1]
-        ];
-        for (const [dr, dc] of offsets) {
+        for (const [dr, dc] of KNIGHT_OFFSETS) {
           const r = row + dr;
           const c = col + dc;
           if (r >= 0 && r <= 7 && c >= 0 && c <= 7) {
@@ -602,12 +607,7 @@ class ChessAI {
       }
 
       case 'king': {
-        const offsets = [
-          [-1, -1], [-1, 0], [-1, 1],
-          [0, -1],           [0, 1],
-          [1, -1], [1, 0], [1, 1]
-        ];
-        for (const [dr, dc] of offsets) {
+        for (const [dr, dc] of KING_OFFSETS) {
           const r = row + dr;
           const c = col + dc;
           if (r >= 0 && r <= 7 && c >= 0 && c <= 7) {

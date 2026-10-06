@@ -271,7 +271,7 @@ class WebChessClient {
   }
 
   loadSessionFromStorage() {
-    let data = null;
+    let data;
     try {
       const raw = localStorage.getItem('webchess-session');
       if (!raw) return;
