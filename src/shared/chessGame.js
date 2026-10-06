@@ -2714,12 +2714,7 @@ class ChessGame {
     };
 
     // 1. Check Knight attacks
-    const knightMoves = [
-      [-2, -1], [-2, 1], [-1, -2], [-1, 2],
-      [1, -2], [1, 2], [2, -1], [2, 1]
-    ];
-
-    for (const [rowOffset, colOffset] of knightMoves) {
+    for (const [rowOffset, colOffset] of KNIGHT_MOVES) {
       const r = row + rowOffset;
       const c = col + colOffset;
       if (r >= 0 && r < 8 && c >= 0 && c < 8) {
@@ -2749,8 +2744,7 @@ class ChessGame {
     }
 
     // 3. Check Sliding Pieces (Orthogonal)
-    const orthogonalDirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-    for (const [dr, dc] of orthogonalDirs) {
+    for (const [dr, dc] of ORTHOGONAL_DIRS) {
       for (let i = 1; i < 8; i++) {
         const r = row + i * dr;
         const c = col + i * dc;
@@ -2767,8 +2761,7 @@ class ChessGame {
     }
 
     // 4. Check Sliding Pieces (Diagonal)
-    const diagonalDirs = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
-    for (const [dr, dc] of diagonalDirs) {
+    for (const [dr, dc] of DIAGONAL_DIRS) {
       for (let i = 1; i < 8; i++) {
         const r = row + i * dr;
         const c = col + i * dc;
@@ -2785,12 +2778,7 @@ class ChessGame {
     }
 
     // 5. Check King attacks (adjacent)
-    const kingMoves = [
-      [-1, -1], [-1, 0], [-1, 1],
-      [0, -1],           [0, 1],
-      [1, -1], [1, 0], [1, 1]
-    ];
-    for (const [dr, dc] of kingMoves) {
+    for (const [dr, dc] of KING_MOVES) {
       const r = row + dr;
       const c = col + dc;
       if (r >= 0 && r < 8 && c >= 0 && c < 8) {
@@ -3292,12 +3280,7 @@ class ChessGame {
    */
   generateKnightMoves(from, piece) {
     const moves = [];
-    const knightMoves = [
-      [-2, -1], [-2, 1], [-1, -2], [-1, 2],
-      [1, -2], [1, 2], [2, -1], [2, 1]
-    ];
-
-    for (const [rowOffset, colOffset] of knightMoves) {
+    for (const [rowOffset, colOffset] of KNIGHT_MOVES) {
       const to = { row: from.row + rowOffset, col: from.col + colOffset };
       if (this.isValidSquare(to)) {
         const target = this.board[to.row][to.col];
@@ -3829,8 +3812,6 @@ class ChessGame {
   }
 
   getGameState() {
-    const gameStateSnapshot = this.getGameStateForSnapshot();
-
     return {
       // Core game state
       board: this.board,
@@ -3862,7 +3843,7 @@ class ChessGame {
 
       // State validation - only perform expensive consistency check in debug mode
       stateConsistency: this.debugMode
-        ? this.stateManager.validateGameStateConsistency(gameStateSnapshot)
+        ? this.stateManager.validateGameStateConsistency(this.getGameStateForSnapshot())
         : {
             success: true,
             errors: [],
