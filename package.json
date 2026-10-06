@@ -5,7 +5,7 @@
   "main": "src/server/index.js",
   "scripts": {
     "start": "node src/server/index.js",
-    "dev": "nodemon src/server/index.js",
+    "dev": "node --watch src/server/index.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -54,7 +54,6 @@
     "esbuild": "^0.28.0",
     "eslint": "^10.11.0",
     "jest": "^30.5.2",
-    "nodemon": "^3.1.14",
     "supertest": "^7.3.0"
   }
 }
