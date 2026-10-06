@@ -446,196 +446,27 @@ class ChessAI {
   }
   
   getAllValidMoves(chessGame, color) {
+    // Utilize the optimized move generation from ChessGame
+    const legalMoves = chessGame.getAllLegalMoves(color);
     const moves = [];
-    
-    // Optimization: Use pieceLocations cache if available to avoid scanning empty squares
-    if (chessGame.pieceLocations && chessGame.pieceLocations[color]) {
-      const locations = chessGame.pieceLocations[color];
-      for (const loc of locations) {
-        // Double check piece is still there and matches color (safety check)
-        const piece = chessGame.board[loc.row][loc.col];
-        if (piece && piece.color === color) {
-          const pieceMoves = this.getValidMovesForPiece(chessGame, loc.row, loc.col);
-          moves.push(...pieceMoves);
-        }
-      }
-    } else {
-      // Fallback to full board scan if cache is missing
-      for (let row = 0; row < 8; row++) {
-        for (let col = 0; col < 8; col++) {
-          const piece = chessGame.board[row][col];
-          if (piece && piece.color === color) {
-            const pieceMoves = this.getValidMovesForPiece(chessGame, row, col);
-            moves.push(...pieceMoves);
-          }
-        }
-      }
-    }
-    
-    return moves;
-  }
-  
-  getValidMovesForPiece(chessGame, row, col) {
-    const moves = [];
-    const piece = chessGame.board[row][col];
-    
-    if (!piece) return moves;
-    
-    // Optimized helper to add move if valid (skips heavy validation)
-    const tryAddMove = (toRow, toCol) => {
-      // NOTE: Caller must ensure bounds and occupancy checks before calling this
-      // to avoid overhead of creating objects for invalid moves.
 
-      const move = {
-        from: { row, col },
-        to: { row: toRow, col: toCol }
+    for (let i = 0; i < legalMoves.length; i++) {
+      const move = legalMoves[i];
+      const formattedMove = {
+        from: move.from,
+        to: move.to
       };
 
       // Tag pawn moves onto the last rank so move ordering sees the
       // promotion (execution would otherwise silently default to queen)
-      if (piece.type === 'pawn' && (toRow === 0 || toRow === 7)) {
-        move.promotion = 'queen';
+      // Note: chessGame.getAllLegalMoves returns string 'pawn' or 'knight' etc for move.piece
+      if (move.piece === 'pawn' && (move.to.row === 0 || move.to.row === 7)) {
+        formattedMove.promotion = 'queen';
       }
 
-      // Lightweight validation: Only check if move puts own king in check
-      // This skips format, turn, piece, and other redundant checks performed by validateMove
-      if (!chessGame.wouldBeInCheck(move.from, move.to, piece.color, piece)) {
-        moves.push(move);
-      }
-    };
-
-    switch (piece.type) {
-      case 'pawn': {
-        const direction = piece.color === 'white' ? -1 : 1;
-        const startRow = piece.color === 'white' ? 6 : 1;
-
-        // Forward 1
-        const r1 = row + direction;
-        if (r1 >= 0 && r1 <= 7) {
-            if (!chessGame.board[r1][col]) {
-                tryAddMove(r1, col);
-
-                // Forward 2 (only if on start row and forward 1 was empty)
-                if (row === startRow) {
-                    const r2 = row + 2 * direction;
-                    // No need to check r2 bounds as startRow guarantees it
-                    if (!chessGame.board[r2][col]) {
-                        tryAddMove(r2, col);
-                    }
-                }
-            }
-        }
-
-        // Captures (guard r1: a pawn on its last rank has no capture row)
-        const captureCols = [col - 1, col + 1];
-        for (const c of captureCols) {
-            if (r1 >= 0 && r1 <= 7 && c >= 0 && c <= 7) {
-                const target = chessGame.board[r1][c]; // r1 is capture row (same as forward 1)
-                if (target && target.color !== piece.color) {
-                    tryAddMove(r1, c);
-                } else if (chessGame.enPassantTarget &&
-                           chessGame.enPassantTarget.row === r1 &&
-                           chessGame.enPassantTarget.col === c) {
-                     // En Passant
-                     tryAddMove(r1, c);
-                }
-            }
-        }
-        break;
-      }
-
-      case 'knight': {
-        const offsets = [
-          [-2, -1], [-2, 1], [-1, -2], [-1, 2],
-          [1, -2], [1, 2], [2, -1], [2, 1]
-        ];
-        for (const [dr, dc] of offsets) {
-          const r = row + dr;
-          const c = col + dc;
-          if (r >= 0 && r <= 7 && c >= 0 && c <= 7) {
-              const target = chessGame.board[r][c];
-              if (!target || target.color !== piece.color) {
-                  tryAddMove(r, c);
-              }
-          }
-        }
-        break;
-      }
-
-      case 'bishop':
-      case 'rook':
-      case 'queen': {
-        const directions = [];
-        if (piece.type !== 'bishop') { // Rook or Queen
-          directions.push([0, 1], [0, -1], [1, 0], [-1, 0]);
-        }
-        if (piece.type !== 'rook') { // Bishop or Queen
-          directions.push([1, 1], [1, -1], [-1, 1], [-1, -1]);
-        }
-
-        for (const [dr, dc] of directions) {
-          for (let i = 1; i < 8; i++) {
-            const toRow = row + i * dr;
-            const toCol = col + i * dc;
-
-            if (toRow < 0 || toRow > 7 || toCol < 0 || toCol > 7) break;
-
-            const target = chessGame.board[toRow][toCol];
-
-            if (!target) {
-              // Empty square
-              tryAddMove(toRow, toCol);
-            } else {
-              // Occupied
-              if (target.color !== piece.color) {
-                // Capture enemy
-                tryAddMove(toRow, toCol);
-              }
-              // Blocked (whether friend or foe), stop ray
-              break;
-            }
-          }
-        }
-        break;
-      }
-
-      case 'king': {
-        const offsets = [
-          [-1, -1], [-1, 0], [-1, 1],
-          [0, -1],           [0, 1],
-          [1, -1], [1, 0], [1, 1]
-        ];
-        for (const [dr, dc] of offsets) {
-          const r = row + dr;
-          const c = col + dc;
-          if (r >= 0 && r <= 7 && c >= 0 && c <= 7) {
-              const target = chessGame.board[r][c];
-              if (!target || target.color !== piece.color) {
-                  tryAddMove(r, c);
-              }
-          }
-        }
-        
-        // Castling
-        // Only if on starting rank and file
-        const startRank = piece.color === 'white' ? 7 : 0;
-        if (row === startRank && col === 4) {
-            // Kingside
-            const kingsideDest = { row, col: 6 };
-            if (chessGame.canCastle({ row, col }, kingsideDest, piece.color)) {
-                moves.push({ from: { row, col }, to: kingsideDest });
-            }
-
-            // Queenside
-            const queensideDest = { row, col: 2 };
-            if (chessGame.canCastle({ row, col }, queensideDest, piece.color)) {
-                moves.push({ from: { row, col }, to: queensideDest });
-            }
-        }
-        break;
-      }
+      moves.push(formattedMove);
     }
-    
+
     return moves;
   }
 
