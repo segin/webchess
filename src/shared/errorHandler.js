@@ -132,8 +132,8 @@ class ChessErrorHandler {
       
       NO_PIECE: ["Select a square that contains one of your pieces"],
       INVALID_PIECE: ["Refresh the game if piece data seems corrupted"],
-      INVALID_PIECE_TYPE: ["Report this error - it may indicate a bug"],
-      INVALID_PIECE_COLOR: ["Report this error - it may indicate a bug"],
+      INVALID_PIECE_TYPE: ["Report this error - it indicates a system issue"],
+      INVALID_PIECE_COLOR: ["Report this error - it indicates a system issue"],
       WRONG_TURN: ["Wait for your turn", "Check whose turn it is"],
       
       INVALID_MOVE: ["Review how this piece can move", "Choose a valid destination"],
