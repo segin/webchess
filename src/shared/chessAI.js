@@ -9,6 +9,17 @@ const {
   KING_MIDGAME_PST
 } = require('./evaluationConstants');
 
+const KNIGHT_OFFSETS = [
+  [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+  [1, -2], [1, 2], [2, -1], [2, 1]
+];
+
+const KING_OFFSETS = [
+  [-1, -1], [-1, 0], [-1, 1],
+  [0, -1],           [0, 1],
+  [1, -1], [1, 0], [1, 1]
+];
+
 class ChessAI {
   constructor(difficulty = 'medium') {
     this.difficulty = difficulty;
@@ -545,11 +556,7 @@ class ChessAI {
       }
 
       case 'knight': {
-        const offsets = [
-          [-2, -1], [-2, 1], [-1, -2], [-1, 2],
-          [1, -2], [1, 2], [2, -1], [2, 1]
-        ];
-        for (const [dr, dc] of offsets) {
+        for (const [dr, dc] of KNIGHT_OFFSETS) {
           const r = row + dr;
           const c = col + dc;
           if (r >= 0 && r <= 7 && c >= 0 && c <= 7) {
@@ -600,12 +607,7 @@ class ChessAI {
       }
 
       case 'king': {
-        const offsets = [
-          [-1, -1], [-1, 0], [-1, 1],
-          [0, -1],           [0, 1],
-          [1, -1], [1, 0], [1, 1]
-        ];
-        for (const [dr, dc] of offsets) {
+        for (const [dr, dc] of KING_OFFSETS) {
           const r = row + dr;
           const c = col + dc;
           if (r >= 0 && r <= 7 && c >= 0 && c <= 7) {
