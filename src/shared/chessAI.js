@@ -135,13 +135,14 @@ class ChessAI {
     // Iterative Deepening
     // Start at depth 1 and increase up to maxDepth
     // This allows better move ordering at each new depth using results from previous
-    const startTime = Date.now();
-    const timeLimit = 5000; // 5 seconds soft limit for "Expert" (adjust as needed)
+    this.startTime = Date.now();
+    this.timeLimit = 5000; // 5 seconds soft limit for "Expert" (adjust as needed)
+    this.isTimeUp = false;
+    this.nodesEvaluated = 0;
     
-    // For 'expert', use iterative deepening. For others, just go straight to depth
-    // Or we can use ID for all, but simple AI doesn't need it.
-    // Let's use ID for Hard and Expert.
-    const useID = (this.difficulty === 'expert' || this.difficulty === 'hard');
+    // For 'expert' and 'hard', use iterative deepening.
+    // Allow medium to also benefit slightly from move ordering and time limits.
+    const useID = this.maxDepth > 1;
     const startDepth = useID ? 1 : this.maxDepth;
     
     for (let currentDepth = startDepth; currentDepth <= this.maxDepth; currentDepth++) {
@@ -157,14 +158,20 @@ class ChessAI {
         
         // Root move ordering using TT (which persists across iterations)
         const rootMoves = this.orderMoves(chessGame, moves, bestMove, currentDepth);
+        let completedDepth = true;
 
         for (const move of rootMoves) {
-            // Check time (only for Expert/Hard)
-            if (useID && currentDepth > 1 && (Date.now() - startTime > timeLimit)) {
+            this.checkTime();
+            if (this.isTimeUp && currentDepth > 1) {
+                completedDepth = false;
                 break; 
             }
 
             const score = this.minimax(chessGame, move, currentDepth - 1, !this.isMaximizing(color), alpha, beta);
+            if (this.isTimeUp && currentDepth > 1) {
+                completedDepth = false;
+                break;
+            }
             
             if (color === 'white') {
                 if (score > iterationBestScore) {
@@ -184,19 +191,32 @@ class ChessAI {
         // If we completed the iteration (didn't timeout loop break handled inside minimax/loops?),
         // update the global best move.
         // Simple timeout check above only breaks the root loop.
-        if (iterationBestMove) {
+        if (completedDepth && iterationBestMove) {
             bestMove = iterationBestMove;
         }
         
-        if (useID && (Date.now() - startTime > timeLimit)) {
+        if (this.isTimeUp) {
              break; // Stop deepening
         }
     }
     
-    return bestMove;
+    return bestMove || moves[0];
   }
   
+  checkTime() {
+    this.nodesEvaluated++;
+    // Check time periodically to save on Date.now() overhead
+    if ((this.nodesEvaluated & 2047) === 0) {
+      if (Date.now() - this.startTime > this.timeLimit) {
+        this.isTimeUp = true;
+      }
+    }
+  }
+
   minimax(chessGame, move, depth, isMaximizing, alpha, beta) {
+    this.checkTime();
+    if (this.isTimeUp) return isMaximizing ? -Infinity : Infinity;
+
     if (depth < 0) return this.evaluatePosition(chessGame);
     
     // Use make/undo pattern instead of cloning
@@ -350,6 +370,9 @@ class ChessAI {
 
   // Quiescence Search to avoid horizon effect on captures
   quiescence(chessGame, alpha, beta, isMaximizing, rootColor) {
+    this.checkTime();
+    if (this.isTimeUp) return isMaximizing ? -Infinity : Infinity;
+
     const standPat = this.evaluatePosition(chessGame);
     
     if (isMaximizing) {
